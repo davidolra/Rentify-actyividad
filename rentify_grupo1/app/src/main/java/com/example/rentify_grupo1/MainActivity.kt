@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.rentify_grupo1.ui.screen.HomeScreen
+import com.example.rentify_grupo1.ui.screen.HomeScreen2
 import com.example.rentify_grupo1.ui.theme.Rentify_grupo1Theme
 
 class MainActivity : ComponentActivity() {
@@ -20,7 +21,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             Rentify_grupo1Theme {
-                HomeScreen()
+                HomeScreen2()
             }
         }
     }
@@ -32,6 +33,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun GreetingPreview() {
     Rentify_grupo1Theme {
-       HomeScreen()
+       HomeScreen2()
     }
 }
