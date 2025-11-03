@@ -1,0 +1,144 @@
+package com.example.rentify.ui.viewmodel
+
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.rentify.data.local.dao.SolicitudDao
+import com.example.rentify.data.local.dao.PropiedadDao
+import com.example.rentify.data.local.dao.CatalogDao
+import com.example.rentify.data.local.entities.SolicitudEntity
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+
+/**
+ * ViewModel para gestión de solicitudes
+ */
+class SolicitudesViewModel(
+    private val solicitudDao: SolicitudDao,
+    private val propiedadDao: PropiedadDao,
+    private val catalogDao: CatalogDao
+) : ViewModel() {
+
+    private val _solicitudes = MutableStateFlow<List<SolicitudConDatos>>(emptyList())
+    val solicitudes: StateFlow<List<SolicitudConDatos>> = _solicitudes
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
+
+    private val _errorMsg = MutableStateFlow<String?>(null)
+    val errorMsg: StateFlow<String?> = _errorMsg
+
+    private val _solicitudCreada = MutableStateFlow(false)
+    val solicitudCreada: StateFlow<Boolean> = _solicitudCreada
+
+    /**
+     * Carga las solicitudes de un usuario
+     */
+    fun cargarSolicitudesUsuario(usuarioId: Long) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _errorMsg.value = null
+
+            try {
+                val listaSolicitudes = solicitudDao.getSolicitudesByUsuario(usuarioId)
+
+                // Enriquecer con datos de propiedad y estado
+                val solicitudesConDatos = listaSolicitudes.map { solicitud ->
+                    val propiedad = propiedadDao.getById(solicitud.propiedad_id)
+                    val estado = catalogDao.getEstadoById(solicitud.estado_id)
+
+                    SolicitudConDatos(
+                        solicitud = solicitud,
+                        tituloPropiedad = propiedad?.titulo,
+                        codigoPropiedad = propiedad?.codigo,
+                        nombreEstado = estado?.nombre
+                    )
+                }
+
+                _solicitudes.value = solicitudesConDatos
+            } catch (e: Exception) {
+                _errorMsg.value = "Error al cargar solicitudes: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * Crea una nueva solicitud de arriendo
+     */
+    fun crearSolicitud(
+        usuarioId: Long,
+        propiedadId: Long,
+        mesesArriendo: Int = 1
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _errorMsg.value = null
+            _solicitudCreada.value = false
+
+            try {
+                // Validar límite de 3 solicitudes activas
+                val estadoActivo = catalogDao.getEstadoByNombre("Pendiente")
+                    ?: throw IllegalStateException("Estado 'Pendiente' no encontrado")
+
+                val solicitudesActivas = solicitudDao.countSolicitudesActivas(
+                    usuarioId,
+                    estadoActivo.id
+                )
+
+                if (solicitudesActivas >= 3) {
+                    _errorMsg.value = "Ya tienes el máximo de 3 solicitudes activas"
+                    return@launch
+                }
+
+                // Obtener datos de la propiedad
+                val propiedad = propiedadDao.getById(propiedadId)
+                    ?: throw IllegalStateException("Propiedad no encontrada")
+
+                // Calcular total
+                val canon = propiedad.precio_mensual * mesesArriendo
+                val garantia = propiedad.precio_mensual // 1 mes de garantía
+                val comision = (propiedad.precio_mensual * 0.10).toInt() // 10% comisión base
+                val total = canon + garantia + comision
+
+                // Crear solicitud
+                val nuevaSolicitud = SolicitudEntity(
+                    fsolicitud = System.currentTimeMillis(),
+                    total = total,
+                    usuarios_id = usuarioId,
+                    estado_id = estadoActivo.id,
+                    propiedad_id = propiedadId
+                )
+
+                solicitudDao.insert(nuevaSolicitud)
+                _solicitudCreada.value = true
+
+                // Recargar solicitudes
+                cargarSolicitudesUsuario(usuarioId)
+            } catch (e: Exception) {
+                _errorMsg.value = "Error al crear solicitud: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * Limpia el estado de solicitud creada
+     */
+    fun clearSolicitudCreada() {
+        _solicitudCreada.value = false
+    }
+}
+
+/**
+ * Data class para solicitud con datos enriquecidos
+ */
+data class SolicitudConDatos(
+    val solicitud: SolicitudEntity,
+    val tituloPropiedad: String?,
+    val codigoPropiedad: String?,
+    val nombreEstado: String?
+)
