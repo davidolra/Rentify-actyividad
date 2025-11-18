@@ -63,4 +63,43 @@ class PerfilUsuarioViewModel(
             }
         }
     }
+
+    /**
+     * Actualiza los datos del perfil del usuario
+     */
+    fun actualizarPerfil(
+        nombre: String,
+        telefono: String,
+        direccion: String,
+        comuna: String,
+        fotoUri: String? = null
+    ) {
+        viewModelScope.launch {
+            _usuario.value?.let { user ->
+                // Separar nombre completo en partes
+                val nombres = nombre.split(" ")
+                val pnombre = nombres.getOrNull(0) ?: ""
+                val snombre = nombres.getOrNull(1) ?: ""
+                val papellido = nombres.getOrNull(2) ?: ""
+
+                // Crear usuario actualizado
+                val updatedUser = user.copy(
+                    pnombre = pnombre,
+                    snombre = snombre,
+                    papellido = papellido,
+                    ntelefono = telefono,
+                    direccion = direccion,
+                    comuna = comuna,
+                    fotoPerfil = fotoUri
+                )
+
+                // Guardar en la base de datos
+                usuarioDao.update(updatedUser)
+
+                // Actualizar el StateFlow
+                _usuario.value = updatedUser
+            }
+        }
+    }
+
 }

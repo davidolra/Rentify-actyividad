@@ -1,29 +1,54 @@
 package com.example.rentify.ui.screen
 
-
+import android.content.Context
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.rentify.data.local.storage.UserPreferences
 import com.example.rentify.ui.viewmodel.PerfilUsuarioViewModel
 import kotlinx.coroutines.launch
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
-/**
- * Pantalla de perfil del usuario logueado
- */
+// Función para guardar archivo temporal en caché
+private fun createTempImageFile(context: Context): File {
+    val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+    val storageDir = File(context.cacheDir, "images").apply { if (!exists()) mkdirs() }
+    return File(storageDir, "IMG_${timeStamp}.jpg")
+}
+
+// Función para obtener Uri del archivo
+private fun getImageUriForFile(context: Context, file: File): Uri {
+    val authority = "${context.packageName}.fileprovider"
+    return FileProvider.getUriForFile(context, authority, file)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PerfilUsuarioScreen(
@@ -38,18 +63,57 @@ fun PerfilUsuarioScreen(
 
     val userId by userPrefs.userId.collectAsStateWithLifecycle(initialValue = null)
     val usuario by vm.usuario.collectAsStateWithLifecycle()
-    val nombreRol by vm.nombreRol.collectAsStateWithLifecycle()
-    val cantidadSolicitudes by vm.cantidadSolicitudes.collectAsStateWithLifecycle()
     val isLoading by vm.isLoading.collectAsStateWithLifecycle()
 
     // Cargar datos al iniciar
     LaunchedEffect(userId) {
-        userId?.let {
-            vm.cargarDatosUsuario(it)
-        }
+        userId?.let { vm.cargarDatosUsuario(it) }
     }
 
     val scrollState = rememberScrollState()
+
+    // ===== ESTADOS EDITABLES =====
+    var nombre by rememberSaveable { mutableStateOf("") }
+    var telefono by rememberSaveable { mutableStateOf("") }
+    var direccion by rememberSaveable { mutableStateOf("") }
+    var comuna by rememberSaveable { mutableStateOf("") }
+
+    // Foto de perfil
+    var profilePhotoUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var pendingCaptureUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Launcher para tomar foto
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            profilePhotoUri = pendingCaptureUri
+            Toast.makeText(context, "Foto de perfil actualizada", Toast.LENGTH_SHORT).show()
+        } else {
+            pendingCaptureUri = null
+        }
+    }
+
+    // Launcher para seleccionar documento
+    val documentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            Toast.makeText(context, "Documento seleccionado: ${uri.lastPathSegment}", Toast.LENGTH_SHORT).show()
+            // Aquí puedes enviar el documento al ViewModel / backend
+        }
+    }
+
+    // Inicializar campos editables cuando se cargue usuario
+    LaunchedEffect(usuario) {
+        usuario?.let {
+            nombre = "${it.pnombre} ${it.snombre} ${it.papellido}"
+            telefono = it.ntelefono
+            direccion = it.direccion ?: ""
+            comuna = it.comuna ?: ""
+            // photoUri = Uri.parse(it.fotoPerfil)  // si tienes URL guardada
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -57,7 +121,9 @@ fun PerfilUsuarioScreen(
                 title = { Text("Mi Perfil") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, "Volver")
+                        Icon(
+                            imageVector = Icons.Filled.ArrowBack,
+                            contentDescription = "Volver")
                     }
                 },
                 actions = {
@@ -69,19 +135,9 @@ fun PerfilUsuarioScreen(
                             }
                         }
                     ) {
-                        Icon(
-                            Icons.Filled.Logout,
-                            contentDescription = "Cerrar sesión",
-                            tint = MaterialTheme.colorScheme.error
-                        )
+                        Icon(Icons.Filled.Logout, contentDescription = "Cerrar sesión", tint = MaterialTheme.colorScheme.error)
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                }
             )
         }
     ) { padding ->
@@ -92,337 +148,131 @@ fun PerfilUsuarioScreen(
                 .background(MaterialTheme.colorScheme.background)
         ) {
             if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center)
-                )
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (usuario != null) {
-                val user = usuario!!
-                val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(scrollState)
                         .padding(16.dp)
                 ) {
-                    // ========== HEADER CON AVATAR ==========
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        )
+
+                    // ===== HEADER CON AVATAR EDITABLE =====
+                    Box(
+                        modifier = Modifier
+                            .size(120.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .clickable {
+                                // Tomar foto
+                                val file = createTempImageFile(context)
+                                val uri = getImageUriForFile(context, file)
+                                pendingCaptureUri = uri
+                                takePictureLauncher.launch(uri)
+                            },
+                        contentAlignment = Alignment.Center
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Surface(
-                                modifier = Modifier.size(80.dp),
-                                shape = MaterialTheme.shapes.large,
-                                color = MaterialTheme.colorScheme.primary
-                            ) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Person,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(48.dp),
-                                        tint = MaterialTheme.colorScheme.onPrimary
-                                    )
-                                }
-                            }
-
-                            Spacer(Modifier.height(16.dp))
-
-                            Text(
-                                "${user.pnombre} ${user.snombre} ${user.papellido}",
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold
+                        if (profilePhotoUri != null) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(profilePhotoUri)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Foto de perfil",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
                             )
-
-                            Spacer(Modifier.height(4.dp))
-
-                            Text(
-                                user.email,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-
-                            Spacer(Modifier.height(8.dp))
-
-                            Surface(
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                                shape = MaterialTheme.shapes.small
-                            ) {
-                                Text(
-                                    nombreRol ?: "Usuario",
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-
-                            // Badge DUOC VIP
-                            if (user.duoc_vip) {
-                                Spacer(Modifier.height(8.dp))
-                                Surface(
-                                    color = MaterialTheme.colorScheme.primary,
-                                    shape = MaterialTheme.shapes.small
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Filled.Star,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(16.dp),
-                                            tint = MaterialTheme.colorScheme.onPrimary
-                                        )
-                                        Spacer(Modifier.width(4.dp))
-                                        Text(
-                                            "DUOC VIP - 20% descuento",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(16.dp))
-
-                    // ========== RENTIFYPOINTS ==========
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Filled.EmojiEvents,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(32.dp),
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        "RentifyPoints",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                    Text(
-                                        "${user.puntos} puntos",
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
+                        } else {
                             Icon(
-                                imageVector = Icons.Filled.ChevronRight,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                imageVector = Icons.Filled.CameraAlt,
+                                contentDescription = "Subir foto",
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
                     }
 
                     Spacer(Modifier.height(16.dp))
 
-                    // ========== CÓDIGO DE REFERIDO ==========
-                    Card(
+                    // ===== CAMPOS EDITABLES =====
+                    OutlinedTextField(
+                        value = nombre,
+                        onValueChange = { nombre = it },
+                        label = { Text("Nombre completo") },
                         modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Share,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                Text(
-                                    "Tu código de referido",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-
-                            Spacer(Modifier.height(12.dp))
-
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                color = MaterialTheme.colorScheme.surfaceVariant,
-                                shape = MaterialTheme.shapes.small
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(16.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        user.codigo_ref,
-                                        style = MaterialTheme.typography.headlineSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    IconButton(onClick = { /* TODO: Copiar */ }) {
-                                        Icon(
-                                            Icons.Filled.ContentCopy,
-                                            contentDescription = "Copiar"
-                                        )
-                                    }
-                                }
-                            }
-
-                            Spacer(Modifier.height(8.dp))
-
-                            Text(
-                                "Comparte tu código y gana puntos cuando alguien se registre",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.height(16.dp))
-
-                    // ========== MIS SOLICITUDES ==========
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = onVerSolicitudes
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Filled.Assignment,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(32.dp),
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        "Mis Solicitudes",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        "$cantidadSolicitudes solicitudes activas",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                            Icon(
-                                imageVector = Icons.Filled.ChevronRight,
-                                contentDescription = null
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.height(16.dp))
-
-                    // ========== INFORMACIÓN PERSONAL ==========
-                    Text(
-                        "Información Personal",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
                     )
 
                     Spacer(Modifier.height(12.dp))
 
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
+                    OutlinedTextField(
+                        value = telefono,
+                        onValueChange = { telefono = it },
+                        label = { Text("Teléfono") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = direccion,
+                        onValueChange = { direccion = it },
+                        label = { Text("Dirección") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = comuna,
+                        onValueChange = { comuna = it },
+                        label = { Text("Comuna") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // ===== SUBIR DOCUMENTOS =====
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                documentLauncher.launch("*/*") // todos los tipos de archivo
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            InfoItem("RUT", user.rut)
-                            Spacer(Modifier.height(12.dp))
-                            InfoItem("Teléfono", user.ntelefono)
-                            Spacer(Modifier.height(12.dp))
-                            InfoItem(
-                                "Fecha de nacimiento",
-                                dateFormat.format(Date(user.fnacimiento))
-                            )
-                            Spacer(Modifier.height(12.dp))
-                            InfoItem(
-                                "Registrado desde",
-                                dateFormat.format(Date(user.fcreacion))
-                            )
+                            Icon(Icons.Filled.UploadFile, contentDescription = null)
+                            Spacer(Modifier.width(12.dp))
+                            Text("Subir mis documentos", style = MaterialTheme.typography.titleMedium)
                         }
                     }
 
                     Spacer(Modifier.height(24.dp))
 
-                    // ========== BOTÓN CERRAR SESIÓN ==========
-                    OutlinedButton(
+                    // ===== BOTÓN GUARDAR CAMBIOS =====
+                    Button(
                         onClick = {
                             scope.launch {
-                                userPrefs.clearUserSession()
-                                onLogout()
+                                vm.actualizarPerfil(
+                                    nombre = nombre,
+                                    telefono = telefono,
+                                    direccion = direccion,
+                                    comuna = comuna,
+                                    fotoUri = profilePhotoUri?.toString()
+                                )
+                                Toast.makeText(context, "Perfil actualizado", Toast.LENGTH_SHORT).show()
                             }
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(
-                            Icons.Filled.Logout,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text("Cerrar Sesión")
+                        Text("Guardar cambios")
                     }
 
                     Spacer(Modifier.height(24.dp))
                 }
             }
         }
-    }
-}
-
-/**
- * Item de información
- */
-@Composable
-private fun InfoItem(label: String, value: String) {
-    Column {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            value,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium
-        )
     }
 }

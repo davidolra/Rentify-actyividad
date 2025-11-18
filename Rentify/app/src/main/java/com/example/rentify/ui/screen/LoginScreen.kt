@@ -1,5 +1,6 @@
 package com.example.rentify.ui.screen
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -39,6 +40,7 @@ fun LoginScreenVm(
     // ========== EFECTO: Guardar sesión cuando login exitoso ==========
     LaunchedEffect(state.success) {
         if (state.success) {
+
             // Obtener datos del usuario logueado
             val usuario = vm.getLoggedUser()
 
@@ -205,6 +207,7 @@ private fun LoginScreen(
                             Text("Iniciar Sesión")
                         }
                     }
+
 
                     if (errorMsg != null) {
                         Spacer(Modifier.height(8.dp))

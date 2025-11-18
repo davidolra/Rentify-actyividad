@@ -45,6 +45,10 @@ data class UsuarioEntity(
     val email: String,                // Email (único)
     val rut: String,                  // RUT chileno (único) formato: 12345678-9
     val ntelefono: String,            // Teléfono
+    val direccion: String? = null,    // dirección
+    val comuna: String? = null,
+    val fotoPerfil: String? = null,    // URI o URL de la foto
+
 
     // Seguridad
     val clave: String,                // Contraseña (hasheada en prod)

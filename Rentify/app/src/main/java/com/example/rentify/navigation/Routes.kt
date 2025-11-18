@@ -11,4 +11,7 @@ sealed class Route(val path: String) {
     }
     data object Solicitudes : Route("solicitudes")
     data object Perfil : Route("perfil")
+
+    data object Welcome : Route("welcome")
+
 }

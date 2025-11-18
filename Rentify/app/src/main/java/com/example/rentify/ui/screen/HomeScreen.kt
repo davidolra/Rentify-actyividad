@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -49,9 +48,10 @@ private fun getImageUriForFile(context: Context, file: File): Uri {
 
 @Composable
 fun HomeScreen(
+    // callback de propiedades
+    onGoPropiedades: () -> Unit,
     onGoLogin: () -> Unit,
-    onGoRegister: () -> Unit,
-    onGoPropiedades: () -> Unit
+    onGoRegister: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -92,9 +92,7 @@ fun HomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // ========== HEADER ==========
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "Rentify",
                     style = MaterialTheme.typography.headlineSmall,
@@ -102,10 +100,7 @@ fun HomeScreen(
                     color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(Modifier.width(8.dp))
-                AssistChip(
-                    onClick = {},
-                    label = { Text("Tu hogar ideal") }
-                )
+                AssistChip(onClick = {}, label = { Text("Tu hogar ideal") })
             }
 
             Spacer(Modifier.height(20.dp))
@@ -165,11 +160,7 @@ fun HomeScreen(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                Icon(
-                    imageVector = Icons.Filled.LocationOn,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(Icons.Filled.LocationOn, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Ver Propiedades Cercanas")
             }
@@ -186,11 +177,7 @@ fun HomeScreen(
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(
-                    imageVector = Icons.Filled.CameraAlt,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(Icons.Filled.CameraAlt, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Tomar Foto de Propiedad")
             }
@@ -225,56 +212,6 @@ fun HomeScreen(
             }
 
             Spacer(Modifier.height(24.dp))
-
-            // ========== BOTONES DE AUTENTICACIÓN O LOGOUT ==========
-            if (isLoggedIn) {
-                // Usuario logueado - Mostrar botón de logout
-                OutlinedButton(
-                    onClick = {
-                        scope.launch {
-                            userPrefs.clearUserSession()
-                            Toast.makeText(
-                                context,
-                                "Sesión cerrada correctamente",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Logout,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text("Cerrar Sesión")
-                }
-            } else {
-                // Usuario no logueado - Mostrar botones de login/registro
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = onGoLogin,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Iniciar Sesión")
-                    }
-                    OutlinedButton(
-                        onClick = onGoRegister,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Registrarse")
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
 
             // ========== INFORMACIÓN ADICIONAL ==========
             Card(

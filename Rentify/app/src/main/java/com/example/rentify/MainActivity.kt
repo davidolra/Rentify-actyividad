@@ -30,6 +30,7 @@ class MainActivity : ComponentActivity() {
 fun AppRoot() {
     val context = LocalContext.current.applicationContext
 
+
     // ====== Construcción de dependencias (DI manual) ======
     val db = RentifyDatabase.getInstance(context)
     val usuarioDao = db.usuarioDao()

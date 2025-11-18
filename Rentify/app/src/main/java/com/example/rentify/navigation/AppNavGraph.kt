@@ -36,11 +36,20 @@ fun AppNavGraph(
     val scope = rememberCoroutineScope()
 
     // Helpers de navegación
-    val goHome: () -> Unit = {
+    val goHomeAfterLogin: () -> Unit = {
         navController.navigate(Route.Home.path) {
             popUpTo(Route.Home.path) { inclusive = true }
+            launchSingleTop = true
         }
     }
+
+    val goWelcome: () -> Unit = {
+        navController.navigate(Route.Welcome.path) {
+            popUpTo(Route.Home.path) { inclusive = true } // borra Home y anteriores
+            launchSingleTop = true
+        }
+    }
+
     val goLogin: () -> Unit = { navController.navigate(Route.Login.path) }
     val goRegister: () -> Unit = { navController.navigate(Route.Register.path) }
     val goPropiedades: () -> Unit = { navController.navigate(Route.Propiedades.path) }
@@ -58,7 +67,7 @@ fun AppNavGraph(
                 items = defaultDrawerItems(
                     onHome = {
                         scope.launch { drawerState.close() }
-                        goHome()
+                        goWelcome()
                     },
                     onLogin = {
                         scope.launch { drawerState.close() }
@@ -88,20 +97,29 @@ fun AppNavGraph(
             topBar = {
                 AppTopBar(
                     onOpenDrawer = { scope.launch { drawerState.open() } },
-                    onHome = goHome,
+                    onHome = goWelcome,
                     onLogin = goLogin,
                     onRegister = goRegister,
                     onPropiedades = goPropiedades,
-                    onPerfil = goPerfil,          // ✅ AGREGADO
-                    onSolicitudes = goSolicitudes  // ✅ AGREGADO
+                    onPerfil = goPerfil,
+                    onSolicitudes = goSolicitudes
                 )
             }
         ) { innerPadding ->
             NavHost(
                 navController = navController,
-                startDestination = Route.Home.path,
+                startDestination = Route.Welcome.path,
                 modifier = Modifier.padding(innerPadding)
             ) {
+
+                // ========== WELCOME ==========
+                composable(Route.Welcome.path) {
+                    WelcomeScreen(
+                        onGoLogin = { navController.navigate(Route.Login.path) },
+                        onGoRegister = { navController.navigate(Route.Register.path) }
+                    )
+                }
+
                 // ========== HOME ==========
                 composable(Route.Home.path) {
                     HomeScreen(
@@ -115,7 +133,7 @@ fun AppNavGraph(
                 composable(Route.Login.path) {
                     LoginScreenVm(
                         vm = authViewModel,
-                        onLoginOkNavigateHome = goHome,
+                        onLoginOkNavigateHome = goHomeAfterLogin,
                         onGoRegister = goRegister
                     )
                 }
@@ -124,7 +142,7 @@ fun AppNavGraph(
                 composable(Route.Register.path) {
                     RegisterScreenVm(
                         vm = authViewModel,
-                        onRegisteredNavigateLogin = goLogin,
+                        onRegisteredNavigateLogin =  { navController.navigate(Route.Login.path) },
                         onGoLogin = goLogin
                     )
                 }
@@ -177,7 +195,7 @@ fun AppNavGraph(
                         vm = perfilViewModel,
                         onBack = { navController.popBackStack() },
                         onVerSolicitudes = goSolicitudes,
-                        onLogout = goHome
+                        onLogout = goWelcome
                     )
                 }
             }
