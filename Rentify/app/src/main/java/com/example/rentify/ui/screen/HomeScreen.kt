@@ -1,84 +1,61 @@
 package com.example.rentify.ui.screen
 
-import android.content.Context
-import android.net.Uri
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.example.rentify.data.local.storage.UserPreferences
-import kotlinx.coroutines.launch
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
-// Función para guardar el archivo temporal en el caché
-private fun createTempImageFile(context: Context): File {
-    val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-    val storageDir = File(context.cacheDir, "images").apply {
-        if (!exists()) mkdirs()
-    }
-    return File(storageDir, "IMG_${timeStamp}.jpg")
-}
-
-// Función para obtener el Uri del archivo
-private fun getImageUriForFile(context: Context, file: File): Uri {
-    val authority = "${context.packageName}.fileprovider"
-    return FileProvider.getUriForFile(context, authority, file)
-}
-
+/**
+ * HomeScreen que verifica autenticación y muestra contenido apropiado
+ */
 @Composable
 fun HomeScreen(
-    // callback de propiedades
     onGoPropiedades: () -> Unit,
     onGoLogin: () -> Unit,
     onGoRegister: () -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val userPrefs = remember { UserPreferences(context) }
 
-    // ========== OBSERVAR ESTADO DE SESIÓN ==========
+    // Observar estado de sesión
     val isLoggedIn by userPrefs.isLoggedIn.collectAsStateWithLifecycle(initialValue = false)
     val userName by userPrefs.userName.collectAsStateWithLifecycle(initialValue = null)
     val isDuocVip by userPrefs.isDuocVip.collectAsStateWithLifecycle(initialValue = false)
 
-    // Estado para la foto capturada
-    var photoUriString by rememberSaveable { mutableStateOf<String?>(null) }
-    var pendingCaptureUri by remember { mutableStateOf<Uri?>(null) }
-
-    // Launcher para la cámara
-    val takePictureLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success) {
-            photoUriString = pendingCaptureUri.toString()
-            Toast.makeText(context, "Foto capturada correctamente", Toast.LENGTH_SHORT).show()
-        } else {
-            pendingCaptureUri = null
-            Toast.makeText(context, "No se tomó ninguna foto", Toast.LENGTH_SHORT).show()
-        }
+    // Mostrar contenido según autenticación
+    if (isLoggedIn) {
+        AuthenticatedHomeScreen(
+            userName = userName ?: "Usuario",
+            isDuocVip = isDuocVip,
+            onGoPropiedades = onGoPropiedades
+        )
+    } else {
+        UnauthenticatedHomeScreen(
+            onGoLogin = onGoLogin,
+            onGoRegister = onGoRegister
+        )
     }
+}
 
+/**
+ * HomeScreen para usuarios autenticados
+ */
+@Composable
+private fun AuthenticatedHomeScreen(
+    userName: String,
+    isDuocVip: Boolean,
+    onGoPropiedades: () -> Unit
+) {
     val bg = MaterialTheme.colorScheme.surfaceVariant
 
     Box(
@@ -91,68 +68,67 @@ fun HomeScreen(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // ========== HEADER ==========
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Rentify",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.width(8.dp))
-                AssistChip(onClick = {}, label = { Text("Tu hogar ideal") })
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            // ========== CARD PRINCIPAL ==========
+            // ========== SALUDO PERSONALIZADO ==========
             ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // ========== SALUDO PERSONALIZADO ==========
-                    if (isLoggedIn && userName != null) {
-                        Text(
-                            "¡Hola, $userName! 👋",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
-                        if (isDuocVip) {
-                            Spacer(Modifier.height(8.dp))
-                            Surface(
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = MaterialTheme.shapes.small
+                    Icon(
+                        imageVector = Icons.Filled.Home,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.height(16.dp))
+
+                    Text(
+                        "¡Bienvenido, $userName! 👋",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+
+                    if (isDuocVip) {
+                        Spacer(Modifier.height(12.dp))
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = MaterialTheme.shapes.medium
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Star,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(Modifier.width(8.dp))
                                 Text(
-                                    "🎓 DUOC VIP - 20% descuento",
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                    style = MaterialTheme.typography.labelMedium,
+                                    "DUOC VIP - 20% descuento",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
                         }
-                    } else {
-                        Text(
-                            "Bienvenido a Rentify",
-                            style = MaterialTheme.typography.titleMedium,
-                            textAlign = TextAlign.Center
-                        )
                     }
 
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(16.dp))
                     Text(
-                        "Encuentra tu departamento ideal de forma simple y segura",
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center
+                        "Tu plataforma de arriendo digital",
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
             Spacer(Modifier.height(24.dp))
 
-            // ========== BOTÓN PROPIEDADES CON GPS ==========
+            // ========== ACCIONES RÁPIDAS ==========
             Button(
                 onClick = onGoPropiedades,
                 modifier = Modifier.fillMaxWidth(),
@@ -160,81 +136,72 @@ fun HomeScreen(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                Icon(Icons.Filled.LocationOn, contentDescription = null, modifier = Modifier.size(20.dp))
+                Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Ver Propiedades Cercanas")
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            // ========== BOTÓN CÁMARA ==========
-            OutlinedButton(
-                onClick = {
-                    val file = createTempImageFile(context)
-                    val uri = getImageUriForFile(context, file)
-                    pendingCaptureUri = uri
-                    takePictureLauncher.launch(uri)
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Filled.CameraAlt, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Tomar Foto de Propiedad")
-            }
-
-            // ========== MOSTRAR FOTO CAPTURADA ==========
-            photoUriString?.let { uriString ->
-                Spacer(Modifier.height(16.dp))
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                ) {
-                    Column(modifier = Modifier.padding(8.dp)) {
-                        Text(
-                            "Foto Capturada:",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(Uri.parse(uriString))
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "Foto capturada",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                }
+                Text("Explorar Propiedades Cercanas")
             }
 
             Spacer(Modifier.height(24.dp))
 
-            // ========== INFORMACIÓN ADICIONAL ==========
+            // ========== INFORMACIÓN DE BENEFICIOS ==========
             Card(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer
                 )
             ) {
-                Column(modifier = Modifier.padding(12.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         "✨ Beneficios Rentify",
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "• Búsqueda por ubicación GPS\n" +
-                                "• Recorridos virtuales 360°\n" +
-                                "• Proceso 100% digital\n" +
-                                "• Descuentos para estudiantes DUOC",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    Spacer(Modifier.height(12.dp))
+
+                    BenefitItem(Icons.Filled.LocationOn, "Búsqueda por ubicación GPS")
+                    BenefitItem(Icons.Filled.ViewInAr, "Recorridos virtuales 360°")
+                    BenefitItem(Icons.Filled.Verified, "Proceso 100% digital")
+                    if (isDuocVip) {
+                        BenefitItem(Icons.Filled.Discount, "20% descuento exclusivo DUOC")
+                    }
                 }
             }
         }
+    }
+}
+
+/**
+ * HomeScreen para usuarios no autenticados (redirige a WelcomeScreen)
+ */
+@Composable
+private fun UnauthenticatedHomeScreen(
+    onGoLogin: () -> Unit,
+    onGoRegister: () -> Unit
+) {
+    // Mostrar pantalla de bienvenida estilo landing
+    WelcomeScreen(
+        onGoLogin = onGoLogin,
+        onGoRegister = onGoRegister
+    )
+}
+
+@Composable
+private fun BenefitItem(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }

@@ -1,6 +1,5 @@
 package com.example.rentify.data.local.storage
 
-
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -17,7 +16,7 @@ val Context.dataStore by preferencesDataStore(name = "rentify_user_prefs")
 
 /**
  * Clase para gestionar preferencias de usuario con DataStore
- * Maneja la sesión del usuario en Rentify
+ * Maneja la sesión del usuario en Rentify incluyendo el rol
  */
 class UserPreferences(private val context: Context) {
 
@@ -26,17 +25,19 @@ class UserPreferences(private val context: Context) {
     private val userIdKey = longPreferencesKey("user_id")
     private val userEmailKey = stringPreferencesKey("user_email")
     private val userNameKey = stringPreferencesKey("user_name")
+    private val userRoleKey = stringPreferencesKey("user_role")  // ✅ NUEVO
     private val isDuocVipKey = booleanPreferencesKey("is_duoc_vip")
 
     // ========== SETTERS ==========
 
     /**
-     * Guarda la sesión completa del usuario
+     * Guarda la sesión completa del usuario incluyendo el rol
      */
     suspend fun saveUserSession(
         userId: Long,
         email: String,
         name: String,
+        role: String,  // ✅ NUEVO PARÁMETRO
         isDuocVip: Boolean
     ) {
         context.dataStore.edit { prefs ->
@@ -44,6 +45,7 @@ class UserPreferences(private val context: Context) {
             prefs[userIdKey] = userId
             prefs[userEmailKey] = email
             prefs[userNameKey] = name
+            prefs[userRoleKey] = role  // ✅ GUARDAR ROL
             prefs[isDuocVipKey] = isDuocVip
         }
     }
@@ -91,6 +93,13 @@ class UserPreferences(private val context: Context) {
      */
     val userName: Flow<String?> = context.dataStore.data
         .map { prefs -> prefs[userNameKey] }
+
+    /**
+     * Flow con el rol del usuario actual
+     * ✅ NUEVO
+     */
+    val userRole: Flow<String?> = context.dataStore.data
+        .map { prefs -> prefs[userRoleKey] }
 
     /**
      * Flow que indica si el usuario es VIP de DUOC

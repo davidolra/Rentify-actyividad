@@ -7,18 +7,23 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.text.style.TextOverflow
 
 /**
- * Barra superior para Rentify
+ * Barra superior para Rentify con menú contextual
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppTopBar(
+    isLoggedIn: Boolean,
+    userRole: String?,
     onOpenDrawer: () -> Unit,
     onHome: () -> Unit,
     onLogin: () -> Unit,
     onRegister: () -> Unit,
     onPropiedades: () -> Unit,
-    onPerfil: () -> Unit,          // ✅ NUEVO
-    onSolicitudes: () -> Unit      // ✅ NUEVO
+    onPerfil: () -> Unit,
+    onSolicitudes: () -> Unit,
+    onMisPropiedades: () -> Unit,
+    onAgregarPropiedad: () -> Unit,
+    onAdminPanel: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -43,15 +48,19 @@ fun AppTopBar(
             }
         },
         actions = {
-            IconButton(onClick = onHome) {
-                Icon(Icons.Filled.Home, contentDescription = "Home")
+            // Mostrar acciones rápidas según estado de autenticación
+            if (isLoggedIn) {
+                IconButton(onClick = onHome) {
+                    Icon(Icons.Filled.Home, contentDescription = "Inicio")
+                }
+                IconButton(onClick = onPropiedades) {
+                    Icon(Icons.Filled.LocationOn, contentDescription = "Propiedades")
+                }
+                IconButton(onClick = onPerfil) {
+                    Icon(Icons.Filled.Person, contentDescription = "Perfil")
+                }
             }
-            IconButton(onClick = onPropiedades) {
-                Icon(Icons.Filled.LocationOn, contentDescription = "Propiedades")
-            }
-            IconButton(onClick = onPerfil) {  // ✅ NUEVO
-                Icon(Icons.Filled.Person, contentDescription = "Perfil")
-            }
+
             IconButton(onClick = { showMenu = true }) {
                 Icon(Icons.Filled.MoreVert, contentDescription = "Más")
             }
@@ -60,30 +69,61 @@ fun AppTopBar(
                 expanded = showMenu,
                 onDismissRequest = { showMenu = false }
             ) {
-                DropdownMenuItem(
-                    text = { Text("Home") },
-                    onClick = { showMenu = false; onHome() }
-                )
-                DropdownMenuItem(
-                    text = { Text("Propiedades") },
-                    onClick = { showMenu = false; onPropiedades() }
-                )
-                DropdownMenuItem(
-                    text = { Text("Mi Perfil") },  // ✅ NUEVO
-                    onClick = { showMenu = false; onPerfil() }
-                )
-                DropdownMenuItem(
-                    text = { Text("Mis Solicitudes") },  // ✅ NUEVO
-                    onClick = { showMenu = false; onSolicitudes() }
-                )
-                DropdownMenuItem(
-                    text = { Text("Login") },
-                    onClick = { showMenu = false; onLogin() }
-                )
-                DropdownMenuItem(
-                    text = { Text("Registro") },
-                    onClick = { showMenu = false; onRegister() }
-                )
+                if (isLoggedIn) {
+                    // Menú autenticado
+                    DropdownMenuItem(
+                        text = { Text("Inicio") },
+                        onClick = { showMenu = false; onHome() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Propiedades") },
+                        onClick = { showMenu = false; onPropiedades() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Mi Perfil") },
+                        onClick = { showMenu = false; onPerfil() }
+                    )
+
+                    // Opciones específicas por rol
+                    when (userRole?.uppercase()) {
+                        "ADMINISTRADOR", "ADMIN" -> {
+                            DropdownMenuItem(
+                                text = { Text("Panel Admin") },
+                                onClick = { showMenu = false; onAdminPanel() }
+                            )
+                        }
+                        "PROPIETARIO" -> {
+                            DropdownMenuItem(
+                                text = { Text("Mis Propiedades") },
+                                onClick = { showMenu = false; onMisPropiedades() }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Agregar Propiedad") },
+                                onClick = { showMenu = false; onAgregarPropiedad() }
+                            )
+                        }
+                        "INQUILINO", "ARRIENDATARIO" -> {
+                            DropdownMenuItem(
+                                text = { Text("Mis Solicitudes") },
+                                onClick = { showMenu = false; onSolicitudes() }
+                            )
+                        }
+                    }
+                } else {
+                    // Menú no autenticado
+                    DropdownMenuItem(
+                        text = { Text("Bienvenida") },
+                        onClick = { showMenu = false; onHome() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Iniciar Sesión") },
+                        onClick = { showMenu = false; onLogin() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Registrarse") },
+                        onClick = { showMenu = false; onRegister() }
+                    )
+                }
             }
         }
     )

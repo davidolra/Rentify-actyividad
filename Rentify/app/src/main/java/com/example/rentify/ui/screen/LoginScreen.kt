@@ -1,7 +1,5 @@
 package com.example.rentify.ui.screen
 
-import android.widget.Toast
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -13,17 +11,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.rentify.R
 import com.example.rentify.ui.viewmodel.RentifyAuthViewModel
 import com.example.rentify.data.local.storage.UserPreferences
+import kotlinx.coroutines.launch
 
 /**
  * Pantalla de login para Rentify (conectada al ViewModel y DataStore)
+ * ✅ ACTUALIZADA: Guarda el rol del usuario en DataStore
  */
 @Composable
 fun LoginScreenVm(
@@ -32,29 +30,36 @@ fun LoginScreenVm(
     onGoRegister: () -> Unit
 ) {
     val state by vm.login.collectAsStateWithLifecycle()
-
-    // ========== DATASTORE PARA SESIÓN ==========
     val context = LocalContext.current
     val userPrefs = remember { UserPreferences(context) }
+    val scope = rememberCoroutineScope()
 
     // ========== EFECTO: Guardar sesión cuando login exitoso ==========
     LaunchedEffect(state.success) {
         if (state.success) {
-
             // Obtener datos del usuario logueado
             val usuario = vm.getLoggedUser()
 
             if (usuario != null) {
-                // Guardar sesión completa en DataStore
-                userPrefs.saveUserSession(
-                    userId = usuario.id,
-                    email = usuario.email,
-                    name = "${usuario.pnombre} ${usuario.papellido}",
-                    isDuocVip = usuario.duoc_vip
-                )
+                // TODO: Necesitas crear un método en el ViewModel que obtenga el nombre del rol
+                // Por ahora usa "Inquilino" como valor por defecto
+                val rolNombre = "Inquilino" // Cambiar cuando implementes getRoleName()
+
+                // ✅ Guardar sesión completa en DataStore CON ROL
+                scope.launch {
+                    userPrefs.saveUserSession(
+                        userId = usuario.id,
+                        email = usuario.email,
+                        name = "${usuario.pnombre} ${usuario.papellido}",
+                        role = rolNombre,  // ✅ GUARDAR ROL
+                        isDuocVip = usuario.duoc_vip
+                    )
+                }
             } else {
-                // Guardar solo el flag de login (fallback)
-                userPrefs.setLoggedIn(true)
+                // Fallback: guardar solo el flag de login
+                scope.launch {
+                    userPrefs.setLoggedIn(true)
+                }
             }
 
             vm.clearLoginResult()
@@ -207,7 +212,6 @@ private fun LoginScreen(
                             Text("Iniciar Sesión")
                         }
                     }
-
 
                     if (errorMsg != null) {
                         Spacer(Modifier.height(8.dp))
