@@ -1,18 +1,28 @@
 package com.example.rentify.ui.viewmodel
 
-
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.rentify.data.local.dao.SolicitudDao
 import com.example.rentify.data.local.dao.PropiedadDao
 import com.example.rentify.data.local.dao.CatalogDao
 import com.example.rentify.data.local.entities.SolicitudEntity
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import com.example.rentify.data.local.entities.EstadoSolicitud
+import com.example.rentify.data.local.entities.PropiedadEntity
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel para gestión de solicitudes
+ * Data class para combinar solicitud con información de la propiedad
+ */
+data class SolicitudConPropiedad(
+    val solicitud: SolicitudEntity,
+    val propiedad: PropiedadEntity?,
+    val nombreComuna: String?
+)
+
+/**
+ * ViewModel para gestionar solicitudes de arriendo
  */
 class SolicitudesViewModel(
     private val solicitudDao: SolicitudDao,
@@ -20,43 +30,46 @@ class SolicitudesViewModel(
     private val catalogDao: CatalogDao
 ) : ViewModel() {
 
-    private val _solicitudes = MutableStateFlow<List<SolicitudConDatos>>(emptyList())
-    val solicitudes: StateFlow<List<SolicitudConDatos>> = _solicitudes
+    private val _solicitudes = MutableStateFlow<List<SolicitudConPropiedad>>(emptyList())
+    val solicitudes: StateFlow<List<SolicitudConPropiedad>> = _solicitudes.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     private val _errorMsg = MutableStateFlow<String?>(null)
-    val errorMsg: StateFlow<String?> = _errorMsg
+    val errorMsg: StateFlow<String?> = _errorMsg.asStateFlow()
 
-    private val _solicitudCreada = MutableStateFlow(false)
-    val solicitudCreada: StateFlow<Boolean> = _solicitudCreada
+    // Solo cantidad de solicitudes pendientes
+    private val _cantidadPendientes = MutableStateFlow(0)
+    val cantidadPendientes: StateFlow<Int> = _cantidadPendientes.asStateFlow()
 
     /**
-     * Carga las solicitudes de un usuario
+     * Cargar solicitudes de un usuario
      */
-    fun cargarSolicitudesUsuario(usuarioId: Long) {
+    fun cargarSolicitudes(usuarioId: Long) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMsg.value = null
 
             try {
-                val listaSolicitudes = solicitudDao.getSolicitudesByUsuario(usuarioId)
+                // Obtener solicitudes del usuario
+                solicitudDao.getSolicitudesByUsuario(usuarioId).collect { lista ->
+                    val solicitudesConPropiedad = lista.map { solicitud ->
+                        val propiedad = propiedadDao.getById(solicitud.propiedad_id)
+                        val nombreComuna = propiedad?.let {
+                            catalogDao.getComunaById(it.comuna_id)?.nombre
+                        }
 
-                // Enriquecer con datos de propiedad y estado
-                val solicitudesConDatos = listaSolicitudes.map { solicitud ->
-                    val propiedad = propiedadDao.getById(solicitud.propiedad_id)
-                    val estado = catalogDao.getEstadoById(solicitud.estado_id)
+                        SolicitudConPropiedad(
+                            solicitud = solicitud,
+                            propiedad = propiedad,
+                            nombreComuna = nombreComuna
+                        )
+                    }
 
-                    SolicitudConDatos(
-                        solicitud = solicitud,
-                        tituloPropiedad = propiedad?.titulo,
-                        codigoPropiedad = propiedad?.codigo,
-                        nombreEstado = estado?.nombre
-                    )
+                    _solicitudes.value = solicitudesConPropiedad
+                    actualizarEstadisticas(usuarioId)
                 }
-
-                _solicitudes.value = solicitudesConDatos
             } catch (e: Exception) {
                 _errorMsg.value = "Error al cargar solicitudes: ${e.message}"
             } finally {
@@ -66,79 +79,67 @@ class SolicitudesViewModel(
     }
 
     /**
-     * Crea una nueva solicitud de arriendo
+     * Crear nueva solicitud
      */
-    fun crearSolicitud(
+    suspend fun crearSolicitud(
         usuarioId: Long,
         propiedadId: Long,
-        mesesArriendo: Int = 1
-    ) {
+        mensaje: String? = null
+    ): Result<Long> {
+        return try {
+            val existe = solicitudDao.existeSolicitudPendiente(usuarioId, propiedadId) > 0
+
+            if (existe) {
+                Result.failure(Exception("Ya tienes una solicitud pendiente para esta propiedad"))
+            } else {
+                val solicitud = SolicitudEntity(
+                    propiedad_id = propiedadId,
+                    usuario_id = usuarioId,
+                    estado = EstadoSolicitud.PENDIENTE,
+                    mensaje = mensaje,
+                    fecha_solicitud = System.currentTimeMillis()
+                )
+
+                val id = solicitudDao.insert(solicitud)
+                cargarSolicitudes(usuarioId)
+                Result.success(id)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Cancelar/eliminar solicitud
+     */
+    fun cancelarSolicitud(solicitud: SolicitudEntity, usuarioId: Long) {
         viewModelScope.launch {
-            _isLoading.value = true
-            _errorMsg.value = null
-            _solicitudCreada.value = false
-
             try {
-                // Validar límite de 3 solicitudes activas
-                val estadoActivo = catalogDao.getEstadoByNombre("Pendiente")
-                    ?: throw IllegalStateException("Estado 'Pendiente' no encontrado")
-
-                val solicitudesActivas = solicitudDao.countSolicitudesActivas(
-                    usuarioId,
-                    estadoActivo.id
-                )
-
-                if (solicitudesActivas >= 3) {
-                    _errorMsg.value = "Ya tienes el máximo de 3 solicitudes activas"
-                    return@launch
-                }
-
-                // Obtener datos de la propiedad
-                val propiedad = propiedadDao.getById(propiedadId)
-                    ?: throw IllegalStateException("Propiedad no encontrada")
-
-                // Calcular total
-                val canon = propiedad.precio_mensual * mesesArriendo
-                val garantia = propiedad.precio_mensual // 1 mes de garantía
-                val comision = (propiedad.precio_mensual * 0.10).toInt() // 10% comisión base
-                val total = canon + garantia + comision
-
-                // Crear solicitud
-                val nuevaSolicitud = SolicitudEntity(
-                    fsolicitud = System.currentTimeMillis(),
-                    total = total,
-                    usuarios_id = usuarioId,
-                    estado_id = estadoActivo.id,
-                    propiedad_id = propiedadId
-                )
-
-                solicitudDao.insert(nuevaSolicitud)
-                _solicitudCreada.value = true
-
-                // Recargar solicitudes
-                cargarSolicitudesUsuario(usuarioId)
+                solicitudDao.delete(solicitud)
+                cargarSolicitudes(usuarioId)
             } catch (e: Exception) {
-                _errorMsg.value = "Error al crear solicitud: ${e.message}"
-            } finally {
-                _isLoading.value = false
+                _errorMsg.value = "Error al cancelar solicitud: ${e.message}"
             }
         }
     }
 
     /**
-     * Limpia el estado de solicitud creada
+     * Actualizar estadísticas de solicitudes (solo pendientes)
      */
-    fun clearSolicitudCreada() {
-        _solicitudCreada.value = false
+    private suspend fun actualizarEstadisticas(usuarioId: Long) {
+        _cantidadPendientes.value = solicitudDao.contarPorEstado(usuarioId, EstadoSolicitud.PENDIENTE)
+    }
+
+    /**
+     * Filtrar solicitudes por estado
+     */
+    fun filtrarPorEstado(estado: String?) {
+        val todasLasSolicitudes = _solicitudes.value
+
+        _solicitudes.value = if (estado == null) {
+            todasLasSolicitudes
+        } else {
+            todasLasSolicitudes.filter { it.solicitud.estado == estado }
+        }
     }
 }
-
-/**
- * Data class para solicitud con datos enriquecidos
- */
-data class SolicitudConDatos(
-    val solicitud: SolicitudEntity,
-    val tituloPropiedad: String?,
-    val codigoPropiedad: String?,
-    val nombreEstado: String?
-)

@@ -10,6 +10,8 @@ import com.example.rentify.data.local.entities.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.example.rentify.data.local.entities.SolicitudEntity
+import com.example.rentify.data.local.dao.SolicitudDao
 
 /**
  * Base de datos Room para Rentify
@@ -46,6 +48,7 @@ abstract class RentifyDatabase : RoomDatabase() {
     abstract fun propiedadDao(): PropiedadDao
     abstract fun catalogDao(): CatalogDao
     abstract fun solicitudDao(): SolicitudDao
+
 
     companion object {
         @Volatile

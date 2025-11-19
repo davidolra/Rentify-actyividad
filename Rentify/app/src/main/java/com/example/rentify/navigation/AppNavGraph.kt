@@ -216,6 +216,7 @@ fun AppNavGraph(
                     PropiedadDetalleScreen(
                         propiedadId = propiedadId,
                         vm = propiedadDetalleViewModel,
+                        solicitudesVm = solicitudesViewModel,
                         onBack = { navController.popBackStack() },
                         onSolicitar = { goSolicitudes() }
                     )

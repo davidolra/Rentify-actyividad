@@ -1,12 +1,12 @@
 package com.example.rentify.ui.viewmodel
 
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.rentify.data.local.dao.UsuarioDao
 import com.example.rentify.data.local.dao.CatalogDao
 import com.example.rentify.data.local.dao.SolicitudDao
 import com.example.rentify.data.local.entities.UsuarioEntity
+import com.example.rentify.data.local.entities.EstadoSolicitud
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -51,13 +51,15 @@ class PerfilUsuarioViewModel(
                 }
 
                 // Contar solicitudes activas
-                val estadoPendiente = catalogDao.getEstadoByNombre("Pendiente")
-                if (estadoPendiente != null) {
-                    val count = solicitudDao.countSolicitudesActivas(usuarioId, estadoPendiente.id)
+                try {
+                    val count = solicitudDao.contarPorEstado(usuarioId, EstadoSolicitud.PENDIENTE)
                     _cantidadSolicitudes.value = count
+                } catch (e: Exception) {
+                    _cantidadSolicitudes.value = 0
                 }
+
             } catch (e: Exception) {
-                // Log error
+                // Log error si quieres
             } finally {
                 _isLoading.value = false
             }

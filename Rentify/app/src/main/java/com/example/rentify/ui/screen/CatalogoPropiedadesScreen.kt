@@ -182,7 +182,11 @@ fun CatalogoPropiedadesScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(propiedades) { item ->
-                        PropiedadCard(item, permisoUbicacion)
+                        PropiedadCard(
+                            item = item,
+                            mostrarDistancia = permisoUbicacion,
+                            onVerMas = { onVerDetalle(item.propiedad.id) }
+                        )
                     }
                 }
             }
@@ -195,8 +199,9 @@ fun CatalogoPropiedadesScreen(
  */
 @Composable
 private fun PropiedadCard(
-    item: PropiedadConDistancia,  // ✅ TIPO CORREGIDO
-    mostrarDistancia: Boolean
+    item: PropiedadConDistancia,  //
+    mostrarDistancia: Boolean,
+    onVerMas: () -> Unit
 ) {
     val propiedad = item.propiedad
     val numberFormat = NumberFormat.getCurrencyInstance(Locale("es", "CL"))
@@ -303,7 +308,7 @@ private fun PropiedadCard(
                     )
                 }
 
-                Button(onClick = { /* TODO: Ver detalles */ }) {
+                Button(onClick = onVerMas) {
                     Text("Ver más")
                 }
             }
