@@ -23,6 +23,7 @@ data class SolicitudConPropiedad(
 
 /**
  * ViewModel para gestionar solicitudes de arriendo
+ * ✅ CORREGIDO: Ahora carga correctamente las solicitudes
  */
 class SolicitudesViewModel(
     private val solicitudDao: SolicitudDao,
@@ -39,12 +40,11 @@ class SolicitudesViewModel(
     private val _errorMsg = MutableStateFlow<String?>(null)
     val errorMsg: StateFlow<String?> = _errorMsg.asStateFlow()
 
-    // Solo cantidad de solicitudes pendientes
     private val _cantidadPendientes = MutableStateFlow(0)
     val cantidadPendientes: StateFlow<Int> = _cantidadPendientes.asStateFlow()
 
     /**
-     * Cargar solicitudes de un usuario
+     * ✅ FIX: Cargar solicitudes correctamente
      */
     fun cargarSolicitudes(usuarioId: Long) {
         viewModelScope.launch {
@@ -52,7 +52,7 @@ class SolicitudesViewModel(
             _errorMsg.value = null
 
             try {
-                // Obtener solicitudes del usuario
+                // ✅ CAMBIO: Recoger el Flow correctamente
                 solicitudDao.getSolicitudesByUsuario(usuarioId).collect { lista ->
                     val solicitudesConPropiedad = lista.map { solicitud ->
                         val propiedad = propiedadDao.getById(solicitud.propiedad_id)
@@ -68,11 +68,11 @@ class SolicitudesViewModel(
                     }
 
                     _solicitudes.value = solicitudesConPropiedad
+                    _isLoading.value = false  // ✅ Mover aquí el isLoading = false
                     actualizarEstadisticas(usuarioId)
                 }
             } catch (e: Exception) {
                 _errorMsg.value = "Error al cargar solicitudes: ${e.message}"
-            } finally {
                 _isLoading.value = false
             }
         }
@@ -101,6 +101,7 @@ class SolicitudesViewModel(
                 )
 
                 val id = solicitudDao.insert(solicitud)
+                // ✅ Recargar solicitudes después de crear una nueva
                 cargarSolicitudes(usuarioId)
                 Result.success(id)
             }

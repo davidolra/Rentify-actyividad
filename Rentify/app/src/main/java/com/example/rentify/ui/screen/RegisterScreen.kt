@@ -62,10 +62,13 @@ fun RegisterScreenVm(
         errorMsg = state.errorMsg,
         isDuocDetected = state.isDuocDetected,
 
+        rolSeleccionado = state.rolSeleccionado,
+        onRolChange = vm::onRolChange,
+
         onPnombreChange = vm::onPnombreChange,
         onSnombreChange = vm::onSnombreChange,
         onPapellidoChange = vm::onPapellidoChange,
-        onFechaNacimientoChange = vm::onFechaNacimientoChange,  // ✅ CORRECTO
+        onFechaNacimientoChange = vm::onFechaNacimientoChange,
         onEmailChange = vm::onRegisterEmailChange,
         onRutChange = vm::onRutChange,
         onTelefonoChange = vm::onTelefonoChange,
@@ -235,6 +238,74 @@ private fun RegisterScreen(
             }
 
             Spacer(Modifier.height(16.dp))
+
+            // ========== SECCIÓN: SELECCIÓN DE ROL ==========
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        "¿Cómo usarás Rentify?",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.height(12.dp))
+
+                    // Radio buttons para seleccionar rol
+                    Column {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            RadioButton(
+                                selected = rolSeleccionado == "Inquilino",
+                                onClick = { onRolChange("Inquilino") }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    "Busco arrendar",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = if (rolSeleccionado == "Inquilino") FontWeight.Bold else FontWeight.Normal
+                                )
+                                Text(
+                                    "Quiero encontrar una propiedad para arrendar",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            RadioButton(
+                                selected = rolSeleccionado == "Propietario",
+                                onClick = { onRolChange("Propietario") }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    "Publicar propiedades",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = if (rolSeleccionado == "Propietario") FontWeight.Bold else FontWeight.Normal
+                                )
+                                Text(
+                                    "Quiero publicar mis propiedades en arriendo",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
 
             // ========== SECCIÓN: CONTACTO ==========
             Card(

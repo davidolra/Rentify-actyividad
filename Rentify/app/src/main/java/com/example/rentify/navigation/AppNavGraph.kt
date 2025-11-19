@@ -243,8 +243,12 @@ fun AppNavGraph(
 
                 // ========== MIS PROPIEDADES (PROPIETARIO) ==========
                 composable(Route.MisPropiedades.path) {
-                    // TODO: Implementar MisPropiedadesScreen
-                    Text("Mis Propiedades - En construcción")
+                    MisPropiedadesScreen(
+                        onBack = { navController.popBackStack() },
+                        onAgregarPropiedad = goAgregarPropiedad,
+                        onEditarPropiedad = { /* TODO */ },
+                        onVerDetalle = goPropiedadDetalle
+                    )
                 }
 
                 // ========== AGREGAR PROPIEDAD (PROPIETARIO) ==========
@@ -255,28 +259,35 @@ fun AppNavGraph(
                     )
                 }
 
+
                 // ========== SOLICITUDES RECIBIDAS (PROPIETARIO) ==========
                 composable(Route.SolicitudesRecibidas.path) {
                     // TODO: Implementar SolicitudesRecibidasScreen
-                    Text("Solicitudes Recibidas - En construcción")
+                    Text("Solicitudes Recibidas")
                 }
 
                 // ========== PANEL ADMIN ==========
                 composable(Route.AdminPanel.path) {
-                    // TODO: Implementar AdminPanelScreen
-                    Text("Panel Admin - En construcción")
+                    AdminPanelScreen(
+                        onBack = { navController.popBackStack() },
+                        onGestionUsuarios = goGestionUsuarios,
+                        onGestionPropiedades = goGestionPropiedades
+                    )
                 }
 
                 // ========== GESTIÓN USUARIOS (ADMIN) ==========
                 composable(Route.GestionUsuarios.path) {
-                    // TODO: Implementar GestionUsuariosScreen
-                    Text("Gestión de Usuarios - En construcción")
+                    GestionUsuariosScreen(
+                        onBack = { navController.popBackStack() }
+                    )
                 }
 
                 // ========== GESTIÓN PROPIEDADES (ADMIN) ==========
                 composable(Route.GestionPropiedades.path) {
-                    // TODO: Implementar GestionPropiedadesScreen
-                    Text("Gestión de Propiedades - En construcción")
+                    GestionPropiedadesScreen(
+                        onBack = { navController.popBackStack() },
+                        onVerDetalle = goPropiedadDetalle
+                    )
                 }
             }
         }

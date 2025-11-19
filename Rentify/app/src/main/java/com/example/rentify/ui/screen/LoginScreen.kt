@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Pantalla de login para Rentify (conectada al ViewModel y DataStore)
- * ✅ ACTUALIZADA: Guarda el rol del usuario en DataStore
+ * ✅ ACTUALIZADA: Obtiene el rol real del usuario desde la BD
  */
 @Composable
 fun LoginScreenVm(
@@ -41,17 +41,16 @@ fun LoginScreenVm(
             val usuario = vm.getLoggedUser()
 
             if (usuario != null) {
-                // TODO: Necesitas crear un método en el ViewModel que obtenga el nombre del rol
-                // Por ahora usa "Inquilino" como valor por defecto
-                val rolNombre = "Inquilino" // Cambiar cuando implementes getRoleName()
+                // ✅ CAMBIO PRINCIPAL: Obtener el nombre del rol desde el repositorio
+                val rolNombre = vm.getRoleName(usuario.rol_id)
 
-                // ✅ Guardar sesión completa en DataStore CON ROL
+                // ✅ Guardar sesión completa en DataStore CON ROL REAL
                 scope.launch {
                     userPrefs.saveUserSession(
                         userId = usuario.id,
                         email = usuario.email,
                         name = "${usuario.pnombre} ${usuario.papellido}",
-                        role = rolNombre,  // ✅ GUARDAR ROL
+                        role = rolNombre,  // ✅ ROL REAL
                         isDuocVip = usuario.duoc_vip
                     )
                 }

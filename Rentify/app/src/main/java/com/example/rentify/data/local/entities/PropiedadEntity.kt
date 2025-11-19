@@ -29,13 +29,20 @@ import androidx.room.PrimaryKey
             parentColumns = ["id"],
             childColumns = ["comuna_id"],
             onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = UsuarioEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["propietario_id"],
+            onDelete = ForeignKey.CASCADE
         )
     ],
     indices = [
         Index(value = ["codigo"], unique = true),
         Index("estado_id"),
         Index("tipo_id"),
-        Index("comuna_id")
+        Index("comuna_id"),
+        Index("propietario_id")
     ]
 )
 data class PropiedadEntity(
@@ -57,11 +64,15 @@ data class PropiedadEntity(
     val pet_friendly: Boolean,        // ¿Acepta mascotas?
     val direccion: String,            // Dirección completa
 
+
+    val descripcion: String? = null,  // Descripción detallada de la propiedad
+
     // Auditoría
     val fcreacion: Long,              // Fecha creación (timestamp)
 
     // Relaciones
     val estado_id: Long,              // FK a estado (Activa/Inactiva)
     val tipo_id: Long,                // FK a tipo (Departamento/Casa/etc)
-    val comuna_id: Long               // FK a comuna
+    val comuna_id: Long,              // FK a comuna
+    val propietario_id: Long          // ✅ FK al usuario propietario
 )

@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import com.example.rentify.data.local.entities.SolicitudEntity
 import com.example.rentify.data.local.dao.SolicitudDao
+import kotlinx.coroutines.runBlocking
 
 /**
  * Base de datos Room para Rentify
@@ -39,7 +40,7 @@ import com.example.rentify.data.local.dao.SolicitudDao
         SolicitudEntity::class
     ],
     version = 1,
-    exportSchema = true
+    exportSchema = false
 )
 abstract class RentifyDatabase : RoomDatabase() {
 
@@ -66,7 +67,7 @@ abstract class RentifyDatabase : RoomDatabase() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)
                             // Poblar datos iniciales en IO
-                            CoroutineScope(Dispatchers.IO).launch {
+                            runBlocking {
                                 poblarDatosIniciales(getInstance(context))
                             }
                         }
@@ -221,7 +222,8 @@ abstract class RentifyDatabase : RoomDatabase() {
                     fcreacion = now,
                     estado_id = estadoActivo,
                     tipo_id = tipoDepartamento,
-                    comuna_id = comunaProvidencia
+                    comuna_id = comunaProvidencia,
+                    propietario_id = 2L
                 )
             )
 
@@ -240,7 +242,8 @@ abstract class RentifyDatabase : RoomDatabase() {
                     fcreacion = now,
                     estado_id = estadoActivo,
                     tipo_id = tipoDepartamento,
-                    comuna_id = comunaNunoa
+                    comuna_id = comunaNunoa,
+                    propietario_id = 2L
                 )
             )
 
@@ -259,7 +262,8 @@ abstract class RentifyDatabase : RoomDatabase() {
                     fcreacion = now,
                     estado_id = estadoActivo,
                     tipo_id = tipoCasa,
-                    comuna_id = comunaMaipu
+                    comuna_id = comunaMaipu,
+                    propietario_id = 2L
                 )
             )
 
@@ -278,7 +282,8 @@ abstract class RentifyDatabase : RoomDatabase() {
                     fcreacion = now,
                     estado_id = estadoActivo,
                     tipo_id = tipoEstudio,
-                    comuna_id = comunaSantiago
+                    comuna_id = comunaSantiago,
+                    propietario_id = 2L
                 )
             )
 
@@ -297,7 +302,8 @@ abstract class RentifyDatabase : RoomDatabase() {
                     fcreacion = now,
                     estado_id = estadoActivo,
                     tipo_id = tipoDepartamento,
-                    comuna_id = comunaVinaDelMar
+                    comuna_id = comunaVinaDelMar,
+                    propietario_id = 2L
                 )
             )
         }

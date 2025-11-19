@@ -41,6 +41,7 @@ data class RegisterUiState(
     val pass: String = "",
     val confirm: String = "",
     val codigoReferido: String = "",
+    val rolSeleccionado: String = "Inquilino",
 
     // Errores
     val pnombreError: String? = null,
@@ -77,6 +78,7 @@ class RentifyAuthViewModel(
     private var loggedUser: UsuarioEntity? = null
 
     fun getLoggedUser(): UsuarioEntity? = loggedUser
+
 
     // ========== LOGIN ==========
 
@@ -144,6 +146,12 @@ class RentifyAuthViewModel(
         _register.update { it.copy(papellido = filtered, papellidoError = validateName(filtered)) }
         recomputeRegisterCanSubmit()
     }
+
+
+    suspend fun getRoleName(rolId: Long?): String {
+        return repository.getRoleName(rolId)
+    }
+
 
     // ✅ FUNCIÓN CORREGIDA PARA FECHA
     fun onFechaNacimientoChange(value: TextFieldValue) {
@@ -286,7 +294,8 @@ class RentifyAuthViewModel(
                 email = s.email.trim(),
                 rut = s.rut.trim(),
                 ntelefono = s.telefono.trim(),
-                password = s.pass
+                password = s.pass,
+                rolSeleccionado = s.rolSeleccionado
             )
 
             _register.update {
@@ -318,5 +327,9 @@ class RentifyAuthViewModel(
         } catch (e: Exception) {
             null
         }
+    }
+
+    fun onRolChange(rol: String) {
+        _register.update { it.copy(rolSeleccionado = rol) }
     }
 }
