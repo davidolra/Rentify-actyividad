@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -86,7 +87,7 @@ private fun RegisterScreen(
     pnombre: String,
     snombre: String,
     papellido: String,
-    fechaNacimiento: TextFieldValue,  // ✅ CAMBIO AQUÍ: Era String, ahora TextFieldValue
+    fechaNacimiento: TextFieldValue,
     email: String,
     rut: String,
     telefono: String,
@@ -113,13 +114,16 @@ private fun RegisterScreen(
     onPnombreChange: (String) -> Unit,
     onSnombreChange: (String) -> Unit,
     onPapellidoChange: (String) -> Unit,
-    onFechaNacimientoChange: (TextFieldValue) -> Unit,  // ✅ CAMBIO AQUÍ: Era String, ahora TextFieldValue
+    onFechaNacimientoChange: (TextFieldValue) -> Unit,
     onEmailChange: (String) -> Unit,
     onRutChange: (String) -> Unit,
     onTelefonoChange: (String) -> Unit,
     onPassChange: (String) -> Unit,
     onConfirmChange: (String) -> Unit,
     onCodigoReferidoChange: (String) -> Unit,
+
+    rolSeleccionado: String,
+    onRolChange: (String) -> Unit,
 
     onSubmit: () -> Unit,
     onGoLogin: () -> Unit

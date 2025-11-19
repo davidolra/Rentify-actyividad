@@ -34,7 +34,7 @@ data class RegisterUiState(
     val pnombre: String = "",
     val snombre: String = "",
     val papellido: String = "",
-    val fechaNacimiento: TextFieldValue = TextFieldValue(""),  // ✅ CAMBIO AQUÍ
+    val fechaNacimiento: TextFieldValue = TextFieldValue(""),
     val email: String = "",
     val rut: String = "",
     val telefono: String = "",
@@ -79,7 +79,6 @@ class RentifyAuthViewModel(
 
     fun getLoggedUser(): UsuarioEntity? = loggedUser
 
-
     // ========== LOGIN ==========
 
     fun onLoginEmailChange(value: String) {
@@ -98,25 +97,35 @@ class RentifyAuthViewModel(
         _login.update { it.copy(canSubmit = can) }
     }
 
+    // ✅ FIX: Eliminar delay y mejorar flujo
     fun submitLogin() {
         val s = _login.value
         if (!s.canSubmit || s.isSubmitting) return
 
         viewModelScope.launch {
             _login.update { it.copy(isSubmitting = true, errorMsg = null, success = false) }
-            delay(500)
 
-            val result = repository.login(s.email.trim(), s.pass)
+            try {
+                val result = repository.login(s.email.trim(), s.pass)
 
-            _login.update {
-                if (result.isSuccess) {
-                    loggedUser = result.getOrNull()
-                    it.copy(isSubmitting = false, success = true, errorMsg = null)
-                } else {
+                _login.update {
+                    if (result.isSuccess) {
+                        loggedUser = result.getOrNull()
+                        it.copy(isSubmitting = false, success = true, errorMsg = null)
+                    } else {
+                        it.copy(
+                            isSubmitting = false,
+                            success = false,
+                            errorMsg = result.exceptionOrNull()?.message ?: "Credenciales inválidas"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                _login.update {
                     it.copy(
                         isSubmitting = false,
                         success = false,
-                        errorMsg = result.exceptionOrNull()?.message ?: "Error de autenticación"
+                        errorMsg = "Error de conexión: ${e.message}"
                     )
                 }
             }
@@ -147,18 +156,13 @@ class RentifyAuthViewModel(
         recomputeRegisterCanSubmit()
     }
 
-
     suspend fun getRoleName(rolId: Long?): String {
         return repository.getRoleName(rolId)
     }
 
-
-    // ✅ FUNCIÓN CORREGIDA PARA FECHA
     fun onFechaNacimientoChange(value: TextFieldValue) {
-        // Extraer solo los dígitos del texto actual
         val soloDigitos = value.text.filter { it.isDigit() }.take(8)
 
-        // Formatear con separadores
         val formatted = buildString {
             soloDigitos.forEachIndexed { index, char ->
                 if (index == 2 || index == 4) append('/')
@@ -166,16 +170,13 @@ class RentifyAuthViewModel(
             }
         }
 
-        // Calcular nueva posición del cursor
         val newCursorPosition = when {
             formatted.isEmpty() -> 0
             formatted.length <= value.selection.start -> formatted.length
             else -> {
-                // Contar cuántos dígitos hay antes de la posición del cursor
                 val digitsBeforeCursor = value.text.substring(0, value.selection.start.coerceAtMost(value.text.length))
                     .count { it.isDigit() }
 
-                // Calcular posición en el texto formateado
                 var pos = 0
                 var digitCount = 0
                 for (i in formatted.indices) {
@@ -191,13 +192,11 @@ class RentifyAuthViewModel(
             }
         }
 
-        // Crear nuevo TextFieldValue con cursor correcto
         val newValue = TextFieldValue(
             text = formatted,
             selection = TextRange(newCursorPosition)
         )
 
-        // Validar solo cuando está completo
         val error = if (formatted.length == 10) {
             val timestamp = parseFecha(formatted)
             if (timestamp != null) validateFechaNacimiento(timestamp) else "Fecha inválida"
@@ -260,52 +259,62 @@ class RentifyAuthViewModel(
         val noErrors = errors.all { it == null }
 
         val filled = s.pnombre.isNotBlank() && s.snombre.isNotBlank() &&
-                s.papellido.isNotBlank() && s.fechaNacimiento.text.length == 10 &&  // ✅ CAMBIO AQUÍ
+                s.papellido.isNotBlank() && s.fechaNacimiento.text.length == 10 &&
                 s.email.isNotBlank() && s.rut.isNotBlank() &&
                 s.telefono.isNotBlank() && s.pass.isNotBlank() && s.confirm.isNotBlank()
 
         _register.update { it.copy(canSubmit = noErrors && filled) }
     }
 
+    // ✅ FIX: Eliminar delay y mejorar manejo de errores
     fun submitRegister() {
         val s = _register.value
         if (!s.canSubmit || s.isSubmitting) return
 
         viewModelScope.launch {
             _register.update { it.copy(isSubmitting = true, errorMsg = null, success = false) }
-            delay(700)
 
-            val fechaNacimientoTimestamp = parseFecha(s.fechaNacimiento.text)  // ✅ CAMBIO AQUÍ
-            if (fechaNacimientoTimestamp == null) {
+            try {
+                val fechaNacimientoTimestamp = parseFecha(s.fechaNacimiento.text)
+                if (fechaNacimientoTimestamp == null) {
+                    _register.update {
+                        it.copy(
+                            isSubmitting = false,
+                            errorMsg = "Fecha de nacimiento inválida"
+                        )
+                    }
+                    return@launch
+                }
+
+                val result = repository.register(
+                    pnombre = s.pnombre.trim(),
+                    snombre = s.snombre.trim(),
+                    papellido = s.papellido.trim(),
+                    fnacimiento = fechaNacimientoTimestamp,
+                    email = s.email.trim(),
+                    rut = s.rut.trim(),
+                    ntelefono = s.telefono.trim(),
+                    password = s.pass,
+                    rolSeleccionado = s.rolSeleccionado
+                )
+
+                _register.update {
+                    if (result.isSuccess) {
+                        it.copy(isSubmitting = false, success = true, errorMsg = null)
+                    } else {
+                        it.copy(
+                            isSubmitting = false,
+                            success = false,
+                            errorMsg = result.exceptionOrNull()?.message ?: "No se pudo registrar"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
                 _register.update {
                     it.copy(
                         isSubmitting = false,
-                        errorMsg = "Fecha de nacimiento inválida"
-                    )
-                }
-                return@launch
-            }
-
-            val result = repository.register(
-                pnombre = s.pnombre.trim(),
-                snombre = s.snombre.trim(),
-                papellido = s.papellido.trim(),
-                fnacimiento = fechaNacimientoTimestamp,
-                email = s.email.trim(),
-                rut = s.rut.trim(),
-                ntelefono = s.telefono.trim(),
-                password = s.pass,
-                rolSeleccionado = s.rolSeleccionado
-            )
-
-            _register.update {
-                if (result.isSuccess) {
-                    it.copy(isSubmitting = false, success = true, errorMsg = null)
-                } else {
-                    it.copy(
-                        isSubmitting = false,
                         success = false,
-                        errorMsg = result.exceptionOrNull()?.message ?: "No se pudo registrar"
+                        errorMsg = "Error al registrar: ${e.message}"
                     )
                 }
             }

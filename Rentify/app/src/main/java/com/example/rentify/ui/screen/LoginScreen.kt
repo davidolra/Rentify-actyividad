@@ -20,8 +20,6 @@ import com.example.rentify.data.local.storage.UserPreferences
 import kotlinx.coroutines.launch
 
 /**
- * Pantalla de login para Rentify (conectada al ViewModel y DataStore)
- * ✅ ACTUALIZADA: Obtiene el rol real del usuario desde la BD
  */
 @Composable
 fun LoginScreenVm(
@@ -34,35 +32,33 @@ fun LoginScreenVm(
     val userPrefs = remember { UserPreferences(context) }
     val scope = rememberCoroutineScope()
 
-    // ========== EFECTO: Guardar sesión cuando login exitoso ==========
+    // Guardar sesión cuando el login sea exitoso
     LaunchedEffect(state.success) {
         if (state.success) {
-            // Obtener datos del usuario logueado
             val usuario = vm.getLoggedUser()
 
             if (usuario != null) {
-                // ✅ CAMBIO PRINCIPAL: Obtener el nombre del rol desde el repositorio
+                // Obtener rol del usuario
                 val rolNombre = vm.getRoleName(usuario.rol_id)
 
-                // ✅ Guardar sesión completa en DataStore CON ROL REAL
-                scope.launch {
-                    userPrefs.saveUserSession(
-                        userId = usuario.id,
-                        email = usuario.email,
-                        name = "${usuario.pnombre} ${usuario.papellido}",
-                        role = rolNombre,  // ✅ ROL REAL
-                        isDuocVip = usuario.duoc_vip
-                    )
-                }
-            } else {
-                // Fallback: guardar solo el flag de login
-                scope.launch {
-                    userPrefs.setLoggedIn(true)
-                }
-            }
+                // Guardar sesión
+                userPrefs.saveUserSession(
+                    userId = usuario.id,
+                    email = usuario.email,
+                    name = "${usuario.pnombre} ${usuario.papellido}",
+                    role = rolNombre,
+                    isDuocVip = usuario.duoc_vip
+                )
 
-            vm.clearLoginResult()
-            onLoginOkNavigateHome()
+                // Limpiar y navegar
+                vm.clearLoginResult()
+                onLoginOkNavigateHome()
+            } else {
+                // Fallback
+                userPrefs.setLoggedIn(true)
+                vm.clearLoginResult()
+                onLoginOkNavigateHome()
+            }
         }
     }
 

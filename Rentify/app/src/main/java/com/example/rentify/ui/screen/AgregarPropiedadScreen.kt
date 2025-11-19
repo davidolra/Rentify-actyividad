@@ -25,6 +25,12 @@ import coil.request.ImageRequest
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import com.example.rentify.data.local.storage.UserPreferences
+import com.example.rentify.data.local.database.RentifyDatabase
+import com.example.rentify.data.local.entities.PropiedadEntity
+import com.example.rentify.data.local.entities.FotoEntity
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 
 // Función para crear archivo temporal
 private fun createTempImageFile(context: Context): File {
@@ -50,6 +56,10 @@ fun AgregarPropiedadScreen(
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    val userPrefs = remember { UserPreferences(context) }
+    val userId by userPrefs.userId.collectAsStateWithLifecycle(initialValue = null)
+    val db = RentifyDatabase.getInstance(context)
+    val scope = rememberCoroutineScope()
 
     // Estados del formulario
     var titulo by rememberSaveable { mutableStateOf("") }
@@ -290,14 +300,66 @@ fun AgregarPropiedadScreen(
             // ========== BOTÓN GUARDAR ==========
             Button(
                 onClick = {
-                    // TODO: Validar y guardar en BD
+                    // Validar campos
                     if (titulo.isBlank() || codigo.isBlank() || precio.isBlank() ||
                         m2.isBlank() || habitaciones.isBlank() || banos.isBlank() || direccion.isBlank()
                     ) {
                         Toast.makeText(context, "Completa todos los campos obligatorios", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(context, "Propiedad agregada exitosamente", Toast.LENGTH_SHORT).show()
-                        onPropiedadCreada()
+                        return@Button
+                    }
+
+                    if (userId == null) {
+                        Toast.makeText(context, "Error: Usuario no identificado", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+
+                    // ✅ Guardar en la base de datos
+                    scope.launch {
+                        try {
+                            // Obtener IDs de catálogos (usar valores por defecto)
+                            val estadoActivo = db.catalogDao().getEstadoByNombre("Activo")?.id ?: 1L
+                            val tipoDepartamento = db.catalogDao().getAllTipos().firstOrNull()?.id ?: 1L
+                            val comunaSantiago = db.catalogDao().getAllComunas().firstOrNull()?.id ?: 1L
+
+                            // Crear entidad de propiedad
+                            val nuevaPropiedad = PropiedadEntity(
+                                codigo = codigo.uppercase().trim(),
+                                titulo = titulo.trim(),
+                                precio_mensual = precio.toIntOrNull() ?: 0,
+                                divisa = "CLP",
+                                m2 = m2.toDoubleOrNull() ?: 0.0,
+                                n_habit = habitaciones.toIntOrNull() ?: 0,
+                                n_banos = banos.toIntOrNull() ?: 0,
+                                pet_friendly = petFriendly,
+                                direccion = direccion.trim(),
+                                descripcion = descripcion.trim().ifBlank { null },
+                                fcreacion = System.currentTimeMillis(),
+                                estado_id = estadoActivo,
+                                tipo_id = tipoDepartamento,
+                                comuna_id = comunaSantiago,
+                                propietario_id = userId!!
+                            )
+
+                            // Guardar propiedad
+                            val propiedadId = db.propiedadDao().insert(nuevaPropiedad)
+
+                            // TODO: Guardar fotos en la tabla FOTOS
+                            // Por ahora solo guardamos URIs como strings
+                            fotosUris.forEachIndexed { index, uri ->
+                                val foto = FotoEntity(
+                                    nombre = "Foto ${index + 1}",
+                                    url = uri.toString(),
+                                    propiedad_id = propiedadId
+                                )
+                                // db.fotoDao().insert(foto)  // Necesitarías crear FotoDao
+                            }
+
+                            Toast.makeText(context, "¡Propiedad agregada exitosamente!", Toast.LENGTH_LONG).show()
+                            onPropiedadCreada()
+
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Error al guardar: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
