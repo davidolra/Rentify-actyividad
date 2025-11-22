@@ -15,7 +15,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.rentify.data.local.RentifyDatabase
-
+import com.example.rentify.data.local.entities.UsuarioEntity
+import com.example.rentify.ui.screen.UserManagementScreen
 import com.example.rentify.ui.viewmodel.AdminPanelViewModel
 import com.example.rentify.ui.viewmodel.AdminPanelViewModelFactory
 
@@ -26,8 +27,8 @@ import com.example.rentify.ui.viewmodel.AdminPanelViewModelFactory
 @Composable
 fun AdminPanelScreen(
     onBack: () -> Unit,
-    onGestionUsuarios: () -> Unit,
-    onGestionPropiedades: () -> Unit
+    onGestionPropiedades: () -> Unit,
+    currentUser: UsuarioEntity? // Usuario actualmente logeado
 ) {
     val context = LocalContext.current
     val db = RentifyDatabase.getInstance(context)
@@ -41,6 +42,8 @@ fun AdminPanelScreen(
 
     val stats by vm.estadisticas.collectAsStateWithLifecycle()
     val isLoading by vm.isLoading.collectAsStateWithLifecycle()
+
+    var mostrarUserManagement by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         vm.cargarEstadisticas()
@@ -68,130 +71,142 @@ fun AdminPanelScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            if (mostrarUserManagement) {
+                // Pantalla de gestión de usuarios
+                UserManagementScreen(
+                    currentUser = currentUser,
+                    onBack = { mostrarUserManagement = false }
+                )
             } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp)
-                ) {
-                    // Header
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        )
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Filled.AdminPanelSettings,
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.primary
+                        // Header
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
                             )
-                            Spacer(Modifier.width(16.dp))
-                            Column {
-                                Text(
-                                    "Panel de Administración",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Filled.AdminPanelSettings,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = MaterialTheme.colorScheme.primary
                                 )
-                                Text(
-                                    "Gestión completa del sistema Rentify",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
+                                Spacer(Modifier.width(16.dp))
+                                Column {
+                                    Text(
+                                        "Panel de Administración",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        "Gestión completa del sistema Rentify",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
                             }
                         }
+
+                        Spacer(Modifier.height(24.dp))
+
+                        // Estadísticas
+                        Text(
+                            "Estadísticas Generales",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            StatCard(
+                                title = "Usuarios",
+                                value = "${stats.totalUsuarios}",
+                                icon = Icons.Filled.People,
+                                modifier = Modifier.weight(1f)
+                            )
+                            StatCard(
+                                title = "Propiedades",
+                                value = "${stats.totalPropiedades}",
+                                icon = Icons.Filled.Business,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        Spacer(Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            StatCard(
+                                title = "Solicitudes",
+                                value = "${stats.totalSolicitudes}",
+                                icon = Icons.Filled.Assignment,
+                                modifier = Modifier.weight(1f)
+                            )
+                            StatCard(
+                                title = "Activas",
+                                value = "${stats.propiedadesActivas}",
+                                icon = Icons.Filled.CheckCircle,
+                                modifier = Modifier.weight(1f),
+                                color = MaterialTheme.colorScheme.secondaryContainer
+                            )
+                        }
+
+                        Spacer(Modifier.height(24.dp))
+
+                        // Acciones Rápidas
+                        Text(
+                            "Acciones Rápidas",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.height(12.dp))
+
+                        // --- Solo el admin ve estas acciones ---
+                        if (currentUser?.rol_id == 1L) { // 1 = ADMIN
+                            ActionCard(
+                                title = "Gestión de Usuarios",
+                                description = "Administrar usuarios, roles y permisos",
+                                icon = Icons.Filled.People,
+                                onClick = { mostrarUserManagement = true }
+                            )
+
+                            Spacer(Modifier.height(12.dp))
+
+                            ActionCard(
+                                title = "Gestión de Propiedades",
+                                description = "Ver y administrar todas las propiedades publicadas",
+                                icon = Icons.Filled.Business,
+                                onClick = onGestionPropiedades
+                            )
+                        }
+
+                        Spacer(Modifier.height(24.dp))
                     }
-
-                    Spacer(Modifier.height(24.dp))
-
-                    // Estadísticas
-                    Text(
-                        "Estadísticas Generales",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.height(12.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        StatCard(
-                            title = "Usuarios",
-                            value = "${stats.totalUsuarios}",
-                            icon = Icons.Filled.People,
-                            modifier = Modifier.weight(1f)
-                        )
-                        StatCard(
-                            title = "Propiedades",
-                            value = "${stats.totalPropiedades}",
-                            icon = Icons.Filled.Business,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-
-                    Spacer(Modifier.height(12.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        StatCard(
-                            title = "Solicitudes",
-                            value = "${stats.totalSolicitudes}",
-                            icon = Icons.Filled.Assignment,
-                            modifier = Modifier.weight(1f)
-                        )
-                        StatCard(
-                            title = "Activas",
-                            value = "${stats.propiedadesActivas}",
-                            icon = Icons.Filled.CheckCircle,
-                            modifier = Modifier.weight(1f),
-                            color = MaterialTheme.colorScheme.secondaryContainer
-                        )
-                    }
-
-                    Spacer(Modifier.height(24.dp))
-
-                    // Acciones Rápidas
-                    Text(
-                        "Acciones Rápidas",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.height(12.dp))
-
-                    ActionCard(
-                        title = "Gestión de Usuarios",
-                        description = "Administrar usuarios, roles y permisos",
-                        icon = Icons.Filled.People,
-                        onClick = onGestionUsuarios
-                    )
-
-                    Spacer(Modifier.height(12.dp))
-
-                    ActionCard(
-                        title = "Gestión de Propiedades",
-                        description = "Ver y administrar todas las propiedades publicadas",
-                        icon = Icons.Filled.Business,
-                        onClick = onGestionPropiedades
-                    )
-
-                    Spacer(Modifier.height(24.dp))
                 }
             }
         }
     }
 }
 
+// --- Tarjetas privadas dentro del mismo archivo ---
 @Composable
 private fun StatCard(
     title: String,

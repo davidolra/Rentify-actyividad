@@ -1,6 +1,7 @@
 package com.example.rentify.data.local.dao
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -20,6 +21,9 @@ interface UsuarioDao {
     // Actualizar un usuario existente
     @Update
     suspend fun update(usuario: UsuarioEntity)
+
+    @Delete
+    suspend fun delete(usuario: UsuarioEntity)
 
     // Buscar por email (para login)
     @Query("SELECT * FROM usuarios WHERE email = :email LIMIT 1")

@@ -30,6 +30,7 @@ fun AppNavGraph(
     propiedadDetalleViewModel: PropiedadDetalleViewModel,
     solicitudesViewModel: SolicitudesViewModel,
     perfilViewModel: PerfilUsuarioViewModel
+
 ) {
     val context = LocalContext.current
     val userPrefs = remember { UserPreferences(context) }
@@ -87,6 +88,18 @@ fun AppNavGraph(
             launchSingleTop = true
         }
     }
+
+    // ================== MAPEO NOMBRE → ID ==================
+    fun mapRoleNameToId(roleName: String?): Long? {
+        return when (roleName?.uppercase()) {
+            "ADMINISTRADOR" -> 1L
+            "PROPIETARIO" -> 2L
+            "ARRENDATARIO" -> 3L
+            else -> null
+        }
+    }
+
+
     // ========== MENÚ DRAWER CONTEXTUAL POR ROL ==========
     val drawerItems = if (isLoggedIn) {
         buildList {
@@ -105,9 +118,18 @@ fun AppNavGraph(
 
             // Opciones según rol
             when (userRole?.uppercase()) {
-                "ADMINISTRADOR" -> add(DrawerItem("Gestión Usuarios", Icons.Filled.People) {
-                    scope.launch { drawerState.close() }
-                })
+                "ADMINISTRADOR" -> {
+                    add(DrawerItem("Gestión Usuarios", Icons.Filled.People) {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Route.GestionUsuarios.path)
+                    })
+
+                    add(DrawerItem("Gestión Propiedades", Icons.Filled.Business) {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Route.GestionPropiedades.path)
+                    })
+                }
+
                 "PROPIETARIO" -> add(DrawerItem("Mis Propiedades", Icons.Filled.Business) {
                     scope.launch { drawerState.close() }
                 })
@@ -243,6 +265,22 @@ fun AppNavGraph(
                         onVerPropiedad = goPropiedadDetalle
                     )
                 }
+
+                // ======== ADMIN: GESTIÓN DE USUARIOS ========
+                composable(Route.GestionUsuarios.path) {
+                    UserManagementScreen(
+                        currentUserRol = mapRoleNameToId(userRole),
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+
+                // ======== ADMIN: GESTIÓN DE PROPIEDADES ========
+                composable(Route.GestionPropiedades.path) {
+                    GestionPropiedadesScreen(
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+
             }
         }
     }

@@ -12,7 +12,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewModelScope
 import com.example.rentify.data.local.RentifyDatabase
 import com.example.rentify.data.local.entities.UsuarioEntity
 import kotlinx.coroutines.launch
@@ -20,12 +19,12 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserManagementScreen(
-    currentUserRol: Long?, // Rol del usuario logueado
+    currentUser: UsuarioEntity?,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val db = RentifyDatabase.getInstance(context)
-    val scope = rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope()
 
     var usuarios by remember { mutableStateOf<List<UsuarioEntity>>(emptyList()) }
     var editarUsuario by remember { mutableStateOf<UsuarioEntity?>(null) }
@@ -33,7 +32,7 @@ fun UserManagementScreen(
     var nuevoEmail by remember { mutableStateOf("") }
 
     fun cargarUsuarios() {
-        scope.launch {
+        coroutineScope.launch {
             usuarios = db.usuarioDao().getAll()
         }
     }
@@ -62,7 +61,7 @@ fun UserManagementScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    scope.launch {
+                    coroutineScope.launch {
                         editarUsuario?.let {
                             db.usuarioDao().update(
                                 it.copy(
@@ -74,7 +73,7 @@ fun UserManagementScreen(
                             )
                         }
                         editarUsuario = null
-                        cargarUsuarios() // Refresca lista
+                        cargarUsuarios()
                     }
                 }) {
                     Text("Guardar")
@@ -133,8 +132,8 @@ fun UserManagementScreen(
                                 )
                                 Spacer(Modifier.height(8.dp))
 
-                                // Solo admin puede editar/eliminar
-                                if (currentUserRol == 1L) {
+                                // --- Solo el admin ve los botones ---
+                                if (currentUser?.rol_id == 1L) {
                                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                         OutlinedButton(onClick = {
                                             editarUsuario = usuario
@@ -146,9 +145,9 @@ fun UserManagementScreen(
                                             Text("Editar")
                                         }
                                         OutlinedButton(onClick = {
-                                            scope.launch {
+                                            coroutineScope.launch {
                                                 db.usuarioDao().delete(usuario)
-                                                cargarUsuarios() // Refresca lista
+                                                cargarUsuarios()
                                             }
                                         }) {
                                             Icon(Icons.Filled.Delete, contentDescription = "Eliminar")

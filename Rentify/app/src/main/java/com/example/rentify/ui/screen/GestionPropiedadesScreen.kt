@@ -13,13 +13,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.rentify.data.local.RentifyDatabase
-
+import com.example.rentify.data.local.entities.PropiedadEntity
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.*
 
 /**
- * Pantalla de Gestión de Propiedades para ADMIN
+ * Pantalla Gestión de Propiedades - Solo visible para ADMIN
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,7 +31,11 @@ fun GestionPropiedadesScreen(
     val db = RentifyDatabase.getInstance(context)
     val scope = rememberCoroutineScope()
 
-    var propiedades by remember { mutableStateOf<List<com.example.rentify.data.local.entities.PropiedadEntity>>(emptyList()) }
+    // obtener rol del usuario actual (para admin)
+    val prefs = context.getSharedPreferences("RentifyPrefs", 0)
+    val currentRol = prefs.getLong("currentUserRolId", -1L)
+
+    var propiedades by remember { mutableStateOf<List<PropiedadEntity>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
@@ -49,35 +53,31 @@ fun GestionPropiedadesScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.Filled.ArrowBack, "Volver")
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                }
             )
         }
     ) { padding ->
         Box(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(padding)
+                .fillMaxSize()
         ) {
             if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                CircularProgressIndicator(Modifier.align(Alignment.Center))
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+
                     item {
                         Card(
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer
                             )
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
+                            Column(Modifier.padding(16.dp)) {
                                 Text(
                                     "Total de propiedades: ${propiedades.size}",
                                     style = MaterialTheme.typography.titleMedium,
@@ -91,7 +91,13 @@ fun GestionPropiedadesScreen(
                         PropiedadAdminCard(
                             propiedad = propiedad,
                             db = db,
-                            onVerDetalle = { onVerDetalle(propiedad.id) }
+                            isAdmin = (currentRol == 1L),   // <--- SOLO ADMIN VE ACCIONES
+                            onVerDetalle = { onVerDetalle(propiedad.id) },
+                            onEliminada = {
+                                scope.launch {
+                                    propiedades = db.propiedadDao().getAll()
+                                }
+                            }
                         )
                     }
                 }
@@ -102,11 +108,15 @@ fun GestionPropiedadesScreen(
 
 @Composable
 private fun PropiedadAdminCard(
-    propiedad: com.example.rentify.data.local.entities.PropiedadEntity,
+    propiedad: PropiedadEntity,
     db: RentifyDatabase,
-    onVerDetalle: () -> Unit
+    isAdmin: Boolean,
+    onVerDetalle: () -> Unit,
+    onEliminada: () -> Unit
 ) {
     val numberFormat = NumberFormat.getCurrencyInstance(Locale("es", "CL"))
+    val scope = rememberCoroutineScope()
+
     var nombreComuna by remember { mutableStateOf("Cargando...") }
     var nombreTipo by remember { mutableStateOf("Cargando...") }
     var nombreEstado by remember { mutableStateOf("Cargando...") }
@@ -119,9 +129,11 @@ private fun PropiedadAdminCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(Modifier.padding(16.dp)) {
+
+            // encabezado con titulo y codigo
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -129,8 +141,7 @@ private fun PropiedadAdminCard(
                 Text(
                     propiedad.titulo,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
+                    fontWeight = FontWeight.Bold
                 )
                 Surface(
                     color = MaterialTheme.colorScheme.primaryContainer,
@@ -139,49 +150,78 @@ private fun PropiedadAdminCard(
                     Text(
                         propiedad.codigo,
                         style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        modifier = Modifier.padding(6.dp)
                     )
                 }
             }
 
             Spacer(Modifier.height(8.dp))
 
+            // comuna
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.LocationOn, null, Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
-                Text(nombreComuna, style = MaterialTheme.typography.bodyMedium)
+                Text(nombreComuna)
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("Tipo: $nombreTipo", style = MaterialTheme.typography.bodySmall)
-                Text("Estado: $nombreEstado", style = MaterialTheme.typography.bodySmall)
-            }
+            Text("Tipo: $nombreTipo")
+            Text("Estado: $nombreEstado")
 
             Spacer(Modifier.height(12.dp))
             Divider()
             Spacer(Modifier.height(12.dp))
 
+            // PRECIO + BOTONES
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
                     numberFormat.format(propiedad.precio_mensual),
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    fontWeight = FontWeight.Bold
                 )
 
                 Button(onClick = onVerDetalle) {
-                    Icon(Icons.Filled.Visibility, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Filled.Visibility, null)
+                    Spacer(Modifier.width(6.dp))
                     Text("Ver")
+                }
+            }
+
+            // SOLO EL ADMIN VE ESTOS BOTONES
+            if (isAdmin) {
+                Spacer(Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    OutlinedButton(onClick = {
+                        // Aquí puedes agregar una pantalla de editar
+                    }) {
+                        Icon(Icons.Filled.Edit, null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Editar")
+                    }
+
+                    OutlinedButton(
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        ),
+                        onClick = {
+                            scope.launch {
+                                db.propiedadDao().delete(propiedad)
+                                onEliminada()
+                            }
+                        }
+                    ) {
+                        Icon(Icons.Filled.Delete, null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Eliminar")
+                    }
                 }
             }
         }
