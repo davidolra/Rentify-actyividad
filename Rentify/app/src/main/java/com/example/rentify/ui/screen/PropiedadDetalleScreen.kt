@@ -1,6 +1,6 @@
 package com.example.rentify.ui.screen
 
-import android.widget.Toast
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,16 +11,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.rentify.data.local.storage.UserPreferences
 import com.example.rentify.ui.viewmodel.PropiedadDetalleViewModel
-import com.example.rentify.ui.viewmodel.SolicitudesViewModel
 import java.text.NumberFormat
 import java.util.*
-import kotlinx.coroutines.launch
 
 /**
  * Pantalla de detalle completo de una propiedad
@@ -30,35 +26,22 @@ import kotlinx.coroutines.launch
 fun PropiedadDetalleScreen(
     propiedadId: Long,
     vm: PropiedadDetalleViewModel,
-    solicitudesVm: SolicitudesViewModel,
     onBack: () -> Unit,
-    onSolicitar: () -> Unit
+    onSolicitar: (Long) -> Unit
 ) {
-    val context = LocalContext.current
-    val userPrefs = remember { UserPreferences(context) }
-    val scope = rememberCoroutineScope()
+    // Cargar propiedad al iniciar
+    LaunchedEffect(propiedadId) {
+        vm.cargarPropiedad(propiedadId)
+    }
 
-    // Estados del ViewModel
     val propiedad by vm.propiedad.collectAsStateWithLifecycle()
     val nombreComuna by vm.nombreComuna.collectAsStateWithLifecycle()
     val nombreTipo by vm.nombreTipo.collectAsStateWithLifecycle()
     val isLoading by vm.isLoading.collectAsStateWithLifecycle()
     val errorMsg by vm.errorMsg.collectAsStateWithLifecycle()
 
-    // Estado de usuario
-    val isLoggedIn by userPrefs.isLoggedIn.collectAsStateWithLifecycle(initialValue = false)
-    val userId by userPrefs.userId.collectAsStateWithLifecycle(initialValue = null)
-
-    // Estado para diálogo de confirmación
-    var showDialog by remember { mutableStateOf(false) }
-    var solicitudEnviada by remember { mutableStateOf(false) }
-
-    // Cargar propiedad al iniciar
-    LaunchedEffect(propiedadId) {
-        vm.cargarPropiedad(propiedadId)
-    }
-
     val numberFormat = NumberFormat.getCurrencyInstance(Locale("es", "CL"))
+    val scrollState = rememberScrollState()
 
     Scaffold(
         topBar = {
@@ -68,7 +51,12 @@ fun PropiedadDetalleScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.Filled.ArrowBack, "Volver")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     ) { padding ->
@@ -79,365 +67,321 @@ fun PropiedadDetalleScreen(
         ) {
             when {
                 isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator()
-                            Spacer(Modifier.height(16.dp))
-                            Text("Cargando información...")
-                        }
-                    }
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center)
+                    )
                 }
-
                 errorMsg != null -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(32.dp)
-                        ) {
-                            Icon(
-                                Icons.Filled.Error,
-                                contentDescription = null,
-                                modifier = Modifier.size(64.dp),
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                            Spacer(Modifier.height(16.dp))
-                            Text(
-                                errorMsg ?: "Error desconocido",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                            Spacer(Modifier.height(16.dp))
-                            Button(onClick = onBack) {
-                                Text("Volver")
-                            }
-                        }
-                    }
-                }
-
-                propiedad != null -> {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(16.dp)
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        // ========== TÍTULO Y CÓDIGO ==========
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer
-                            )
+                        Icon(
+                            imageVector = Icons.Filled.Error,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            errorMsg ?: "Error desconocido",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        OutlinedButton(onClick = onBack) {
+                            Text("Volver")
+                        }
+                    }
+                }
+                propiedad != null -> {
+                    val prop = propiedad!!
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(scrollState)
+                    ) {
+                        // ========== IMAGEN PRINCIPAL ==========
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(250.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        propiedad!!.titulo,
-                                        style = MaterialTheme.typography.headlineSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.weight(1f)
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Home,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(80.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                                     )
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.primary,
-                                        shape = MaterialTheme.shapes.small
-                                    ) {
-                                        Text(
-                                            propiedad!!.codigo,
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            modifier = Modifier.padding(8.dp)
-                                        )
-                                    }
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        "Foto de la propiedad",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                    )
                                 }
                             }
                         }
 
-                        Spacer(Modifier.height(16.dp))
-
-                        // ========== PRECIO ==========
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    "Precio de Arriendo",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    numberFormat.format(propiedad!!.precio_mensual) + " / mes",
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-
-                        Spacer(Modifier.height(16.dp))
-
-                        // ========== UBICACIÓN ==========
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Filled.LocationOn,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                    Spacer(Modifier.width(8.dp))
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            // ========== CÓDIGO Y TIPO ==========
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    shape = MaterialTheme.shapes.small
+                                ) {
                                     Text(
-                                        "Ubicación",
-                                        style = MaterialTheme.typography.titleMedium,
+                                        prop.codigo,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                        style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
-                                Spacer(Modifier.height(12.dp))
-                                Text(
-                                    propiedad!!.direccion,
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                                if (nombreComuna != null) {
-                                    Spacer(Modifier.height(4.dp))
+
+                                Surface(
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                    shape = MaterialTheme.shapes.small
+                                ) {
                                     Text(
-                                        nombreComuna!!,
+                                        nombreTipo ?: "N/A",
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                        style = MaterialTheme.typography.labelMedium
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.height(16.dp))
+
+                            // ========== TÍTULO ==========
+                            Text(
+                                prop.titulo,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Spacer(Modifier.height(8.dp))
+
+                            // ========== UBICACIÓN ==========
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.LocationOn,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        prop.direccion,
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    Text(
+                                        nombreComuna ?: "Comuna desconocida",
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
-                        }
 
-                        Spacer(Modifier.height(16.dp))
+                            Spacer(Modifier.height(24.dp))
 
-                        // ========== CARACTERÍSTICAS ==========
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                            // ========== PRECIO ==========
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp)
+                                ) {
+                                    Text(
+                                        "Arriendo Mensual",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    Text(
+                                        numberFormat.format(prop.precio_mensual),
+                                        style = MaterialTheme.typography.headlineMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        "${prop.divisa} / mes",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.height(24.dp))
+
+                            // ========== CARACTERÍSTICAS ==========
+                            Text(
+                                "Características",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(12.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                CaracteristicaItem(Icons.Filled.SquareFoot, "${prop.m2} m²")
+                                CaracteristicaItem(Icons.Filled.Bed, "${prop.n_habit} Dorm")
+                                CaracteristicaItem(Icons.Filled.Bathroom, "${prop.n_banos} Baños")
+                            }
+
+                            Spacer(Modifier.height(16.dp))
+
+                            // Pet-friendly badge
+                            if (prop.pet_friendly) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     Icon(
-                                        Icons.Filled.Info,
+                                        imageVector = Icons.Filled.Pets,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                     Spacer(Modifier.width(8.dp))
                                     Text(
-                                        "Características",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
+                                        "Pet-Friendly - Acepta mascotas",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Medium
                                     )
                                 }
-                                Spacer(Modifier.height(16.dp))
-
-                                if (nombreTipo != null) {
-                                    DetalleItem(
-                                        icon = Icons.Filled.Home,
-                                        label = "Tipo",
-                                        value = nombreTipo!!
-                                    )
-                                    Spacer(Modifier.height(12.dp))
-                                }
-
-                                DetalleItem(
-                                    icon = Icons.Filled.SquareFoot,
-                                    label = "Superficie",
-                                    value = "${propiedad!!.m2} m²"
-                                )
-                                Spacer(Modifier.height(12.dp))
-
-                                DetalleItem(
-                                    icon = Icons.Filled.Bed,
-                                    label = "Habitaciones",
-                                    value = "${propiedad!!.n_habit}"
-                                )
-                                Spacer(Modifier.height(12.dp))
-
-                                DetalleItem(
-                                    icon = Icons.Filled.Bathroom,
-                                    label = "Baños",
-                                    value = "${propiedad!!.n_banos}"
-                                )
-                                Spacer(Modifier.height(12.dp))
-
-                                DetalleItem(
-                                    icon = Icons.Filled.Pets,
-                                    label = "Mascotas",
-                                    value = if (propiedad!!.pet_friendly) "Permitidas ✓" else "No permitidas ✗",
-                                    valueColor = if (propiedad!!.pet_friendly)
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        MaterialTheme.colorScheme.error
-                                )
                             }
-                        }
 
-                        Spacer(Modifier.height(24.dp))
+                            Spacer(Modifier.height(24.dp))
 
-                        // ========== BOTÓN DE SOLICITUD ==========
-                        if (solicitudEnviada) {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                                )
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(16.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.Filled.CheckCircle,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(32.dp)
-                                    )
-                                    Spacer(Modifier.width(12.dp))
-                                    Column {
-                                        Text(
-                                            "¡Solicitud Enviada!",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                            "Puedes ver tus solicitudes en el menú",
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                    }
-                                }
-                            }
-                            Spacer(Modifier.height(16.dp))
-                            OutlinedButton(
-                                onClick = onSolicitar,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Filled.List, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text("Ver Mis Solicitudes")
-                            }
-                        } else {
+                            // ========== DESCRIPCIÓN ==========
+                            Text(
+                                "Descripción",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "Propiedad ubicada en ${nombreComuna ?: "zona"}, ideal para arriendo. " +
+                                        "Cuenta con ${prop.n_habit} dormitorio(s) y ${prop.n_banos} baño(s), " +
+                                        "en un total de ${prop.m2} m². " +
+                                        if (prop.pet_friendly) "Admite mascotas." else "No admite mascotas.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Spacer(Modifier.height(24.dp))
+
+                            // ========== INFORMACIÓN ADICIONAL ==========
+                            Text(
+                                "Información Adicional",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(Modifier.height(12.dp))
+
+                            InfoRow("Código", prop.codigo)
+                            InfoRow("Tipo", nombreTipo ?: "N/A")
+                            InfoRow("Comuna", nombreComuna ?: "N/A")
+                            InfoRow("Dirección", prop.direccion)
+
+                            Spacer(Modifier.height(32.dp))
+
+                            // ========== BOTÓN SOLICITAR ==========
                             Button(
-                                onClick = {
-                                    if (isLoggedIn) {
-                                        showDialog = true
-                                    } else {
-                                        Toast.makeText(
-                                            context,
-                                            "Debes iniciar sesión para enviar solicitudes",
-                                            Toast.LENGTH_LONG
-                                        ).show()
-                                    }
-                                },
+                                onClick = { onSolicitar(prop.id) },
                                 modifier = Modifier.fillMaxWidth(),
-                                contentPadding = PaddingValues(16.dp)
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                )
                             ) {
                                 Icon(Icons.Filled.Send, contentDescription = null)
                                 Spacer(Modifier.width(8.dp))
-                                Text(
-                                    "Enviar Solicitud de Arriendo",
-                                    style = MaterialTheme.typography.titleMedium
-                                )
+                                Text("Solicitar Arriendo")
                             }
-                        }
 
-                        Spacer(Modifier.height(32.dp))
+                            Spacer(Modifier.height(16.dp))
+                        }
                     }
                 }
             }
         }
     }
+}
 
-    // ========== DIÁLOGO DE CONFIRMACIÓN ==========
-    if (showDialog) {
-        AlertDialog(
-            onDismissRequest = { showDialog = false },
-            icon = {
-                Icon(Icons.Filled.Send, contentDescription = null)
-            },
-            title = {
-                Text("Confirmar Solicitud")
-            },
-            text = {
-                Text("¿Deseas enviar una solicitud de arriendo para ${propiedad?.titulo}?")
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showDialog = false
-
-                        if (userId != null) {
-                            scope.launch {
-                                val resultado = solicitudesVm.crearSolicitud(
-                                    usuarioId = userId!!,
-                                    propiedadId = propiedadId,
-                                    mensaje = null
-                                )
-
-                                resultado.onSuccess {
-                                    solicitudEnviada = true
-                                    Toast.makeText(
-                                        context,
-                                        "Solicitud enviada exitosamente",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                }.onFailure { error ->
-                                    Toast.makeText(
-                                        context,
-                                        error.message ?: "Error al enviar solicitud",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                }
-                            }
-                        }
-                    }
-                ) {
-                    Text("Enviar")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDialog = false }) {
-                    Text("Cancelar")
-                }
-            }
+/**
+ * Item de característica con icono
+ */
+@Composable
+private fun CaracteristicaItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Surface(
+            color = MaterialTheme.colorScheme.primaryContainer,
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier
+                    .padding(12.dp)
+                    .size(32.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
         )
     }
 }
 
+/**
+ * Fila de información
+ */
 @Composable
-private fun DetalleItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    value: String,
-    valueColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface
-) {
+private fun InfoRow(label: String, value: String) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                icon,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Text(
             value,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium,
-            color = valueColor
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
         )
     }
 }

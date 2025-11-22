@@ -1,5 +1,6 @@
 package com.example.rentify.ui.screen
 
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,13 +16,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.rentify.data.local.storage.UserPreferences
-import com.example.rentify.data.local.entities.EstadoSolicitud
 import com.example.rentify.ui.viewmodel.SolicitudesViewModel
-import com.example.rentify.ui.viewmodel.SolicitudConPropiedad
+import com.example.rentify.ui.viewmodel.SolicitudConDatos
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * Pantalla de solicitudes del usuario logueado
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SolicitudesScreen(
@@ -37,8 +40,11 @@ fun SolicitudesScreen(
     val isLoading by vm.isLoading.collectAsStateWithLifecycle()
     val errorMsg by vm.errorMsg.collectAsStateWithLifecycle()
 
+    // Cargar solicitudes al iniciar
     LaunchedEffect(userId) {
-        userId?.let { vm.cargarSolicitudes(it) }
+        userId?.let {
+            vm.cargarSolicitudesUsuario(it)
+        }
     }
 
     Scaffold(
@@ -65,32 +71,58 @@ fun SolicitudesScreen(
                 .background(MaterialTheme.colorScheme.background)
         ) {
             when {
-                isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                isLoading -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
                 errorMsg != null -> {
                     Column(
-                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Icon(Icons.Filled.Error, null, Modifier.size(64.dp), tint = MaterialTheme.colorScheme.error)
+                        Icon(
+                            imageVector = Icons.Filled.Error,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.error
+                        )
                         Spacer(Modifier.height(16.dp))
-                        Text(errorMsg ?: "Error desconocido", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            errorMsg ?: "Error desconocido",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
                     }
                 }
                 solicitudes.isEmpty() -> {
                     Column(
-                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Icon(Icons.Filled.Assignment, null, Modifier.size(80.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+                        Icon(
+                            imageVector = Icons.Filled.Assignment,
+                            contentDescription = null,
+                            modifier = Modifier.size(80.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                        )
                         Spacer(Modifier.height(16.dp))
-                        Text("No tienes solicitudes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(
+                            "No tienes solicitudes",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
                         Spacer(Modifier.height(8.dp))
-                        Text("Explora propiedades y solicita tu arriendo ideal",
+                        Text(
+                            "Explora propiedades y solicita tu arriendo ideal",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
                 else -> {
@@ -99,20 +131,36 @@ fun SolicitudesScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        // Header
                         item {
-                            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                                Column(modifier = Modifier.padding(16.dp)) {
-                                    Text("Total de solicitudes: ${solicitudes.size}",
-                                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    Text("Máximo permitido: 3 solicitudes activas",
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp)
+                                ) {
+                                    Text(
+                                        "Total de solicitudes: ${solicitudes.size}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        "Máximo permitido: 3 solicitudes activas",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
                                 }
                             }
                         }
 
+                        // Lista de solicitudes
                         items(solicitudes) { solicitud ->
-                            SolicitudCard(solicitud, onVerPropiedad)
+                            SolicitudCard(
+                                solicitud = solicitud,
+                                onVerPropiedad = onVerPropiedad
+                            )
                         }
                     }
                 }
@@ -121,9 +169,12 @@ fun SolicitudesScreen(
     }
 }
 
+/**
+ * Card de solicitud individual
+ */
 @Composable
 private fun SolicitudCard(
-    solicitud: SolicitudConPropiedad,
+    solicitud: SolicitudConDatos,
     onVerPropiedad: (Long) -> Unit
 ) {
     val numberFormat = NumberFormat.getCurrencyInstance(Locale("es", "CL"))
@@ -133,7 +184,9 @@ private fun SolicitudCard(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
             // Header con estado
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -147,16 +200,16 @@ private fun SolicitudCard(
                 )
 
                 Surface(
-                    color = when (solicitud.solicitud.estado.uppercase()) {
-                        EstadoSolicitud.PENDIENTE -> MaterialTheme.colorScheme.secondaryContainer
-                        EstadoSolicitud.APROBADA -> MaterialTheme.colorScheme.primaryContainer
-                        EstadoSolicitud.RECHAZADA -> MaterialTheme.colorScheme.errorContainer
+                    color = when (solicitud.nombreEstado?.lowercase()) {
+                        "pendiente" -> MaterialTheme.colorScheme.secondaryContainer
+                        "aprobado" -> MaterialTheme.colorScheme.primaryContainer
+                        "rechazado" -> MaterialTheme.colorScheme.errorContainer
                         else -> MaterialTheme.colorScheme.surfaceVariant
                     },
                     shape = MaterialTheme.shapes.small
                 ) {
                     Text(
-                        solicitud.solicitud.estado,
+                        solicitud.nombreEstado ?: "Desconocido",
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold
@@ -166,8 +219,10 @@ private fun SolicitudCard(
 
             Spacer(Modifier.height(12.dp))
 
-            // Fecha solicitud
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // Fecha
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Icon(
                     imageVector = Icons.Filled.CalendarToday,
                     contentDescription = null,
@@ -176,7 +231,7 @@ private fun SolicitudCard(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "Fecha: ${dateFormat.format(Date(solicitud.solicitud.fecha_solicitud))}",
+                    "Fecha: ${dateFormat.format(Date(solicitud.solicitud.fsolicitud))}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -184,8 +239,10 @@ private fun SolicitudCard(
 
             Spacer(Modifier.height(8.dp))
 
-            // Datos de la propiedad
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // Propiedad
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Icon(
                     imageVector = Icons.Filled.Home,
                     contentDescription = null,
@@ -195,12 +252,12 @@ private fun SolicitudCard(
                 Spacer(Modifier.width(8.dp))
                 Column {
                     Text(
-                        solicitud.propiedad?.titulo ?: "Propiedad desconocida",
+                        solicitud.tituloPropiedad ?: "Propiedad desconocida",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        solicitud.propiedad?.codigo ?: "N/A",
+                        solicitud.codigoPropiedad ?: "N/A",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -211,7 +268,7 @@ private fun SolicitudCard(
             Divider()
             Spacer(Modifier.height(12.dp))
 
-            // Total y botón ver propiedad
+            // Total
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -219,12 +276,12 @@ private fun SolicitudCard(
             ) {
                 Column {
                     Text(
-                        "Precio mensual",
+                        "Total solicitado",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        numberFormat.format(solicitud.propiedad?.precio_mensual ?: 0),
+                        numberFormat.format(solicitud.solicitud.total),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -234,7 +291,11 @@ private fun SolicitudCard(
                 OutlinedButton(
                     onClick = { onVerPropiedad(solicitud.solicitud.propiedad_id) }
                 ) {
-                    Icon(Icons.Filled.Visibility, null, Modifier.size(18.dp))
+                    Icon(
+                        imageVector = Icons.Filled.Visibility,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
                     Spacer(Modifier.width(8.dp))
                     Text("Ver Propiedad")
                 }
