@@ -12,7 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.rentify.data.local.database.RentifyDatabase
+import com.example.rentify.data.local.RentifyDatabase
+
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.*

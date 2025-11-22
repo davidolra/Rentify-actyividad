@@ -63,6 +63,9 @@ fun RegisterScreenVm(
         errorMsg = state.errorMsg,
         isDuocDetected = state.isDuocDetected,
 
+        rolSeleccionado = state.rolSeleccionado ?: "usuario",
+        onRolChange = vm::onRolChange,
+
         onPnombreChange = vm::onPnombreChange,
         onSnombreChange = vm::onSnombreChange,
         onPapellidoChange = vm::onPapellidoChange,
@@ -107,6 +110,9 @@ private fun RegisterScreen(
     isSubmitting: Boolean,
     errorMsg: String?,
     isDuocDetected: Boolean,
+
+    rolSeleccionado: String,  // ✅ AGREGADO
+    onRolChange: (String) -> Unit,  // ✅ AGREGADO
 
     onPnombreChange: (String) -> Unit,
     onSnombreChange: (String) -> Unit,
@@ -228,6 +234,76 @@ private fun RegisterScreen(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // ========== SECCIÓN: SELECCIÓN DE ROL ==========
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        "¿Cómo usarás Rentify?",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(Modifier.height(12.dp))
+
+                    // Arrendatario
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        RadioButton(
+                            selected = rolSeleccionado == "Arrendatario",
+                            onClick = { onRolChange("Arrendatario") }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                "Busco arrendar",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (rolSeleccionado == "Arrendatario") FontWeight.Bold else FontWeight.Normal
+                            )
+                            Text(
+                                "Quiero encontrar una propiedad para arrendar",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Propietario
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        RadioButton(
+                            selected = rolSeleccionado == "Propietario",
+                            onClick = { onRolChange("Propietario") }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                "Publicar propiedades",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (rolSeleccionado == "Propietario") FontWeight.Bold else FontWeight.Normal
+                            )
+                            Text(
+                                "Quiero publicar mis propiedades en arriendo",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
                 }
             }
 

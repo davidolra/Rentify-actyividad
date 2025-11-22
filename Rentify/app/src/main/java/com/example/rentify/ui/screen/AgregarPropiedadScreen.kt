@@ -26,10 +26,11 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import com.example.rentify.data.local.storage.UserPreferences
-import com.example.rentify.data.local.database.RentifyDatabase
+
 import com.example.rentify.data.local.entities.PropiedadEntity
 import com.example.rentify.data.local.entities.FotoEntity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.rentify.data.local.RentifyDatabase
 import kotlinx.coroutines.launch
 
 // Función para crear archivo temporal

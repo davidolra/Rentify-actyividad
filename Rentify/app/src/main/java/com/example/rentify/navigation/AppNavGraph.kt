@@ -35,8 +35,9 @@ fun AppNavGraph(
     val userPrefs = remember { UserPreferences(context) }
     val scope = rememberCoroutineScope()
 
-    // ✅ Observar SOLO estado de autenticación (sin rol)
+    // ✅ Observar estado de autenticación Y ROL
     val isLoggedIn by userPrefs.isLoggedIn.collectAsStateWithLifecycle(initialValue = false)
+    val userRole by userPrefs.userRole.collectAsStateWithLifecycle(initialValue = null)
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
@@ -86,27 +87,36 @@ fun AppNavGraph(
             launchSingleTop = true
         }
     }
-
-    // ========== MENÚ DRAWER SIMPLE (SIN ROLES) ==========
+    // ========== MENÚ DRAWER CONTEXTUAL POR ROL ==========
     val drawerItems = if (isLoggedIn) {
-        listOf(
-            DrawerItem("Inicio", Icons.Filled.Home) {
+        buildList {
+            add(DrawerItem("Inicio", Icons.Filled.Home) {
                 scope.launch { drawerState.close() }
                 goHome()
-            },
-            DrawerItem("Propiedades", Icons.Filled.LocationOn) {
+            })
+            add(DrawerItem("Propiedades", Icons.Filled.LocationOn) {
                 scope.launch { drawerState.close() }
                 goPropiedades()
-            },
-            DrawerItem("Mi Perfil", Icons.Filled.Person) {
+            })
+            add(DrawerItem("Mi Perfil", Icons.Filled.Person) {
                 scope.launch { drawerState.close() }
                 goPerfil()
-            },
-            DrawerItem("Mis Solicitudes", Icons.Filled.Assignment) {
-                scope.launch { drawerState.close() }
-                goSolicitudes()
+            })
+
+            // Opciones según rol
+            when (userRole?.uppercase()) {
+                "ADMINISTRADOR" -> add(DrawerItem("Gestión Usuarios", Icons.Filled.People) {
+                    scope.launch { drawerState.close() }
+                })
+                "PROPIETARIO" -> add(DrawerItem("Mis Propiedades", Icons.Filled.Business) {
+                    scope.launch { drawerState.close() }
+                })
+                "ARRENDATARIO" -> add(DrawerItem("Mis Solicitudes", Icons.Filled.Assignment) {
+                    scope.launch { drawerState.close() }
+                    goSolicitudes()
+                })
             }
-        )
+        }
     } else {
         listOf(
             DrawerItem("Bienvenida", Icons.Filled.Home) {
@@ -124,6 +134,7 @@ fun AppNavGraph(
         )
     }
 
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -137,6 +148,7 @@ fun AppNavGraph(
             topBar = {
                 AppTopBar(
                     isLoggedIn = isLoggedIn,
+                    userRole = userRole,  // ✅ PASAR ROL
                     onOpenDrawer = { scope.launch { drawerState.open() } },
                     onHome = goHome,
                     onLogin = goLogin,

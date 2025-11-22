@@ -13,6 +13,7 @@ import androidx.compose.ui.text.style.TextOverflow
 @Composable
 fun AppTopBar(
     isLoggedIn: Boolean,
+    userRole: String?,  // ✅ RESTAURADO
     onOpenDrawer: () -> Unit,
     onHome: () -> Unit,
     onLogin: () -> Unit,

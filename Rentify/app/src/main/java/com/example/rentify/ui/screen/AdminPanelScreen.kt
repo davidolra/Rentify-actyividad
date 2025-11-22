@@ -14,7 +14,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.rentify.data.local.database.RentifyDatabase
+import com.example.rentify.data.local.RentifyDatabase
+
 import com.example.rentify.ui.viewmodel.AdminPanelViewModel
 import com.example.rentify.ui.viewmodel.AdminPanelViewModelFactory
 

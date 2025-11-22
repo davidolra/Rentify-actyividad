@@ -20,7 +20,7 @@ import com.example.rentify.data.local.storage.UserPreferences
 import kotlinx.coroutines.launch
 
 /**
- * ✅ LoginScreen simplificado SIN ROLES
+ * ✅ LoginScreen con ViewModel y manejo de sesión con rol
  */
 @Composable
 fun LoginScreenVm(
@@ -33,24 +33,29 @@ fun LoginScreenVm(
     val userPrefs = remember { UserPreferences(context) }
     val scope = rememberCoroutineScope()
 
-    // ✅ Guardar sesión SIN ROL cuando el login sea exitoso
+    // Guardar sesión CON ROL cuando login sea exitoso
     LaunchedEffect(state.success) {
         if (state.success) {
             val usuario = vm.getLoggedUser()
-
             if (usuario != null) {
-                // ✅ Guardar sesión sin rol
-                userPrefs.saveUserSession(
-                    userId = usuario.id,
-                    email = usuario.email,
-                    name = "${usuario.pnombre} ${usuario.papellido}",
-                    isDuocVip = usuario.duoc_vip
-                )
+                // Obtener nombre del rol
+                val rolNombre = vm.getRoleName(usuario.rol_id)
+
+                // Guardar sesión con rol
+                scope.launch {
+                    userPrefs.saveUserSession(
+                        userId = usuario.id,
+                        email = usuario.email,
+                        name = "${usuario.pnombre} ${usuario.papellido}",
+                        role = rolNombre,
+                        isDuocVip = usuario.duoc_vip
+                    )
+                }
 
                 vm.clearLoginResult()
                 onLoginOkNavigateHome()
             } else {
-                userPrefs.setLoggedIn(true)
+                scope.launch { userPrefs.setLoggedIn(true) }
                 vm.clearLoginResult()
                 onLoginOkNavigateHome()
             }
@@ -116,9 +121,7 @@ private fun LoginScreen(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Column(
@@ -221,9 +224,7 @@ private fun LoginScreen(
             Spacer(Modifier.height(24.dp))
 
             Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
             ) {
                 Row(
                     modifier = Modifier.padding(12.dp),

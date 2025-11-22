@@ -10,7 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
-import com.example.rentify.data.local.database.RentifyDatabase
+import com.example.rentify.data.local.RentifyDatabase
 import com.example.rentify.data.repository.RentifyUserRepository
 import com.example.rentify.navigation.AppNavGraph
 import com.example.rentify.ui.theme.RentifyTheme

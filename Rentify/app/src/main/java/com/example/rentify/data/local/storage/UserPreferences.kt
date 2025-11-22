@@ -13,18 +13,20 @@ val Context.dataStore by preferencesDataStore(name = "rentify_user_prefs")
 
 class UserPreferences(private val context: Context) {
 
-    // ========== KEYS (SIN ROL) ==========
+    // ========== KEYS (CON ROL) ==========
     private val isLoggedInKey = booleanPreferencesKey("is_logged_in")
     private val userIdKey = longPreferencesKey("user_id")
     private val userEmailKey = stringPreferencesKey("user_email")
     private val userNameKey = stringPreferencesKey("user_name")
+    private val userRoleKey = stringPreferencesKey("user_role")  // ✅ RESTAURADO
     private val isDuocVipKey = booleanPreferencesKey("is_duoc_vip")
 
-    // ========== SETTERS (SIN ROL) ==========
+    // ========== SETTERS (CON ROL) ==========
     suspend fun saveUserSession(
         userId: Long,
         email: String,
         name: String,
+        role: String,  // ✅ RESTAURADO
         isDuocVip: Boolean
     ) {
         context.dataStore.edit { prefs ->
@@ -32,6 +34,7 @@ class UserPreferences(private val context: Context) {
             prefs[userIdKey] = userId
             prefs[userEmailKey] = email
             prefs[userNameKey] = name
+            prefs[userRoleKey] = role  // ✅ GUARDAR ROL
             prefs[isDuocVipKey] = isDuocVip
         }
     }
@@ -48,7 +51,7 @@ class UserPreferences(private val context: Context) {
         }
     }
 
-    // ========== GETTERS (SIN ROL) ==========
+    // ========== GETTERS (CON ROL) ==========
     val isLoggedIn: Flow<Boolean> = context.dataStore.data
         .map { prefs -> prefs[isLoggedInKey] ?: false }
 
@@ -60,6 +63,9 @@ class UserPreferences(private val context: Context) {
 
     val userName: Flow<String?> = context.dataStore.data
         .map { prefs -> prefs[userNameKey] }
+
+    val userRole: Flow<String?> = context.dataStore.data  // ✅ RESTAURADO
+        .map { prefs -> prefs[userRoleKey] }
 
     val isDuocVip: Flow<Boolean> = context.dataStore.data
         .map { prefs -> prefs[isDuocVipKey] ?: false }

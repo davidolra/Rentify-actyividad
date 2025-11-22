@@ -31,7 +31,16 @@ class RentifyUserRepository(
     }
 
     /**
-     * Registro:crea un nuevo
+     * ✅ RESTAURADO: Obtiene el nombre del rol de un usuario
+     */
+    suspend fun getRoleName(rolId: Long?): String {
+        if (rolId == null) return "Sin Rol"
+        val rol = catalogDao.getRolById(rolId)
+        return rol?.nombre ?: "Sin Rol"
+    }
+
+    /**
+     * Registro: crea un nuevo usuario con rol seleccionado
      */
     suspend fun register(
         pnombre: String,
@@ -41,7 +50,8 @@ class RentifyUserRepository(
         email: String,
         rut: String,
         ntelefono: String,
-        password: String
+        password: String,
+        rolSeleccionado: String = "Arrendatario"  // ✅ Por defecto Arrendatario
     ): Result<Long> {
         val emailLower = email.trim().lowercase()
         val rutLimpio = rut.trim().replace(".", "")
@@ -65,6 +75,13 @@ class RentifyUserRepository(
         val estadoActivo = catalogDao.getEstadoByNombre("Activo")
             ?: return Result.failure(IllegalStateException("Estado 'Activo' no encontrado en BD"))
 
+        // ✅ OBTENER ROL SEGÚN SELECCIÓN
+        val rol = when (rolSeleccionado) {
+            "Propietario" -> catalogDao.getRolByNombre("Propietario")
+            "Arrendatario" -> catalogDao.getRolByNombre("Arrendatario")
+            else -> catalogDao.getRolByNombre("Arrendatario")
+        } ?: return Result.failure(IllegalStateException("Rol '$rolSeleccionado' no encontrado en BD"))
+
         val now = System.currentTimeMillis()
 
         val nuevoUsuario = UsuarioEntity(
@@ -82,7 +99,7 @@ class RentifyUserRepository(
             fcreacion = now,
             factualizacion = now,
             estado_id = estadoActivo.id,
-            rol_id = null
+            rol_id = rol.id  // ✅ ASIGNAR ROL
         )
 
         val id = usuarioDao.insert(nuevoUsuario)
