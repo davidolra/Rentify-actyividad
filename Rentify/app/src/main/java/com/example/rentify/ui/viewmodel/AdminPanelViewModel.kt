@@ -48,9 +48,9 @@ class AdminPanelViewModel(
                 val totalPropiedades = propiedadDao.getAll().size
                 val propiedadesActivas = propiedadDao.countActivas()
 
-                // Contar todas las solicitudes (necesitamos agregar este método al DAO)
-                val solicitudes = solicitudDao.getAllSolicitudes()
-                val totalSolicitudes = solicitudes.first().size
+                // Usar el método correcto del DAO
+                val totalSolicitudes = solicitudDao.getAll().first().size
+
 
                 _estadisticas.value = EstadisticasSistema(
                     totalUsuarios = totalUsuarios,
@@ -59,7 +59,7 @@ class AdminPanelViewModel(
                     totalSolicitudes = totalSolicitudes
                 )
             } catch (e: Exception) {
-                // Log error
+                // Log optional
             } finally {
                 _isLoading.value = false
             }

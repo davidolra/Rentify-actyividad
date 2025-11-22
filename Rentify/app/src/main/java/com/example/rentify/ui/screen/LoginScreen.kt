@@ -20,6 +20,7 @@ import com.example.rentify.data.local.storage.UserPreferences
 import kotlinx.coroutines.launch
 
 /**
+ * ✅ LoginScreen simplificado SIN ROLES
  */
 @Composable
 fun LoginScreenVm(
@@ -32,29 +33,23 @@ fun LoginScreenVm(
     val userPrefs = remember { UserPreferences(context) }
     val scope = rememberCoroutineScope()
 
-    // Guardar sesión cuando el login sea exitoso
+    // ✅ Guardar sesión SIN ROL cuando el login sea exitoso
     LaunchedEffect(state.success) {
         if (state.success) {
             val usuario = vm.getLoggedUser()
 
             if (usuario != null) {
-                // Obtener rol del usuario
-                val rolNombre = vm.getRoleName(usuario.rol_id)
-
-                // Guardar sesión
+                // ✅ Guardar sesión sin rol
                 userPrefs.saveUserSession(
                     userId = usuario.id,
                     email = usuario.email,
                     name = "${usuario.pnombre} ${usuario.papellido}",
-                    role = rolNombre,
                     isDuocVip = usuario.duoc_vip
                 )
 
-                // Limpiar y navegar
                 vm.clearLoginResult()
                 onLoginOkNavigateHome()
             } else {
-                // Fallback
                 userPrefs.setLoggedIn(true)
                 vm.clearLoginResult()
                 onLoginOkNavigateHome()
@@ -105,7 +100,6 @@ private fun LoginScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // ========== LOGO/TÍTULO ==========
             Text(
                 text = "Rentify",
                 style = MaterialTheme.typography.displaySmall,
@@ -120,7 +114,6 @@ private fun LoginScreen(
             )
             Spacer(Modifier.height(32.dp))
 
-            // ========== CARD DE LOGIN ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -139,7 +132,6 @@ private fun LoginScreen(
                     )
                     Spacer(Modifier.height(20.dp))
 
-                    // Email
                     OutlinedTextField(
                         value = email,
                         onValueChange = onEmailChange,
@@ -160,7 +152,6 @@ private fun LoginScreen(
 
                     Spacer(Modifier.height(12.dp))
 
-                    // Password
                     OutlinedTextField(
                         value = pass,
                         onValueChange = onPassChange,
@@ -189,7 +180,6 @@ private fun LoginScreen(
 
                     Spacer(Modifier.height(20.dp))
 
-                    // Botón Entrar
                     Button(
                         onClick = onSubmit,
                         enabled = canSubmit && !isSubmitting,
@@ -221,7 +211,6 @@ private fun LoginScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // ========== BOTÓN CREAR CUENTA ==========
             OutlinedButton(
                 onClick = onGoRegister,
                 modifier = Modifier.fillMaxWidth()
@@ -231,7 +220,6 @@ private fun LoginScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // ========== INFO DUOC VIP ==========
             Card(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer

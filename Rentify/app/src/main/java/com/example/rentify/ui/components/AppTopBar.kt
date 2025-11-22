@@ -7,23 +7,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.text.style.TextOverflow
 
 /**
- * Barra superior para Rentify con menú contextual
+ * ✅ Barra superior SIN ROLES
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppTopBar(
     isLoggedIn: Boolean,
-    userRole: String?,
     onOpenDrawer: () -> Unit,
     onHome: () -> Unit,
     onLogin: () -> Unit,
     onRegister: () -> Unit,
     onPropiedades: () -> Unit,
     onPerfil: () -> Unit,
-    onSolicitudes: () -> Unit,
-    onMisPropiedades: () -> Unit,
-    onAgregarPropiedad: () -> Unit,
-    onAdminPanel: () -> Unit
+    onSolicitudes: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -83,32 +79,10 @@ fun AppTopBar(
                         text = { Text("Mi Perfil") },
                         onClick = { showMenu = false; onPerfil() }
                     )
-
-                    // Opciones específicas por rol
-                    when (userRole?.uppercase()) {
-                        "ADMINISTRADOR", "ADMIN" -> {
-                            DropdownMenuItem(
-                                text = { Text("Panel Admin") },
-                                onClick = { showMenu = false; onAdminPanel() }
-                            )
-                        }
-                        "PROPIETARIO" -> {
-                            DropdownMenuItem(
-                                text = { Text("Mis Propiedades") },
-                                onClick = { showMenu = false; onMisPropiedades() }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Agregar Propiedad") },
-                                onClick = { showMenu = false; onAgregarPropiedad() }
-                            )
-                        }
-                        "INQUILINO", "ARRIENDATARIO" -> {
-                            DropdownMenuItem(
-                                text = { Text("Mis Solicitudes") },
-                                onClick = { showMenu = false; onSolicitudes() }
-                            )
-                        }
-                    }
+                    DropdownMenuItem(
+                        text = { Text("Mis Solicitudes") },
+                        onClick = { showMenu = false; onSolicitudes() }
+                    )
                 } else {
                     // Menú no autenticado
                     DropdownMenuItem(

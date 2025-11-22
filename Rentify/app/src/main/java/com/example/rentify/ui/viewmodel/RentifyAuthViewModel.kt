@@ -1,22 +1,18 @@
 package com.example.rentify.ui.viewmodel
 
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.delay
+import com.example.rentify.data.local.entities.UsuarioEntity
+import com.example.rentify.data.repository.RentifyUserRepository
+import com.example.rentify.domain.validation.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import com.example.rentify.domain.validation.*
-import com.example.rentify.data.repository.RentifyUserRepository
-import com.example.rentify.data.local.entities.UsuarioEntity
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.TextRange
-
-// ========== ESTADOS DE UI ==========
 
 data class LoginUiState(
     val email: String = "",
@@ -30,7 +26,6 @@ data class LoginUiState(
 )
 
 data class RegisterUiState(
-    // Datos personales
     val pnombre: String = "",
     val snombre: String = "",
     val papellido: String = "",
@@ -41,9 +36,7 @@ data class RegisterUiState(
     val pass: String = "",
     val confirm: String = "",
     val codigoReferido: String = "",
-    val rolSeleccionado: String = "Inquilino",
 
-    // Errores
     val pnombreError: String? = null,
     val snombreError: String? = null,
     val papellidoError: String? = null,
@@ -55,7 +48,6 @@ data class RegisterUiState(
     val confirmError: String? = null,
     val codigoReferidoError: String? = null,
 
-    // Control
     val isSubmitting: Boolean = false,
     val canSubmit: Boolean = false,
     val success: Boolean = false,
@@ -67,19 +59,15 @@ class RentifyAuthViewModel(
     private val repository: RentifyUserRepository
 ) : ViewModel() {
 
-    // Flujos de estado
     private val _login = MutableStateFlow(LoginUiState())
     val login: StateFlow<LoginUiState> = _login
 
     private val _register = MutableStateFlow(RegisterUiState())
     val register: StateFlow<RegisterUiState> = _register
 
-    // Usuario logueado actual
     private var loggedUser: UsuarioEntity? = null
 
     fun getLoggedUser(): UsuarioEntity? = loggedUser
-
-    // ========== LOGIN ==========
 
     fun onLoginEmailChange(value: String) {
         _login.update { it.copy(email = value, emailError = validateEmail(value)) }
@@ -97,7 +85,6 @@ class RentifyAuthViewModel(
         _login.update { it.copy(canSubmit = can) }
     }
 
-    // ✅ FIX: Eliminar delay y mejorar flujo
     fun submitLogin() {
         val s = _login.value
         if (!s.canSubmit || s.isSubmitting) return
@@ -136,8 +123,6 @@ class RentifyAuthViewModel(
         _login.update { it.copy(success = false, errorMsg = null) }
     }
 
-    // ========== REGISTRO ==========
-
     fun onPnombreChange(value: String) {
         val filtered = value.filter { it.isLetter() || it.isWhitespace() }
         _register.update { it.copy(pnombre = filtered, pnombreError = validateName(filtered)) }
@@ -154,10 +139,6 @@ class RentifyAuthViewModel(
         val filtered = value.filter { it.isLetter() || it.isWhitespace() }
         _register.update { it.copy(papellido = filtered, papellidoError = validateName(filtered)) }
         recomputeRegisterCanSubmit()
-    }
-
-    suspend fun getRoleName(rolId: Long?): String {
-        return repository.getRoleName(rolId)
     }
 
     fun onFechaNacimientoChange(value: TextFieldValue) {
@@ -266,7 +247,6 @@ class RentifyAuthViewModel(
         _register.update { it.copy(canSubmit = noErrors && filled) }
     }
 
-    // ✅ FIX: Eliminar delay y mejorar manejo de errores
     fun submitRegister() {
         val s = _register.value
         if (!s.canSubmit || s.isSubmitting) return
@@ -294,8 +274,7 @@ class RentifyAuthViewModel(
                     email = s.email.trim(),
                     rut = s.rut.trim(),
                     ntelefono = s.telefono.trim(),
-                    password = s.pass,
-                    rolSeleccionado = s.rolSeleccionado
+                    password = s.pass
                 )
 
                 _register.update {
@@ -325,8 +304,6 @@ class RentifyAuthViewModel(
         _register.update { it.copy(success = false, errorMsg = null) }
     }
 
-    // ========== UTILIDADES ==========
-
     private fun parseFecha(fecha: String): Long? {
         return try {
             val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -336,9 +313,5 @@ class RentifyAuthViewModel(
         } catch (e: Exception) {
             null
         }
-    }
-
-    fun onRolChange(rol: String) {
-        _register.update { it.copy(rolSeleccionado = rol) }
     }
 }

@@ -1,6 +1,8 @@
 package com.example.rentify.navigation
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -18,7 +20,7 @@ import com.example.rentify.ui.screen.*
 import com.example.rentify.ui.viewmodel.*
 
 /**
- * Grafo de navegación completo para Rentify con sistema de roles
+ * ✅ Grafo de navegación SIN ROLES
  */
 @Composable
 fun AppNavGraph(
@@ -33,9 +35,8 @@ fun AppNavGraph(
     val userPrefs = remember { UserPreferences(context) }
     val scope = rememberCoroutineScope()
 
-    // Observar estado de autenticación y rol
+    // ✅ Observar SOLO estado de autenticación (sin rol)
     val isLoggedIn by userPrefs.isLoggedIn.collectAsStateWithLifecycle(initialValue = false)
-    val userRole by userPrefs.userRole.collectAsStateWithLifecycle(initialValue = null)  // ✅ OBTENER ROL
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
@@ -75,30 +76,6 @@ fun AppNavGraph(
         navController.navigate(Route.Solicitudes.path)
     }
 
-    val goMisPropiedades: () -> Unit = {
-        navController.navigate(Route.MisPropiedades.path)
-    }
-
-    val goAgregarPropiedad: () -> Unit = {
-        navController.navigate(Route.AgregarPropiedad.path)
-    }
-
-    val goSolicitudesRecibidas: () -> Unit = {
-        navController.navigate(Route.SolicitudesRecibidas.path)
-    }
-
-    val goAdminPanel: () -> Unit = {
-        navController.navigate(Route.AdminPanel.path)
-    }
-
-    val goGestionUsuarios: () -> Unit = {
-        navController.navigate(Route.GestionUsuarios.path)
-    }
-
-    val goGestionPropiedades: () -> Unit = {
-        navController.navigate(Route.GestionPropiedades.path)
-    }
-
     val goPropiedadDetalle: (Long) -> Unit = { propiedadId ->
         navController.navigate(Route.PropiedadDetalle.createRoute(propiedadId))
     }
@@ -110,23 +87,42 @@ fun AppNavGraph(
         }
     }
 
-    // ========== MENÚ DRAWER CONTEXTUAL ==========
-    val drawerItems = buildDrawerItems(
-        isLoggedIn = isLoggedIn,
-        userRole = userRole,
-        onHome = { scope.launch { drawerState.close() }; goHome() },
-        onLogin = { scope.launch { drawerState.close() }; goLogin() },
-        onRegister = { scope.launch { drawerState.close() }; goRegister() },
-        onPropiedades = { scope.launch { drawerState.close() }; goPropiedades() },
-        onPerfil = { scope.launch { drawerState.close() }; goPerfil() },
-        onSolicitudes = { scope.launch { drawerState.close() }; goSolicitudes() },
-        onMisPropiedades = { scope.launch { drawerState.close() }; goMisPropiedades() },
-        onAgregarPropiedad = { scope.launch { drawerState.close() }; goAgregarPropiedad() },
-        onSolicitudesRecibidas = { scope.launch { drawerState.close() }; goSolicitudesRecibidas() },
-        onAdminPanel = { scope.launch { drawerState.close() }; goAdminPanel() },
-        onGestionUsuarios = { scope.launch { drawerState.close() }; goGestionUsuarios() },
-        onGestionPropiedades = { scope.launch { drawerState.close() }; goGestionPropiedades() }
-    )
+    // ========== MENÚ DRAWER SIMPLE (SIN ROLES) ==========
+    val drawerItems = if (isLoggedIn) {
+        listOf(
+            DrawerItem("Inicio", Icons.Filled.Home) {
+                scope.launch { drawerState.close() }
+                goHome()
+            },
+            DrawerItem("Propiedades", Icons.Filled.LocationOn) {
+                scope.launch { drawerState.close() }
+                goPropiedades()
+            },
+            DrawerItem("Mi Perfil", Icons.Filled.Person) {
+                scope.launch { drawerState.close() }
+                goPerfil()
+            },
+            DrawerItem("Mis Solicitudes", Icons.Filled.Assignment) {
+                scope.launch { drawerState.close() }
+                goSolicitudes()
+            }
+        )
+    } else {
+        listOf(
+            DrawerItem("Bienvenida", Icons.Filled.Home) {
+                scope.launch { drawerState.close() }
+                goHome()
+            },
+            DrawerItem("Iniciar Sesión", Icons.Filled.Login) {
+                scope.launch { drawerState.close() }
+                goLogin()
+            },
+            DrawerItem("Registrarse", Icons.Filled.PersonAdd) {
+                scope.launch { drawerState.close() }
+                goRegister()
+            }
+        )
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -141,17 +137,13 @@ fun AppNavGraph(
             topBar = {
                 AppTopBar(
                     isLoggedIn = isLoggedIn,
-                    userRole = userRole,
                     onOpenDrawer = { scope.launch { drawerState.open() } },
                     onHome = goHome,
                     onLogin = goLogin,
                     onRegister = goRegister,
                     onPropiedades = goPropiedades,
                     onPerfil = goPerfil,
-                    onSolicitudes = goSolicitudes,
-                    onMisPropiedades = goMisPropiedades,
-                    onAgregarPropiedad = goAgregarPropiedad,
-                    onAdminPanel = goAdminPanel
+                    onSolicitudes = goSolicitudes
                 )
             }
         ) { innerPadding ->
@@ -231,61 +223,12 @@ fun AppNavGraph(
                     )
                 }
 
-                // ========== MIS SOLICITUDES (INQUILINO) ==========
+                // ========== MIS SOLICITUDES ==========
                 composable(Route.Solicitudes.path) {
                     SolicitudesScreen(
                         vm = solicitudesViewModel,
                         onBack = { navController.popBackStack() },
                         onVerPropiedad = goPropiedadDetalle
-                    )
-                }
-
-                // ========== MIS PROPIEDADES (PROPIETARIO) ==========
-                composable(Route.MisPropiedades.path) {
-                    MisPropiedadesScreen(
-                        onBack = { navController.popBackStack() },
-                        onAgregarPropiedad = goAgregarPropiedad,
-                        onEditarPropiedad = { /* TODO */ },
-                        onVerDetalle = goPropiedadDetalle
-                    )
-                }
-
-                // ========== AGREGAR PROPIEDAD (PROPIETARIO) ==========
-                composable(Route.AgregarPropiedad.path) {
-                    AgregarPropiedadScreen(
-                        onBack = { navController.popBackStack() },
-                        onPropiedadCreada = goMisPropiedades
-                    )
-                }
-
-
-                // ========== SOLICITUDES RECIBIDAS (PROPIETARIO) ==========
-                composable(Route.SolicitudesRecibidas.path) {
-                    // TODO: Implementar SolicitudesRecibidasScreen
-                    Text("Solicitudes Recibidas")
-                }
-
-                // ========== PANEL ADMIN ==========
-                composable(Route.AdminPanel.path) {
-                    AdminPanelScreen(
-                        onBack = { navController.popBackStack() },
-                        onGestionUsuarios = goGestionUsuarios,
-                        onGestionPropiedades = goGestionPropiedades
-                    )
-                }
-
-                // ========== GESTIÓN USUARIOS (ADMIN) ==========
-                composable(Route.GestionUsuarios.path) {
-                    GestionUsuariosScreen(
-                        onBack = { navController.popBackStack() }
-                    )
-                }
-
-                // ========== GESTIÓN PROPIEDADES (ADMIN) ==========
-                composable(Route.GestionPropiedades.path) {
-                    GestionPropiedadesScreen(
-                        onBack = { navController.popBackStack() },
-                        onVerDetalle = goPropiedadDetalle
                     )
                 }
             }

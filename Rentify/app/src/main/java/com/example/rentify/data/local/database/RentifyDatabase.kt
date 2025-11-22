@@ -7,23 +7,10 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.rentify.data.local.dao.*
 import com.example.rentify.data.local.entities.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-<<<<<<< HEAD
-import com.example.rentify.data.local.entities.SolicitudEntity
-import com.example.rentify.data.local.dao.SolicitudDao
 import kotlinx.coroutines.runBlocking
-=======
->>>>>>> parent of f51e70f (cambio propiedades)
 
-/**
- * Base de datos Room para Rentify
- * Incluye todas las entidades del modelo de datos
- */
 @Database(
     entities = [
-        // Catálogos
         RolEntity::class,
         EstadoEntity::class,
         RegionEntity::class,
@@ -32,7 +19,6 @@ import kotlinx.coroutines.runBlocking
         CategoriaEntity::class,
         TipoDocEntity::class,
         TipoResenaEntity::class,
-        // Entidades principales
         UsuarioEntity::class,
         PropiedadEntity::class,
         DocumentoEntity::class,
@@ -47,7 +33,6 @@ import kotlinx.coroutines.runBlocking
 )
 abstract class RentifyDatabase : RoomDatabase() {
 
-    // DAOs
     abstract fun usuarioDao(): UsuarioDao
     abstract fun propiedadDao(): PropiedadDao
     abstract fun catalogDao(): CatalogDao
@@ -68,10 +53,16 @@ abstract class RentifyDatabase : RoomDatabase() {
                     .addCallback(object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)
-                            // Poblar datos iniciales en IO
-                            runBlocking {
-                                poblarDatosIniciales(getInstance(context))
-                            }
+                            // EJECUTAR EN UN THREAD SEPARADO (no bloqueante)
+                            Thread {
+                                runBlocking {
+                                    try {
+                                        poblarDatosIniciales(getInstance(context))
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
+                                }
+                            }.start()
                         }
                     })
                     .fallbackToDestructiveMigration()
@@ -82,25 +73,21 @@ abstract class RentifyDatabase : RoomDatabase() {
             }
         }
 
-        /**
-         * Pobla la base de datos con datos iniciales (seed data)
-         */
         private suspend fun poblarDatosIniciales(db: RentifyDatabase) {
             val catalogDao = db.catalogDao()
             val usuarioDao = db.usuarioDao()
             val propiedadDao = db.propiedadDao()
 
-            // Verificar si ya hay datos
             if (catalogDao.getAllEstados().isNotEmpty()) return
 
             // ========== ESTADOS ==========
             val estadoActivo = catalogDao.insertEstado(EstadoEntity(nombre = "Activo"))
-            val estadoInactivo = catalogDao.insertEstado(EstadoEntity(nombre = "Inactivo"))
-            val estadoPendiente = catalogDao.insertEstado(EstadoEntity(nombre = "Pendiente"))
-            val estadoAprobado = catalogDao.insertEstado(EstadoEntity(nombre = "Aprobado"))
-            val estadoRechazado = catalogDao.insertEstado(EstadoEntity(nombre = "Rechazado"))
+            catalogDao.insertEstado(EstadoEntity(nombre = "Inactivo"))
+            catalogDao.insertEstado(EstadoEntity(nombre = "Pendiente"))
+            catalogDao.insertEstado(EstadoEntity(nombre = "Aprobado"))
+            catalogDao.insertEstado(EstadoEntity(nombre = "Rechazado"))
 
-            // ========== ROLES ==========
+            // ========== ROLES (mantener estructura pero no usar) ==========
             val rolAdmin = catalogDao.insertRol(RolEntity(nombre = "Administrador"))
             val rolPropietario = catalogDao.insertRol(RolEntity(nombre = "Propietario"))
             val rolInquilino = catalogDao.insertRol(RolEntity(nombre = "Inquilino"))
@@ -108,7 +95,7 @@ abstract class RentifyDatabase : RoomDatabase() {
             // ========== REGIONES ==========
             val regionRM = catalogDao.insertRegion(RegionEntity(nombre = "Región Metropolitana"))
             val regionValpo = catalogDao.insertRegion(RegionEntity(nombre = "Región de Valparaíso"))
-            val regionBiobio = catalogDao.insertRegion(RegionEntity(nombre = "Región del Biobío"))
+            catalogDao.insertRegion(RegionEntity(nombre = "Región del Biobío"))
 
             // ========== COMUNAS ==========
             val comunaSantiago = catalogDao.insertComuna(ComunaEntity(nombre = "Santiago", region_id = regionRM))
@@ -121,14 +108,14 @@ abstract class RentifyDatabase : RoomDatabase() {
             val tipoDepartamento = catalogDao.insertTipo(TipoEntity(nombre = "Departamento"))
             val tipoCasa = catalogDao.insertTipo(TipoEntity(nombre = "Casa"))
             val tipoEstudio = catalogDao.insertTipo(TipoEntity(nombre = "Estudio/Loft"))
-            val tipoHabitacion = catalogDao.insertTipo(TipoEntity(nombre = "Habitación"))
+            catalogDao.insertTipo(TipoEntity(nombre = "Habitación"))
 
             // ========== CATEGORÍAS ==========
-            val catAmoblado = catalogDao.insertCategoria(CategoriaEntity(nombre = "Amoblado"))
-            val catPetFriendly = catalogDao.insertCategoria(CategoriaEntity(nombre = "Pet-Friendly"))
-            val catTerraza = catalogDao.insertCategoria(CategoriaEntity(nombre = "Con Terraza"))
-            val catEstacionamiento = catalogDao.insertCategoria(CategoriaEntity(nombre = "Con Estacionamiento"))
-            val catTemporal = catalogDao.insertCategoria(CategoriaEntity(nombre = "Arriendo Temporal"))
+            catalogDao.insertCategoria(CategoriaEntity(nombre = "Amoblado"))
+            catalogDao.insertCategoria(CategoriaEntity(nombre = "Pet-Friendly"))
+            catalogDao.insertCategoria(CategoriaEntity(nombre = "Con Terraza"))
+            catalogDao.insertCategoria(CategoriaEntity(nombre = "Con Estacionamiento"))
+            catalogDao.insertCategoria(CategoriaEntity(nombre = "Arriendo Temporal"))
 
             // ========== TIPOS DE DOCUMENTOS ==========
             catalogDao.insertTipoDoc(TipoDocEntity(nombre = "Cédula Identidad"))
@@ -141,16 +128,16 @@ abstract class RentifyDatabase : RoomDatabase() {
             catalogDao.insertTipoResena(TipoResenaEntity(nombre = "Reseña Propietario"))
             catalogDao.insertTipoResena(TipoResenaEntity(nombre = "Reseña Inquilino"))
 
-            // ========== USUARIOS DEMO ==========
+            // ========== USUARIOS DEMO (SIN ROL ASIGNADO) ==========
             val now = System.currentTimeMillis()
 
-            // Usuario Admin DUOC
-            usuarioDao.insert(
+            // Usuario Admin
+            val adminId = usuarioDao.insert(
                 UsuarioEntity(
                     pnombre = "Admin",
                     snombre = "Sistema",
                     papellido = "Rentify",
-                    fnacimiento = now - (25L * 365 * 24 * 60 * 60 * 1000), // 25 años
+                    fnacimiento = now - (25L * 365 * 24 * 60 * 60 * 1000),
                     email = "admin@duoc.cl",
                     rut = "11111111-1",
                     ntelefono = "+56911111111",
@@ -161,17 +148,17 @@ abstract class RentifyDatabase : RoomDatabase() {
                     fcreacion = now,
                     factualizacion = now,
                     estado_id = estadoActivo,
-                    rol_id = rolAdmin
+                    rol_id = null  // ✅ NULL en lugar de rolAdmin
                 )
             )
 
             // Usuario Propietario
-            usuarioDao.insert(
+            val propietarioId = usuarioDao.insert(
                 UsuarioEntity(
                     pnombre = "María",
                     snombre = "Elena",
                     papellido = "González",
-                    fnacimiento = now - (35L * 365 * 24 * 60 * 60 * 1000), // 35 años
+                    fnacimiento = now - (35L * 365 * 24 * 60 * 60 * 1000),
                     email = "maria.gonzalez@gmail.com",
                     rut = "22222222-2",
                     ntelefono = "+56922222222",
@@ -182,34 +169,32 @@ abstract class RentifyDatabase : RoomDatabase() {
                     fcreacion = now,
                     factualizacion = now,
                     estado_id = estadoActivo,
-                    rol_id = rolPropietario
+                    rol_id = null  // ✅ NULL
                 )
             )
 
-            // Usuario Inquilino DUOC VIP
+            // Usuario Inquilino
             usuarioDao.insert(
                 UsuarioEntity(
                     pnombre = "Carlos",
                     snombre = "Andrés",
                     papellido = "Soto",
-                    fnacimiento = now - (22L * 365 * 24 * 60 * 60 * 1000), // 22 años
+                    fnacimiento = now - (22L * 365 * 24 * 60 * 60 * 1000),
                     email = "carlos.soto@duocuc.cl",
                     rut = "33333333-3",
                     ntelefono = "+56933333333",
                     clave = "Carlos123!",
-                    duoc_vip = true, // 20% descuento
+                    duoc_vip = true,
                     puntos = 50,
                     codigo_ref = "CARLOS2024",
                     fcreacion = now,
                     factualizacion = now,
                     estado_id = estadoActivo,
-                    rol_id = rolInquilino
+                    rol_id = null  // ✅ NULL
                 )
             )
 
             // ========== PROPIEDADES DEMO ==========
-
-            // Dpto 1D/1B Amoblado - Providencia
             propiedadDao.insert(
                 PropiedadEntity(
                     codigo = "DP001",
@@ -225,11 +210,10 @@ abstract class RentifyDatabase : RoomDatabase() {
                     estado_id = estadoActivo,
                     tipo_id = tipoDepartamento,
                     comuna_id = comunaProvidencia,
-                    propietario_id = 2L
+                    propietario_id = propietarioId
                 )
             )
 
-            // Dpto 2D/2B - Ñuñoa
             propiedadDao.insert(
                 PropiedadEntity(
                     codigo = "DP002",
@@ -240,16 +224,15 @@ abstract class RentifyDatabase : RoomDatabase() {
                     n_habit = 2,
                     n_banos = 2,
                     pet_friendly = true,
-                    direccion = "Av. Irarrázaval 2500, Ñuñoa",
+                    direccion = "Av. Irarráz aval 2500, Ñuñoa",
                     fcreacion = now,
                     estado_id = estadoActivo,
                     tipo_id = tipoDepartamento,
                     comuna_id = comunaNunoa,
-                    propietario_id = 2L
+                    propietario_id = propietarioId
                 )
             )
 
-            // Casa 3D/2B - Maipú
             propiedadDao.insert(
                 PropiedadEntity(
                     codigo = "CASA001",
@@ -265,11 +248,10 @@ abstract class RentifyDatabase : RoomDatabase() {
                     estado_id = estadoActivo,
                     tipo_id = tipoCasa,
                     comuna_id = comunaMaipu,
-                    propietario_id = 2L
+                    propietario_id = propietarioId
                 )
             )
 
-            // Studio - Santiago Centro
             propiedadDao.insert(
                 PropiedadEntity(
                     codigo = "ST001",
@@ -285,11 +267,10 @@ abstract class RentifyDatabase : RoomDatabase() {
                     estado_id = estadoActivo,
                     tipo_id = tipoEstudio,
                     comuna_id = comunaSantiago,
-                    propietario_id = 2L
+                    propietario_id = propietarioId
                 )
             )
 
-            // Dpto Temporal - Viña del Mar
             propiedadDao.insert(
                 PropiedadEntity(
                     codigo = "AT001",
@@ -305,7 +286,7 @@ abstract class RentifyDatabase : RoomDatabase() {
                     estado_id = estadoActivo,
                     tipo_id = tipoDepartamento,
                     comuna_id = comunaVinaDelMar,
-                    propietario_id = 2L
+                    propietario_id = propietarioId
                 )
             )
         }

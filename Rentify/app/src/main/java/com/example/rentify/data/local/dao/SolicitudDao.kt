@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.rentify.data.local.entities.SolicitudEntity
+import kotlinx.coroutines.flow.Flow
 
 /**
  * DAO para operaciones CRUD de solicitudes de arriendo
@@ -27,7 +28,8 @@ interface SolicitudDao {
 
     // Listar solicitudes de un usuario
     @Query("SELECT * FROM solicitud WHERE usuarios_id = :usuarioId ORDER BY fsolicitud DESC")
-    suspend fun getSolicitudesByUsuario(usuarioId: Long): List<SolicitudEntity>
+    fun getSolicitudesByUsuario(usuarioId: Long): Flow<List<SolicitudEntity>>
+
 
     // Contar solicitudes activas de un usuario (para validar límite de 3)
     @Query("SELECT COUNT(*) FROM solicitud WHERE usuarios_id = :usuarioId AND estado_id = :estadoActivo")
@@ -39,7 +41,8 @@ interface SolicitudDao {
 
     // Listar todas las solicitudes
     @Query("SELECT * FROM solicitud ORDER BY fsolicitud DESC")
-    suspend fun getAll(): List<SolicitudEntity>
+    fun getAll(): Flow<List<SolicitudEntity>>
+
 
     // Cambiar estado de solicitud
     @Query("UPDATE solicitud SET estado_id = :nuevoEstadoId WHERE id = :solicitudId")

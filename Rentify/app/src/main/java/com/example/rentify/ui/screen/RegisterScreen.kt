@@ -20,7 +20,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.rentify.ui.viewmodel.RentifyAuthViewModel
 
 /**
- * Pantalla de registro para Rentify (conectada al ViewModel)
+ * ✅ Pantalla de registro SIN SELECCIÓN DE ROL
  */
 @Composable
 fun RegisterScreenVm(
@@ -39,7 +39,7 @@ fun RegisterScreenVm(
         pnombre = state.pnombre,
         snombre = state.snombre,
         papellido = state.papellido,
-        fechaNacimiento = state.fechaNacimiento,  // ✅ YA ES TextFieldValue
+        fechaNacimiento = state.fechaNacimiento,
         email = state.email,
         rut = state.rut,
         telefono = state.telefono,
@@ -62,9 +62,6 @@ fun RegisterScreenVm(
         isSubmitting = state.isSubmitting,
         errorMsg = state.errorMsg,
         isDuocDetected = state.isDuocDetected,
-
-        rolSeleccionado = state.rolSeleccionado,
-        onRolChange = vm::onRolChange,
 
         onPnombreChange = vm::onPnombreChange,
         onSnombreChange = vm::onSnombreChange,
@@ -122,9 +119,6 @@ private fun RegisterScreen(
     onConfirmChange: (String) -> Unit,
     onCodigoReferidoChange: (String) -> Unit,
 
-    rolSeleccionado: String,
-    onRolChange: (String) -> Unit,
-
     onSubmit: () -> Unit,
     onGoLogin: () -> Unit
 ) {
@@ -175,7 +169,6 @@ private fun RegisterScreen(
                     )
                     Spacer(Modifier.height(12.dp))
 
-                    // Primer nombre
                     OutlinedTextField(
                         value = pnombre,
                         onValueChange = onPnombreChange,
@@ -189,7 +182,6 @@ private fun RegisterScreen(
                     }
                     Spacer(Modifier.height(8.dp))
 
-                    // Segundo nombre
                     OutlinedTextField(
                         value = snombre,
                         onValueChange = onSnombreChange,
@@ -203,7 +195,6 @@ private fun RegisterScreen(
                     }
                     Spacer(Modifier.height(8.dp))
 
-                    // Apellido paterno
                     OutlinedTextField(
                         value = papellido,
                         onValueChange = onPapellidoChange,
@@ -217,10 +208,9 @@ private fun RegisterScreen(
                     }
                     Spacer(Modifier.height(8.dp))
 
-                    // ✅ FECHA DE NACIMIENTO - CAMBIO PRINCIPAL
                     OutlinedTextField(
-                        value = fechaNacimiento,  // ✅ Ahora es TextFieldValue
-                        onValueChange = onFechaNacimientoChange,  // ✅ Recibe TextFieldValue
+                        value = fechaNacimiento,
+                        onValueChange = onFechaNacimientoChange,
                         label = { Text("Fecha Nacimiento (DD/MM/YYYY) *") },
                         singleLine = true,
                         isError = fechaNacimientoError != null,
@@ -243,74 +233,6 @@ private fun RegisterScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // ========== SECCIÓN: SELECCIÓN DE ROL ==========
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        "¿Cómo usarás Rentify?",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.height(12.dp))
-
-                    // Radio buttons para seleccionar rol
-                    Column {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            RadioButton(
-                                selected = rolSeleccionado == "Inquilino",
-                                onClick = { onRolChange("Inquilino") }
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Column {
-                                Text(
-                                    "Busco arrendar",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = if (rolSeleccionado == "Inquilino") FontWeight.Bold else FontWeight.Normal
-                                )
-                                Text(
-                                    "Quiero encontrar una propiedad para arrendar",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        Spacer(Modifier.height(8.dp))
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            RadioButton(
-                                selected = rolSeleccionado == "Propietario",
-                                onClick = { onRolChange("Propietario") }
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Column {
-                                Text(
-                                    "Publicar propiedades",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = if (rolSeleccionado == "Propietario") FontWeight.Bold else FontWeight.Normal
-                                )
-                                Text(
-                                    "Quiero publicar mis propiedades en arriendo",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
             // ========== SECCIÓN: CONTACTO ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -326,7 +248,6 @@ private fun RegisterScreen(
                     )
                     Spacer(Modifier.height(12.dp))
 
-                    // Email
                     OutlinedTextField(
                         value = email,
                         onValueChange = onEmailChange,
@@ -340,7 +261,6 @@ private fun RegisterScreen(
                         Text(emailError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
                     }
 
-                    // Mensaje DUOC VIP
                     if (isDuocDetected) {
                         Spacer(Modifier.height(4.dp))
                         Card(
@@ -363,7 +283,6 @@ private fun RegisterScreen(
 
                     Spacer(Modifier.height(8.dp))
 
-                    // RUT
                     OutlinedTextField(
                         value = rut,
                         onValueChange = onRutChange,
@@ -378,7 +297,6 @@ private fun RegisterScreen(
                     }
                     Spacer(Modifier.height(8.dp))
 
-                    // Teléfono
                     OutlinedTextField(
                         value = telefono,
                         onValueChange = onTelefonoChange,
@@ -412,7 +330,6 @@ private fun RegisterScreen(
                     )
                     Spacer(Modifier.height(12.dp))
 
-                    // Password
                     OutlinedTextField(
                         value = pass,
                         onValueChange = onPassChange,
@@ -435,7 +352,6 @@ private fun RegisterScreen(
                     }
                     Spacer(Modifier.height(8.dp))
 
-                    // Confirmar
                     OutlinedTextField(
                         value = confirm,
                         onValueChange = onConfirmChange,
@@ -521,7 +437,6 @@ private fun RegisterScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            // ========== BOTÓN IR A LOGIN ==========
             OutlinedButton(onClick = onGoLogin, modifier = Modifier.fillMaxWidth()) {
                 Text("Ya tengo cuenta - Iniciar Sesión")
             }
