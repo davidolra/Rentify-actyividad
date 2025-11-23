@@ -234,24 +234,34 @@ fun AppNavGraph(
                 composable(Route.Propiedades.path) {
                     CatalogoPropiedadesScreen(
                         vm = propiedadViewModel,
-                        onVerDetalle = goPropiedadDetalle
+                        onVerDetalle = { propiedadId ->
+                            goPropiedadDetalle(propiedadId)
+                        }
                     )
                 }
 
-                // ========== DETALLE PROPIEDAD ==========
+
+                // ================== DETALLE PROPIEDAD ==================
                 composable(
                     route = Route.PropiedadDetalle.path,
-                    arguments = listOf(
-                        navArgument("propiedadId") { type = NavType.LongType }
-                    )
+                    arguments = listOf(navArgument("propiedadId") { type = NavType.LongType })
                 ) { backStackEntry ->
+
                     val propiedadId = backStackEntry.arguments?.getLong("propiedadId") ?: 0L
+                    val userId by userPrefs.userId.collectAsStateWithLifecycle(initialValue = 0L)
+                    val actualUserId = userId ?: 0L
 
                     PropiedadDetalleScreen(
                         propiedadId = propiedadId,
                         vm = propiedadDetalleViewModel,
                         onBack = { navController.popBackStack() },
-                        onSolicitar = { goSolicitudes() }
+                        onSolicitar = { idPropiedad ->
+                            solicitudesViewModel.crearSolicitud(
+                                usuarioId = actualUserId,
+                                propiedadId = idPropiedad
+                            )
+                            goSolicitudes()
+                        }
                     )
                 }
 

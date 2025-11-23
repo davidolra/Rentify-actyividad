@@ -3,7 +3,6 @@ package com.example.rentify.ui.screen
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
-import android.location.LocationManager
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -23,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.rentify.ui.viewmodel.PropiedadViewModel
-import com.example.rentify.ui.viewmodel.PropiedadConDistancia  // ✅ IMPORT CORREGIDO
+import com.example.rentify.ui.viewmodel.PropiedadConDistancia
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
@@ -36,7 +35,7 @@ import java.util.*
 @Composable
 fun CatalogoPropiedadesScreen(
     vm: PropiedadViewModel,
-    onVerDetalle: (Long) -> Unit = {}
+    onVerDetalle: (Long) -> Unit = {} // Se pasa la función `onVerDetalle` correctamente aquí
 ) {
     val context = LocalContext.current
     val propiedades by vm.propiedades.collectAsStateWithLifecycle()
@@ -91,6 +90,7 @@ fun CatalogoPropiedadesScreen(
             modifier = Modifier.fillMaxSize()
         ) {
             // ========== HEADER ==========
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -148,6 +148,7 @@ fun CatalogoPropiedadesScreen(
             Spacer(Modifier.height(8.dp))
 
             // ========== LISTA DE PROPIEDADES ==========
+
             if (isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -182,7 +183,8 @@ fun CatalogoPropiedadesScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(propiedades) { item ->
-                        PropiedadCard(item, permisoUbicacion)
+                        // Aquí se pasa correctamente la función onVerDetalle a PropiedadCard
+                        PropiedadCard(item, permisoUbicacion, onVerDetalle)
                     }
                 }
             }
@@ -195,8 +197,9 @@ fun CatalogoPropiedadesScreen(
  */
 @Composable
 private fun PropiedadCard(
-    item: PropiedadConDistancia,  // ✅ TIPO CORREGIDO
-    mostrarDistancia: Boolean
+    item: PropiedadConDistancia,
+    mostrarDistancia: Boolean,
+    onVerDetalle: (Long) -> Unit // Recibe la función onVerDetalle correctamente
 ) {
     val propiedad = item.propiedad
     val numberFormat = NumberFormat.getCurrencyInstance(Locale("es", "CL"))
@@ -303,7 +306,7 @@ private fun PropiedadCard(
                     )
                 }
 
-                Button(onClick = { /* TODO: Ver detalles */ }) {
+                Button(onClick = { onVerDetalle(item.propiedad.id) }) {  // Aquí se pasa el ID de la propiedad a la función
                     Text("Ver más")
                 }
             }
