@@ -17,4 +17,14 @@
 
     <!-- Tema para Material3 (usado por Jetpack Compose) -->
     <style name="Theme.rentify" parent="Theme.Rentify" />
+
+    <style name="theme.UINavegacion.Splash" parent="Theme.SplashScreen">
+
+        <item name="windowSplashScreenBackground">@android:color/white</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.Rentify</item>
+
+    </style>
+
+
 </resources>

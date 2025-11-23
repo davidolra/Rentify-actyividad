@@ -170,7 +170,7 @@ fun AppNavGraph(
             topBar = {
                 AppTopBar(
                     isLoggedIn = isLoggedIn,
-                    userRole = userRole,  // ✅ PASAR ROL
+                    userRole = userRole,
                     onOpenDrawer = { scope.launch { drawerState.open() } },
                     onHome = goHome,
                     onLogin = goLogin,

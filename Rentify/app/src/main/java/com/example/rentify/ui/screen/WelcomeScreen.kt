@@ -33,10 +33,10 @@ fun WelcomeScreen(
         ) {
             // Imagen de logo
             Image(
-                painter = painterResource(id = R.drawable.rentify_logo),
+                painter = painterResource(id = R.drawable.logo),
                 contentDescription = "Logo Rentify",
                 modifier = Modifier
-                    .size(150.dp)
+                    .size(390.dp)
                     .padding(bottom = 16.dp),
                 contentScale = ContentScale.Fit
             )

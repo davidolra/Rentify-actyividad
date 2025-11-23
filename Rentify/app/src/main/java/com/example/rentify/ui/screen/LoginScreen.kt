@@ -1,5 +1,6 @@
 package com.example.rentify.ui.screen
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -11,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -18,10 +20,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.rentify.ui.viewmodel.RentifyAuthViewModel
 import com.example.rentify.data.local.storage.UserPreferences
 import kotlinx.coroutines.launch
+import com.example.rentify.R
 
-/**
- * ✅ LoginScreen con ViewModel y manejo de sesión con rol
- */
 @Composable
 fun LoginScreenVm(
     vm: RentifyAuthViewModel,
@@ -33,15 +33,11 @@ fun LoginScreenVm(
     val userPrefs = remember { UserPreferences(context) }
     val scope = rememberCoroutineScope()
 
-    // Guardar sesión CON ROL cuando login sea exitoso
     LaunchedEffect(state.success) {
         if (state.success) {
             val usuario = vm.getLoggedUser()
             if (usuario != null) {
-                // Obtener nombre del rol
                 val rolNombre = vm.getRoleName(usuario.rol_id)
-
-                // Guardar sesión con rol
                 scope.launch {
                     userPrefs.saveUserSession(
                         userId = usuario.id,
@@ -51,7 +47,6 @@ fun LoginScreenVm(
                         isDuocVip = usuario.duoc_vip
                     )
                 }
-
                 vm.clearLoginResult()
                 onLoginOkNavigateHome()
             } else {
@@ -105,6 +100,17 @@ private fun LoginScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // =================== LOGO ===================
+            Image(
+                painter = painterResource(id = R.drawable.logo),
+                contentDescription = "Logo de Rentify",
+                modifier = Modifier
+                    .width(180.dp)
+                    .height(180.dp)
+            )
+
+            Spacer(Modifier.height(16.dp))
+
             Text(
                 text = "Rentify",
                 style = MaterialTheme.typography.displaySmall,
@@ -119,6 +125,7 @@ private fun LoginScreen(
             )
             Spacer(Modifier.height(32.dp))
 
+            // =================== CARD LOGIN ===================
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
