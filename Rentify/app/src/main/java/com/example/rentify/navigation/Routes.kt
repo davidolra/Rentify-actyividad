@@ -24,4 +24,12 @@ sealed class Route(val path: String) {
     // ----- ADMIN -----
     data object GestionUsuarios : Route("gestion_usuarios")
     data object GestionPropiedades : Route("gestion_propiedades")
+
+    // ----- PROPIETARIO -----
+    data object AgregarPropiedad : Route("agregar_propiedad")
+
+    // ----- PROPIETARIO -----
+    data object MisPropiedades : Route("mis_propiedades")
+
+
 }

@@ -130,9 +130,17 @@ fun AppNavGraph(
                     })
                 }
 
-                "PROPIETARIO" -> add(DrawerItem("Mis Propiedades", Icons.Filled.Business) {
-                    scope.launch { drawerState.close() }
-                })
+                "PROPIETARIO" -> {
+                    add(DrawerItem("Mis Propiedades", Icons.Filled.Business) {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Route.MisPropiedades.path)
+                    })
+                    add(DrawerItem("Crear Propiedad", Icons.Filled.Add) {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Route.AgregarPropiedad.path)
+                    })
+                }
+
                 "ARRENDATARIO" -> add(DrawerItem("Mis Solicitudes", Icons.Filled.Assignment) {
                     scope.launch { drawerState.close() }
                     goSolicitudes()
@@ -280,6 +288,25 @@ fun AppNavGraph(
                         onBack = { navController.popBackStack() }
                     )
                 }
+
+                // ======== PROPIETARIO: AGREGAR PROPIEDAD ========
+                composable(Route.AgregarPropiedad.path) {
+                    AgregarPropiedadScreen(
+                        onBack = { navController.popBackStack() },
+                        onPropiedadCreada = { navController.popBackStack() } // vuelve atrás tras crear
+                    )
+                }
+
+
+                // ======== PROPIETARIO: MIS PROPIEDADES ========
+                composable(Route.MisPropiedades.path) {
+                    MisPropiedadesScreen(
+                        onBack = { navController.popBackStack() },
+                        onAgregarPropiedad = { navController.navigate(Route.AgregarPropiedad.path) },
+                    )
+                }
+
+
 
             }
         }
