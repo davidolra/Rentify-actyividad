@@ -241,12 +241,23 @@ class RentifyAuthViewModel(
                 s.papellido.isNotBlank() && s.fechaNacimiento.text.length == 10 &&
                 s.email.isNotBlank() && s.rut.isNotBlank() &&
                 s.telefono.isNotBlank() && s.pass.isNotBlank() && s.confirm.isNotBlank()
-        _register.update { it.copy(canSubmit = noErrors && filled) }
+
+        // Validar que el rol esté seleccionado y sea válido
+        val rolValido = !s.rolSeleccionado.isNullOrBlank() &&
+                (s.rolSeleccionado == "Arrendatario" || s.rolSeleccionado == "Propietario")
+
+        _register.update { it.copy(canSubmit = noErrors && filled && rolValido) }
     }
+
 
     fun submitRegister() {
         val s = _register.value
+        if (s.rolSeleccionado.isNullOrBlank()) {
+            _register.update { it.copy(errorMsg = "Debes seleccionar un rol (Arrendatario o Propietario)") }
+            return
+        }
         if (!s.canSubmit || s.isSubmitting) return
+
         viewModelScope.launch {
             _register.update { it.copy(isSubmitting = true, errorMsg = null, success = false) }
             try {
