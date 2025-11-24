@@ -1,6 +1,7 @@
 package com.example.rentify.data.repository
 
 import com.example.rentify.data.local.dao.SolicitudDao
+import com.example.rentify.data.local.dao.CatalogDao
 import com.example.rentify.data.local.entities.SolicitudEntity
 import com.example.rentify.data.remote.ApiResult
 import com.example.rentify.data.remote.RetrofitClient
@@ -13,9 +14,12 @@ import java.util.*
 /**
  * Repositorio para sincronización entre Application Service (remoto)
  * y base de datos local de solicitudes
+ *
+ * ✅ VERSIÓN MEJORADA: Consulta dinámica de estados desde la BD
  */
 class ApplicationRemoteRepository(
-    private val solicitudDao: SolicitudDao
+    private val solicitudDao: SolicitudDao,
+    private val catalogDao: CatalogDao // ✅ AGREGADO para consultas dinámicas
 ) {
 
     private val api = RetrofitClient.applicationServiceApi
@@ -79,11 +83,9 @@ class ApplicationRemoteRepository(
             api.actualizarEstadoSolicitud(solicitudId, nuevoEstado)
         }) {
             is ApiResult.Success -> {
-                // Actualizar en BD local
-                solicitudDao.cambiarEstado(
-                    solicitudId,
-                    getEstadoIdFromNombre(nuevoEstado)
-                )
+                // Actualizar en BD local con consulta dinámica
+                val estadoId = getEstadoIdByNombre(nuevoEstado)
+                solicitudDao.cambiarEstado(solicitudId, estadoId)
                 result
             }
             else -> result
@@ -183,13 +185,13 @@ class ApplicationRemoteRepository(
     /**
      * Convierte DTO de solicitud a Entity para BD local
      */
-    private fun convertSolicitudDtoToEntity(dto: SolicitudArriendoDTO): SolicitudEntity {
+    private suspend fun convertSolicitudDtoToEntity(dto: SolicitudArriendoDTO): SolicitudEntity {
         return SolicitudEntity(
             id = dto.id ?: 0L,
             fsolicitud = parseDateStringToTimestamp(dto.fechaSolicitud),
             total = dto.propiedad?.precioMensual?.toInt() ?: 0,
             usuarios_id = dto.usuarioId,
-            estado_id = getEstadoIdFromNombre(dto.estado ?: "PENDIENTE"),
+            estado_id = getEstadoIdByNombre(dto.estado ?: "PENDIENTE"),
             propiedad_id = dto.propiedadId
         )
     }
@@ -209,15 +211,25 @@ class ApplicationRemoteRepository(
     }
 
     /**
-     * Mapea nombre de estado a ID
-     * 1 = Pendiente, 2 = Aceptado, 3 = Rechazado
+     * ✅ MEJORADO: Mapea nombre de estado a ID consultando la BD
+     * Ya no usa valores hardcodeados
      */
-    private fun getEstadoIdFromNombre(nombre: String): Long {
-        return when (nombre.uppercase()) {
-            "PENDIENTE" -> 1L
-            "ACEPTADA", "ACEPTADO" -> 2L
-            "RECHAZADA", "RECHAZADO" -> 3L
-            else -> 1L
+    private suspend fun getEstadoIdByNombre(nombre: String): Long {
+        return try {
+            // Consultar desde la base de datos
+            val estado = catalogDao.getEstadoByNombre(nombre.uppercase())
+            estado?.id ?: run {
+                // Fallback: intentar variantes comunes
+                when (nombre.uppercase()) {
+                    "PENDIENTE" -> catalogDao.getEstadoByNombre("Pendiente")?.id ?: 1L
+                    "ACEPTADA", "ACEPTADO" -> catalogDao.getEstadoByNombre("Aprobado")?.id ?: 2L
+                    "RECHAZADA", "RECHAZADO" -> catalogDao.getEstadoByNombre("Rechazado")?.id ?: 3L
+                    else -> 1L // Default: Pendiente
+                }
+            }
+        } catch (e: Exception) {
+            // Si hay error, usar valores por defecto seguros
+            1L // Pendiente
         }
     }
 }

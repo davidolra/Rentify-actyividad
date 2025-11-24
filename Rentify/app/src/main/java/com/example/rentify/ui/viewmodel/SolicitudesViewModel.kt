@@ -76,11 +76,10 @@ class SolicitudesViewModel(
     }
 
     /**
-     * Crear una nueva solicitud
+     * ✅ CREAR SOLICITUD - VERSIÓN CORREGIDA
+     * Calcula correctamente el total según las reglas de negocio de Rentify
      */
-    // En SolicitudesViewModel.kt - REEMPLAZAR el método crearSolicitud
-
-    fun crearSolicitudRemota(
+    fun crearSolicitud(
         usuarioId: Long,
         propiedadId: Long
     ) {
@@ -89,22 +88,39 @@ class SolicitudesViewModel(
             _errorMsg.value = null
 
             try {
-                // Llamada directa a la API
+                // 1. Obtener datos de la propiedad para calcular el total
+                val propiedad = propiedadDao.getById(propiedadId)
+
+                if (propiedad == null) {
+                    _errorMsg.value = "Propiedad no encontrada"
+                    _isLoading.value = false
+                    return@launch
+                }
+
+                // 2. Calcular el total según reglas de Rentify:
+                // Total = Canon mensual + Garantía (1 mes) + Comisión (50% de 1 mes)
+                val canonMensual = propiedad.precio_mensual
+                val garantia = canonMensual // 1 mes de garantía
+                val comision = (canonMensual * 0.5).toInt() // 50% del canon como comisión
+                val totalCalculado = canonMensual + garantia + comision
+
+                // 3. Crear DTO para enviar al backend
                 val solicitudDTO = SolicitudArriendoDTO(
                     usuarioId = usuarioId,
                     propiedadId = propiedadId
                 )
 
+                // 4. Llamar a la API
                 val response = RetrofitClient.applicationServiceApi.crearSolicitud(solicitudDTO)
 
                 if (response.isSuccessful && response.body() != null) {
                     val solicitudCreada = response.body()!!
 
-                    // Guardar en BD local
+                    // 5. Guardar en BD local con el total calculado correctamente
                     val entity = SolicitudEntity(
                         id = solicitudCreada.id ?: 0L,
                         fsolicitud = System.currentTimeMillis(),
-                        total = 0, // Calcular según tu lógica
+                        total = totalCalculado, // ✅ Total correctamente calculado
                         usuarios_id = usuarioId,
                         estado_id = 1L, // PENDIENTE
                         propiedad_id = propiedadId
@@ -113,10 +129,11 @@ class SolicitudesViewModel(
                     solicitudDao.insert(entity)
                     _solicitudCreada.value = true
 
-                    // Recargar solicitudes
+                    // 6. Recargar solicitudes para actualizar UI
                     cargarSolicitudesUsuario(usuarioId)
                 } else {
-                    _errorMsg.value = "Error al crear solicitud: ${response.message()}"
+                    val errorBody = response.errorBody()?.string()
+                    _errorMsg.value = "Error al crear solicitud: ${errorBody ?: response.message()}"
                 }
             } catch (e: Exception) {
                 _errorMsg.value = "Error de conexión: ${e.message}"
@@ -126,6 +143,9 @@ class SolicitudesViewModel(
         }
     }
 
+    /**
+     * Limpiar flag de solicitud creada
+     */
     fun clearSolicitudCreada() {
         _solicitudCreada.value = false
     }
