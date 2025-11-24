@@ -6,8 +6,8 @@ import com.example.rentify.data.local.dao.SolicitudDao
 import com.example.rentify.data.local.dao.PropiedadDao
 import com.example.rentify.data.local.dao.CatalogDao
 import com.example.rentify.data.local.entities.SolicitudEntity
-import com.example.rentify.data.remote.RetrofitClient
-import com.example.rentify.data.remote.dto.SolicitudArriendoDTO
+import com.example.rentify.data.remote.ApiResult
+import com.example.rentify.data.repository.ApplicationRemoteRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,10 +23,14 @@ data class SolicitudConDatos(
     val nombreEstado: String?
 )
 
+/**
+ * ✅ VIEWMODEL CORREGIDO: Integrado con backend real
+ */
 class SolicitudesViewModel(
     private val solicitudDao: SolicitudDao,
     private val propiedadDao: PropiedadDao,
-    private val catalogDao: CatalogDao
+    private val catalogDao: CatalogDao,
+    private val remoteRepository: ApplicationRemoteRepository  // ✅ AÑADIDO
 ) : ViewModel() {
 
     private val _solicitudes = MutableStateFlow<List<SolicitudConDatos>>(emptyList())
@@ -42,7 +46,7 @@ class SolicitudesViewModel(
     val solicitudCreada: StateFlow<Boolean> = _solicitudCreada
 
     /**
-     * Cargar solicitudes del usuario
+     * ✅ CORREGIDO: Cargar solicitudes desde el servidor
      */
     fun cargarSolicitudesUsuario(usuarioId: Long) {
         viewModelScope.launch {
@@ -50,34 +54,49 @@ class SolicitudesViewModel(
             _errorMsg.value = null
 
             try {
-                solicitudDao.getSolicitudesByUsuario(usuarioId).collect { lista ->
+                // ✅ Llamar al backend
+                when (val result = remoteRepository.obtenerSolicitudesUsuario(usuarioId)) {
+                    is ApiResult.Success -> {
+                        // Mapear a entities locales con datos enriquecidos
+                        val solicitudesConDatos = result.data.map { dto ->
+                            // Buscar datos locales de la propiedad
+                            val propiedad = propiedadDao.getById(dto.propiedadId)
 
-                    val solicitudesConDatos = lista.map { solicitud ->
+                            // Mapear estado (el backend devuelve "PENDIENTE", "ACEPTADA", etc.)
+                            val estadoNombre = dto.estado ?: "PENDIENTE"
 
-                        val propiedad = propiedadDao.getById(solicitud.propiedad_id)
-                        val estado = catalogDao.getEstadoById(solicitud.estado_id)
+                            SolicitudConDatos(
+                                solicitud = SolicitudEntity(
+                                    id = dto.id ?: 0L,
+                                    fsolicitud = dto.fechaSolicitud?.time ?: System.currentTimeMillis(),
+                                    total = 0, // No usado
+                                    usuarios_id = usuarioId,
+                                    estado_id = 1L, // Pendiente
+                                    propiedad_id = dto.propiedadId
+                                ),
+                                tituloPropiedad = dto.propiedad?.titulo ?: propiedad?.titulo,
+                                codigoPropiedad = dto.propiedad?.codigo ?: propiedad?.codigo,
+                                nombreEstado = estadoNombre
+                            )
+                        }
 
-                        SolicitudConDatos(
-                            solicitud = solicitud,
-                            tituloPropiedad = propiedad?.titulo,
-                            codigoPropiedad = propiedad?.codigo,
-                            nombreEstado = estado?.nombre
-                        )
+                        _solicitudes.value = solicitudesConDatos
                     }
-
-                    _solicitudes.value = solicitudesConDatos
-                    _isLoading.value = false
+                    is ApiResult.Error -> {
+                        _errorMsg.value = result.message
+                    }
+                    is ApiResult.Loading -> { /* No hacer nada */ }
                 }
             } catch (e: Exception) {
                 _errorMsg.value = "Error al cargar solicitudes: ${e.message}"
+            } finally {
                 _isLoading.value = false
             }
         }
     }
 
     /**
-     * ✅ CREAR SOLICITUD - VERSIÓN CORREGIDA
-     * Calcula correctamente el total según las reglas de negocio de Rentify
+     * ✅ CORREGIDO: Crear solicitud en el servidor
      */
     fun crearSolicitud(
         usuarioId: Long,
@@ -88,52 +107,16 @@ class SolicitudesViewModel(
             _errorMsg.value = null
 
             try {
-                // 1. Obtener datos de la propiedad para calcular el total
-                val propiedad = propiedadDao.getById(propiedadId)
-
-                if (propiedad == null) {
-                    _errorMsg.value = "Propiedad no encontrada"
-                    _isLoading.value = false
-                    return@launch
-                }
-
-                // 2. Calcular el total según reglas de Rentify:
-                // Total = Canon mensual + Garantía (1 mes) + Comisión (50% de 1 mes)
-                val canonMensual = propiedad.precio_mensual
-                val garantia = canonMensual // 1 mes de garantía
-                val comision = (canonMensual * 0.5).toInt() // 50% del canon como comisión
-                val totalCalculado = canonMensual + garantia + comision
-
-                // 3. Crear DTO para enviar al backend
-                val solicitudDTO = SolicitudArriendoDTO(
-                    usuarioId = usuarioId,
-                    propiedadId = propiedadId
-                )
-
-                // 4. Llamar a la API
-                val response = RetrofitClient.applicationServiceApi.crearSolicitud(solicitudDTO)
-
-                if (response.isSuccessful && response.body() != null) {
-                    val solicitudCreada = response.body()!!
-
-                    // 5. Guardar en BD local con el total calculado correctamente
-                    val entity = SolicitudEntity(
-                        id = solicitudCreada.id ?: 0L,
-                        fsolicitud = System.currentTimeMillis(),
-                        total = totalCalculado, // ✅ Total correctamente calculado
-                        usuarios_id = usuarioId,
-                        estado_id = 1L, // PENDIENTE
-                        propiedad_id = propiedadId
-                    )
-
-                    solicitudDao.insert(entity)
-                    _solicitudCreada.value = true
-
-                    // 6. Recargar solicitudes para actualizar UI
-                    cargarSolicitudesUsuario(usuarioId)
-                } else {
-                    val errorBody = response.errorBody()?.string()
-                    _errorMsg.value = "Error al crear solicitud: ${errorBody ?: response.message()}"
+                when (val result = remoteRepository.crearSolicitudRemota(usuarioId, propiedadId)) {
+                    is ApiResult.Success -> {
+                        _solicitudCreada.value = true
+                        // Recargar solicitudes para actualizar UI
+                        cargarSolicitudesUsuario(usuarioId)
+                    }
+                    is ApiResult.Error -> {
+                        _errorMsg.value = result.message
+                    }
+                    is ApiResult.Loading -> { /* No hacer nada */ }
                 }
             } catch (e: Exception) {
                 _errorMsg.value = "Error de conexión: ${e.message}"
@@ -148,5 +131,12 @@ class SolicitudesViewModel(
      */
     fun clearSolicitudCreada() {
         _solicitudCreada.value = false
+    }
+
+    /**
+     * Limpiar mensaje de error
+     */
+    fun clearError() {
+        _errorMsg.value = null
     }
 }

@@ -1,12 +1,13 @@
 package com.example.rentify.data.remote.dto
 
 import com.google.gson.annotations.SerializedName
+import java.util.Date
 
 // ==================== APPLICATION SERVICE DTOs ====================
 
 /**
  * DTO para Solicitud de Arriendo
- * Coincide exactamente con SolicitudArriendoDTO.java del backend
+ * ✅ CORREGIDO: Compatible 100% con backend
  */
 data class SolicitudArriendoDTO(
     val id: Long? = null,
@@ -17,10 +18,10 @@ data class SolicitudArriendoDTO(
     @SerializedName("propiedadId")
     val propiedadId: Long,
 
-    val estado: String? = null,  // PENDIENTE, ACEPTADA, RECHAZADA
+    val estado: String? = null,  // Backend genera automáticamente
 
     @SerializedName("fechaSolicitud")
-    val fechaSolicitud: String? = null,  // ISO 8601 format
+    val fechaSolicitud: Date? = null,  // ✅ CORREGIDO: Date en lugar de String
 
     val usuario: UsuarioDTO? = null,
     val propiedad: PropiedadDTO? = null
@@ -28,7 +29,7 @@ data class SolicitudArriendoDTO(
 
 /**
  * DTO para Registro de Arriendo
- * Coincide con RegistroArriendoDTO.java del backend
+ * ✅ CORREGIDO: Compatible 100% con backend
  */
 data class RegistroArriendoDTO(
     val id: Long? = null,
@@ -37,10 +38,10 @@ data class RegistroArriendoDTO(
     val solicitudId: Long,
 
     @SerializedName("fechaInicio")
-    val fechaInicio: String,  // Formato: "yyyy-MM-dd"
+    val fechaInicio: Date,  // ✅ CORREGIDO: Date
 
     @SerializedName("fechaFin")
-    val fechaFin: String? = null,
+    val fechaFin: Date? = null,
 
     @SerializedName("montoMensual")
     val montoMensual: Double,
@@ -51,7 +52,7 @@ data class RegistroArriendoDTO(
 
 /**
  * DTO de Usuario (desde User Service)
- * Coincide con UsuarioDTO.java del Application Service
+ * ✅ CORREGIDO: Compatible 100% con backend
  */
 data class UsuarioDTO(
     val id: Long? = null,
@@ -62,7 +63,7 @@ data class UsuarioDTO(
     val ntelefono: String? = null,
 
     @SerializedName("rolId")
-    val rolId: Int? = null,
+    val rolId: Int? = null,  // ✅ Backend usa Integer
 
     val rol: RolInfo? = null,
     val estado: EstadoInfo? = null,
@@ -83,7 +84,7 @@ data class UsuarioDTO(
 
 /**
  * DTO de Propiedad (desde Property Service)
- * Coincide con PropiedadDTO.java del Application Service
+ * ✅ CORREGIDO: Compatible 100% con backend
  */
 data class PropiedadDTO(
     val id: Long? = null,
@@ -98,10 +99,10 @@ data class PropiedadDTO(
     val m2: Double,
 
     @SerializedName("nHabit")
-    val nHabit: Int,
+    val nHabit: Int? = null,  // ✅ Puede ser null si backend no lo envía
 
     @SerializedName("nBanos")
-    val nBanos: Int,
+    val nBanos: Int? = null,  // ✅ Puede ser null si backend no lo envía
 
     @SerializedName("petFriendly")
     val petFriendly: Boolean,

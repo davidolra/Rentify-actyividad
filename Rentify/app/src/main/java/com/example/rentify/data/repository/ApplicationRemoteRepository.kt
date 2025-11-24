@@ -8,18 +8,14 @@ import com.example.rentify.data.remote.RetrofitClient
 import com.example.rentify.data.remote.dto.RegistroArriendoDTO
 import com.example.rentify.data.remote.dto.SolicitudArriendoDTO
 import com.example.rentify.data.remote.safeApiCall
-import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
 
 /**
- * Repositorio para sincronización entre Application Service (remoto)
- * y base de datos local de solicitudes
- *
- * ✅ VERSIÓN MEJORADA: Consulta dinámica de estados desde la BD
+ * ✅ REPOSITORIO CORREGIDO: Simplificado y compatible con backend
  */
 class ApplicationRemoteRepository(
     private val solicitudDao: SolicitudDao,
-    private val catalogDao: CatalogDao // ✅ AGREGADO para consultas dinámicas
+    private val catalogDao: CatalogDao
 ) {
 
     private val api = RetrofitClient.applicationServiceApi
@@ -27,7 +23,8 @@ class ApplicationRemoteRepository(
     // ==================== SOLICITUDES ====================
 
     /**
-     * Crear solicitud en el servidor y guardar localmente
+     * ✅ CORREGIDO: Crear solicitud sin calcular total ni mapear estados complejos
+     * El backend maneja automáticamente estado y fecha
      */
     suspend fun crearSolicitudRemota(
         usuarioId: Long,
@@ -36,12 +33,20 @@ class ApplicationRemoteRepository(
         val solicitudDTO = SolicitudArriendoDTO(
             usuarioId = usuarioId,
             propiedadId = propiedadId
+            // ✅ estado y fechaSolicitud los genera el backend
         )
 
         return when (val result = safeApiCall { api.crearSolicitud(solicitudDTO) }) {
             is ApiResult.Success -> {
-                // Guardar en BD local
-                val entity = convertSolicitudDtoToEntity(result.data)
+                // ✅ Guardar en BD local con el ID que devuelve el backend
+                val entity = SolicitudEntity(
+                    id = result.data.id ?: 0L,
+                    fsolicitud = result.data.fechaSolicitud?.time ?: System.currentTimeMillis(),
+                    total = 0, // ✅ El backend NO usa este campo
+                    usuarios_id = usuarioId,
+                    estado_id = 1L, // PENDIENTE (estado por defecto)
+                    propiedad_id = propiedadId
+                )
                 solicitudDao.insert(entity)
                 result
             }
@@ -73,7 +78,7 @@ class ApplicationRemoteRepository(
     }
 
     /**
-     * Actualizar estado de solicitud
+     * ✅ CORREGIDO: Actualizar estado de solicitud
      */
     suspend fun actualizarEstadoSolicitud(
         solicitudId: Long,
@@ -83,8 +88,8 @@ class ApplicationRemoteRepository(
             api.actualizarEstadoSolicitud(solicitudId, nuevoEstado)
         }) {
             is ApiResult.Success -> {
-                // Actualizar en BD local con consulta dinámica
-                val estadoId = getEstadoIdByNombre(nuevoEstado)
+                // ✅ Actualizar en BD local
+                val estadoId = mapEstadoNombreToId(nuevoEstado)
                 solicitudDao.cambiarEstado(solicitudId, estadoId)
                 result
             }
@@ -117,13 +122,13 @@ class ApplicationRemoteRepository(
     // ==================== REGISTROS ====================
 
     /**
-     * Crear registro de arriendo
+     * ✅ CORREGIDO: Crear registro de arriendo con fechas Date
      */
     suspend fun crearRegistro(
         solicitudId: Long,
-        fechaInicio: String,  // Formato: "yyyy-MM-dd"
+        fechaInicio: Date,
         montoMensual: Double,
-        fechaFin: String? = null
+        fechaFin: Date? = null
     ): ApiResult<RegistroArriendoDTO> {
         val registroDTO = RegistroArriendoDTO(
             solicitudId = solicitudId,
@@ -183,53 +188,21 @@ class ApplicationRemoteRepository(
     // ==================== HELPERS ====================
 
     /**
-     * Convierte DTO de solicitud a Entity para BD local
+     * ✅ CORREGIDO: Mapeo simplificado de nombres de estado a IDs
      */
-    private suspend fun convertSolicitudDtoToEntity(dto: SolicitudArriendoDTO): SolicitudEntity {
-        return SolicitudEntity(
-            id = dto.id ?: 0L,
-            fsolicitud = parseDateStringToTimestamp(dto.fechaSolicitud),
-            total = dto.propiedad?.precioMensual?.toInt() ?: 0,
-            usuarios_id = dto.usuarioId,
-            estado_id = getEstadoIdByNombre(dto.estado ?: "PENDIENTE"),
-            propiedad_id = dto.propiedadId
-        )
-    }
-
-    /**
-     * Convierte string de fecha a timestamp
-     */
-    private fun parseDateStringToTimestamp(dateString: String?): Long {
+    private suspend fun mapEstadoNombreToId(nombre: String): Long {
         return try {
-            if (dateString.isNullOrBlank()) return System.currentTimeMillis()
+            val nombreUpper = nombre.uppercase()
 
-            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-            sdf.parse(dateString)?.time ?: System.currentTimeMillis()
-        } catch (e: Exception) {
-            System.currentTimeMillis()
-        }
-    }
-
-    /**
-     * ✅ MEJORADO: Mapea nombre de estado a ID consultando la BD
-     * Ya no usa valores hardcodeados
-     */
-    private suspend fun getEstadoIdByNombre(nombre: String): Long {
-        return try {
-            // Consultar desde la base de datos
-            val estado = catalogDao.getEstadoByNombre(nombre.uppercase())
-            estado?.id ?: run {
-                // Fallback: intentar variantes comunes
-                when (nombre.uppercase()) {
-                    "PENDIENTE" -> catalogDao.getEstadoByNombre("Pendiente")?.id ?: 1L
-                    "ACEPTADA", "ACEPTADO" -> catalogDao.getEstadoByNombre("Aprobado")?.id ?: 2L
-                    "RECHAZADA", "RECHAZADO" -> catalogDao.getEstadoByNombre("Rechazado")?.id ?: 3L
-                    else -> 1L // Default: Pendiente
-                }
+            // Mapeo directo basado en los estados del backend
+            when (nombreUpper) {
+                "PENDIENTE" -> catalogDao.getEstadoByNombre("Pendiente")?.id ?: 1L
+                "ACEPTADA", "ACEPTADO", "APROBADO" -> catalogDao.getEstadoByNombre("Aprobado")?.id ?: 2L
+                "RECHAZADA", "RECHAZADO" -> catalogDao.getEstadoByNombre("Rechazado")?.id ?: 3L
+                else -> 1L // Default: Pendiente
             }
         } catch (e: Exception) {
-            // Si hay error, usar valores por defecto seguros
-            1L // Pendiente
+            1L // Si hay error, usar Pendiente por defecto
         }
     }
 }

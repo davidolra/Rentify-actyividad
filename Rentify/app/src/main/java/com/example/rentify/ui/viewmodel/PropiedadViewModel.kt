@@ -7,6 +7,8 @@ import com.example.rentify.data.local.dao.PropiedadDao
 import com.example.rentify.data.local.dao.CatalogDao
 import com.example.rentify.data.local.entities.PropiedadEntity
 import com.example.rentify.data.local.entities.ComunaEntity
+import com.example.rentify.data.remote.ApiResult
+import com.example.rentify.data.repository.PropertyRemoteRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -15,10 +17,12 @@ import kotlin.math.*
 
 /**
  * ViewModel para gestión de propiedades con ubicación GPS
+ * ✅ ACTUALIZADO: Integrado con PropertyService remoto
  */
 class PropiedadViewModel(
     private val propiedadDao: PropiedadDao,
-    private val catalogDao: CatalogDao
+    private val catalogDao: CatalogDao,
+    private val remoteRepository: PropertyRemoteRepository  // ✅ AGREGADO
 ) : ViewModel() {
 
     // Estado de las propiedades
@@ -53,42 +57,101 @@ class PropiedadViewModel(
     }
 
     /**
-     * Carga todas las propiedades activas y calcula distancias
+     * ✅ ACTUALIZADO: Carga propiedades desde el backend remoto
      */
     fun cargarPropiedadesCercanas() {
         viewModelScope.launch {
             _isLoading.value = true
 
-            // Obtener propiedades activas
-            val propiedades = propiedadDao.getPropiedadesActivas()
+            try {
+                // ✅ Llamar al backend remoto
+                when (val result = remoteRepository.listarTodasPropiedades(includeDetails = true)) {
+                    is ApiResult.Success -> {
+                        // Mapear DTOs remotos a entidades locales
+                        val ubicacion = _ubicacionUsuario.value
 
-            // Obtener ubicación del usuario
-            val ubicacion = _ubicacionUsuario.value
+                        val propiedadesConDistancia = result.data.map { dto ->
+                            // Buscar o crear entidad local
+                            val entidadLocal = propiedadDao.getById(dto.id ?: 0L)
+                                ?: mapearRemotoALocal(dto)
 
-            // Si hay ubicación, calcular distancias
-            val propiedadesConDistancia = if (ubicacion != null) {
-                propiedades.map { propiedad ->
-                    val comuna = catalogDao.getComunaById(propiedad.comuna_id)
-                    val coordenadas = obtenerCoordenadasComuna(comuna?.nombre ?: "")
-                    val distancia = calcularDistancia(
-                        ubicacion.latitud,
-                        ubicacion.longitud,
-                        coordenadas.first,
-                        coordenadas.second
-                    )
-                    PropiedadConDistancia(propiedad, distancia, comuna?.nombre)
-                }.sortedBy { it.distanciaKm } // Ordenar por cercanía
-            } else {
-                // Sin ubicación, mostrar todas sin orden específico
-                propiedades.map { propiedad ->
-                    val comuna = catalogDao.getComunaById(propiedad.comuna_id)
-                    PropiedadConDistancia(propiedad, null, comuna?.nombre)
+                            // Calcular distancia si hay ubicación
+                            val nombreComuna = dto.comuna?.nombre ?: "Desconocida"
+                            val coordenadas = obtenerCoordenadasComuna(nombreComuna)
+                            val distancia = if (ubicacion != null) {
+                                calcularDistancia(
+                                    ubicacion.latitud,
+                                    ubicacion.longitud,
+                                    coordenadas.first,
+                                    coordenadas.second
+                                )
+                            } else null
+
+                            PropiedadConDistancia(entidadLocal, distancia, nombreComuna)
+                        }.sortedBy { it.distanciaKm }
+
+                        _propiedades.value = propiedadesConDistancia
+                    }
+                    is ApiResult.Error -> {
+                        // ✅ Fallback: Cargar desde BD local
+                        cargarPropiedadesLocales()
+                    }
+                    is ApiResult.Loading -> { /* No hacer nada */ }
                 }
+            } catch (e: Exception) {
+                // Fallback: Cargar desde BD local
+                cargarPropiedadesLocales()
+            } finally {
+                _isLoading.value = false
             }
-
-            _propiedades.value = propiedadesConDistancia
-            _isLoading.value = false
         }
+    }
+
+    /**
+     * ✅ NUEVO: Fallback para cargar propiedades desde BD local
+     */
+    private suspend fun cargarPropiedadesLocales() {
+        val propiedades = propiedadDao.getPropiedadesActivas()
+        val ubicacion = _ubicacionUsuario.value
+
+        val propiedadesConDistancia = propiedades.map { propiedad ->
+            val comuna = catalogDao.getComunaById(propiedad.comuna_id)
+            val coordenadas = obtenerCoordenadasComuna(comuna?.nombre ?: "")
+            val distancia = if (ubicacion != null) {
+                calcularDistancia(
+                    ubicacion.latitud,
+                    ubicacion.longitud,
+                    coordenadas.first,
+                    coordenadas.second
+                )
+            } else null
+            PropiedadConDistancia(propiedad, distancia, comuna?.nombre)
+        }.sortedBy { it.distanciaKm }
+
+        _propiedades.value = propiedadesConDistancia
+    }
+
+    /**
+     * ✅ NUEVO: Mapea DTO remoto a entidad local
+     */
+    private fun mapearRemotoALocal(dto: com.example.rentify.data.remote.dto.PropertyRemoteDTO): PropiedadEntity {
+        return PropiedadEntity(
+            id = dto.id ?: 0L,
+            codigo = dto.codigo,
+            titulo = dto.titulo,
+            precio_mensual = dto.precioMensual.toInt(),
+            divisa = dto.divisa,
+            m2 = dto.m2,
+            n_habit = dto.nHabit,
+            n_banos = dto.nBanos,
+            pet_friendly = dto.petFriendly,
+            direccion = dto.direccion,
+            fcreacion = System.currentTimeMillis(),
+            estado_id = 1L,
+            tipo_id = dto.tipoId,
+            comuna_id = dto.comunaId,
+            propietario_id = 0L  // No usado en visualización
+        )
     }
 
     /**

@@ -3,83 +3,100 @@ package com.example.rentify
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.rentify.data.local.RentifyDatabase
-import com.example.rentify.data.repository.RentifyUserRepository
+import com.example.rentify.data.repository.ApplicationRemoteRepository
+import com.example.rentify.data.repository.PropertyRemoteRepository
+import com.example.rentify.data.repository.UserRemoteRepository
 import com.example.rentify.navigation.AppNavGraph
 import com.example.rentify.ui.theme.RentifyTheme
 import com.example.rentify.ui.viewmodel.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
-            AppRoot()
-        }
-    }
-}
+            RentifyTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    val navController = rememberNavController()
+                    val db = RentifyDatabase.getInstance(applicationContext)
 
-@Composable
-fun AppRoot() {
-    val context = LocalContext.current.applicationContext
+                    // ==================== REPOSITORIOS ====================
 
+                    // User Remote Repository (para autenticación)
+                    val userRemoteRepository = UserRemoteRepository()
 
-    // ====== Construcción de dependencias (DI manual) ======
-    val db = RentifyDatabase.getInstance(context)
-    val usuarioDao = db.usuarioDao()
-    val catalogDao = db.catalogDao()
-    val propiedadDao = db.propiedadDao()
-    val solicitudDao = db.solicitudDao()
+                    // ✅ CORREGIDO: Application Remote Repository
+                    val applicationRemoteRepository = ApplicationRemoteRepository(
+                        solicitudDao = db.solicitudDao(),
+                        catalogDao = db.catalogDao()
+                    )
 
-    val userRepository = RentifyUserRepository(usuarioDao, catalogDao)
+                    val propertyRemoteRepository = PropertyRemoteRepository()
 
-    // ViewModel de autenticación
-    val authViewModel: RentifyAuthViewModel = viewModel(
-        factory = RentifyAuthViewModelFactory(userRepository)
-    )
+                    // ==================== VIEWMODELS ====================
 
-    // ViewModel de propiedades (GPS)
-    val propiedadViewModel: PropiedadViewModel = viewModel(
-        factory = PropiedadViewModelFactory(propiedadDao, catalogDao)
-    )
+                    // Auth ViewModel
+                    val authViewModel: RentifyAuthViewModel = viewModel(
+                        factory = RentifyAuthViewModelFactory(userRemoteRepository)
+                    )
 
-    // ViewModel de detalle de propiedad
-    val propiedadDetalleViewModel: PropiedadDetalleViewModel = viewModel(
-        factory = PropiedadDetalleViewModelFactory(propiedadDao, catalogDao)
-    )
+                    // Propiedad ViewModel
+                    val propiedadViewModel: PropiedadViewModel = viewModel(
+                        factory = PropiedadViewModelFactory(
+                            db.propiedadDao(),
+                            db.catalogDao(),
+                            propertyRemoteRepository  // ✅ AGREGAR
+                        )
+                    )
 
-    // ViewModel de solicitudes
-    val solicitudesViewModel: SolicitudesViewModel = viewModel(
-        factory = SolicitudesViewModelFactory(solicitudDao, propiedadDao, catalogDao)
-    )
+                    // Propiedad Detalle ViewModel
+                    val propiedadDetalleViewModel: PropiedadDetalleViewModel = viewModel(
+                        factory = PropiedadDetalleViewModelFactory(
+                            db.propiedadDao(),
+                            db.catalogDao()
+                        )
+                    )
 
-    // ViewModel de perfil de usuario
-    val perfilViewModel: PerfilUsuarioViewModel = viewModel(
-        factory = PerfilUsuarioViewModelFactory(usuarioDao, catalogDao, solicitudDao)
-    )
+                    // ✅ CORREGIDO: Solicitudes ViewModel con remote repository
+                    val solicitudesViewModel: SolicitudesViewModel = viewModel(
+                        factory = SolicitudesViewModelFactory(
+                            db.solicitudDao(),
+                            db.propiedadDao(),
+                            db.catalogDao(),
+                            applicationRemoteRepository  // ✅ AÑADIDO
+                        )
+                    )
 
-    // ====== Navegación ======
-    val navController = rememberNavController()
+                    // Perfil ViewModel
+                    val perfilViewModel: PerfilUsuarioViewModel = viewModel(
+                        factory = PerfilUsuarioViewModelFactory(
+                            db.usuarioDao(),
+                            db.catalogDao(),
+                            db.solicitudDao()
+                        )
+                    )
 
-    RentifyTheme {
-        Surface(color = MaterialTheme.colorScheme.background) {
-            AppNavGraph(
-                navController = navController,
-                authViewModel = authViewModel,
-                propiedadViewModel = propiedadViewModel,
-                propiedadDetalleViewModel = propiedadDetalleViewModel,
-                solicitudesViewModel = solicitudesViewModel,
-                perfilViewModel = perfilViewModel
-            )
+                    // ==================== NAVEGACIÓN ====================
+
+                    AppNavGraph(
+                        navController = navController,
+                        authViewModel = authViewModel,
+                        propiedadViewModel = propiedadViewModel,
+                        propiedadDetalleViewModel = propiedadDetalleViewModel,
+                        solicitudesViewModel = solicitudesViewModel,
+                        perfilViewModel = perfilViewModel
+                    )
+                }
+            }
         }
     }
 }

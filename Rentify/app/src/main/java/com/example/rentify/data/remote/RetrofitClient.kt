@@ -6,24 +6,25 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.text.SimpleDateFormat
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 /**
  * Cliente Retrofit para comunicación con microservicios de Rentify
- * Singleton pattern para reutilizar instancias
+ * ✅ CORREGIDO: Gson configurado para manejar fechas correctamente
  */
 object RetrofitClient {
 
     // ==================== CONFIGURACIÓN DE URLs ====================
     // ⚠️ IMPORTANTE: Cambiar estas URLs según tu entorno
-
     // Para emulador Android: usar 10.0.2.2 en lugar de localhost
-    // Para dispositivo físico: usar la IP de tu PC en la red local (ej: 192.168.1.100)
+    // Para dispositivo físico: usar la IP de tu PC en la red local
 
     private const val BASE_URL_USER_SERVICE = "http://10.0.2.2:8081/"
     private const val BASE_URL_PROPERTY_SERVICE = "http://10.0.2.2:8082/"
     private const val BASE_URL_DOCUMENT_SERVICE = "http://10.0.2.2:8083/"
-    private const val BASE_URL_APPLICATION_SERVICE = "http://10.0.2.2:8084/"  // ✅ NUEVO
+    private const val BASE_URL_APPLICATION_SERVICE = "http://10.0.2.2:8084/"
     private const val BASE_URL_CONTACT_SERVICE = "http://10.0.2.2:8085/"
     private const val BASE_URL_REVIEW_SERVICE = "http://10.0.2.2:8086/"
 
@@ -41,10 +42,11 @@ object RetrofitClient {
         .build()
 
     // ==================== CONFIGURACIÓN DE GSON ====================
+    // ✅ CORREGIDO: Formato de fecha compatible con backend Spring Boot
 
     private val gson = GsonBuilder()
         .setLenient()
-        .setDateFormat("yyyy-MM-dd'T'HH:mm:ss")
+        .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")  // ✅ Formato ISO 8601 completo
         .create()
 
     // ==================== FUNCIÓN HELPER PARA CREAR RETROFIT ====================
@@ -84,12 +86,14 @@ object RetrofitClient {
     }
 
     /**
-     * Application Service API (Puerto 8084) ✅ NUEVO
+     * Application Service API (Puerto 8084) ✅ CORREGIDO
      * Gestión de solicitudes y registros de arriendo
      */
     val applicationServiceApi: ApplicationServiceApi by lazy {
         createRetrofit(BASE_URL_APPLICATION_SERVICE).create(ApplicationServiceApi::class.java)
     }
+
+
 
     /**
      * Contact Service API (Puerto 8085)
