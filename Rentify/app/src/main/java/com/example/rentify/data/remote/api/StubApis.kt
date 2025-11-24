@@ -32,10 +32,7 @@ interface PropertyServiceApi {
  * Document Service API (Puerto 8083)
  * TODO: Implementar cuando integremos Document Service
  */
-interface DocumentServiceApi {
-    // Endpoints temporalmente vacíos
-    // Se implementarán en la siguiente fase
-}
+
 
 /**
  * Contact Service API (Puerto 8085)

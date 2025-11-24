@@ -23,14 +23,14 @@ import kotlinx.coroutines.launch
         TipoResenaEntity::class,
         UsuarioEntity::class,
         PropiedadEntity::class,
-        DocumentoEntity::class,
+        DocumentoEntity::class,  // ✅ NUEVO
         FotoEntity::class,
         MasAtributosEntity::class,
         RegistroEntity::class,
         ResenaEntity::class,
         SolicitudEntity::class
     ],
-    version = 1,
+    version = 2,  // ✅ INCREMENTAR VERSIÓN
     exportSchema = false
 )
 abstract class RentifyDatabase : RoomDatabase() {
@@ -39,6 +39,7 @@ abstract class RentifyDatabase : RoomDatabase() {
     abstract fun propiedadDao(): PropiedadDao
     abstract fun catalogDao(): CatalogDao
     abstract fun solicitudDao(): SolicitudDao
+    abstract fun documentoDao(): DocumentoDao  // ✅ NUEVO
 
     companion object {
         @Volatile
@@ -93,7 +94,6 @@ abstract class RentifyDatabase : RoomDatabase() {
                 val comunaNunoa = catalogDao.insertComuna(ComunaEntity(nombre = "Ñuñoa", region_id = regionRM))
                 val comunaMaipu = catalogDao.insertComuna(ComunaEntity(nombre = "Maipú", region_id = regionRM))
                 val comunaVinaDelMar = catalogDao.insertComuna(ComunaEntity(nombre = "Viña del Mar", region_id = regionRM))
-
                 val comunaProvidencia = catalogDao.insertComuna(ComunaEntity(nombre = "Providencia", region_id = regionRM))
 
                 // ====== TIPOS ======
@@ -101,13 +101,15 @@ abstract class RentifyDatabase : RoomDatabase() {
                 val tipoCasa = catalogDao.insertTipo(TipoEntity(nombre = "Casa"))
                 val tipoEstudio = catalogDao.insertTipo(TipoEntity(nombre = "Studio"))
 
-
-
                 catalogDao.insertCategoria(CategoriaEntity(nombre = "Amoblado"))
                 catalogDao.insertCategoria(CategoriaEntity(nombre = "Pet-Friendly"))
 
+                // ✅ TIPOS DE DOCUMENTOS (NUEVO)
                 catalogDao.insertTipoDoc(TipoDocEntity(nombre = "Cédula Identidad"))
                 catalogDao.insertTipoDoc(TipoDocEntity(nombre = "Liquidación Sueldo"))
+                catalogDao.insertTipoDoc(TipoDocEntity(nombre = "Certificado Antecedentes"))
+                catalogDao.insertTipoDoc(TipoDocEntity(nombre = "Certificado AFP"))
+                catalogDao.insertTipoDoc(TipoDocEntity(nombre = "Contrato Trabajo"))
 
                 catalogDao.insertTipoResena(TipoResenaEntity(nombre = "Reseña Propiedad"))
 
@@ -192,7 +194,6 @@ abstract class RentifyDatabase : RoomDatabase() {
                     )
                 )
 
-                // Dpto 2D/2B - Ñuñoa
                 propiedadDao.insert(
                     PropiedadEntity(
                         codigo = "DP002",
@@ -212,7 +213,6 @@ abstract class RentifyDatabase : RoomDatabase() {
                     )
                 )
 
-                // Casa 3D/2B - Maipú
                 propiedadDao.insert(
                     PropiedadEntity(
                         codigo = "CASA001",
@@ -232,7 +232,6 @@ abstract class RentifyDatabase : RoomDatabase() {
                     )
                 )
 
-              // Studio - Santiago Centro
                 propiedadDao.insert(
                     PropiedadEntity(
                         codigo = "ST001",
@@ -252,7 +251,6 @@ abstract class RentifyDatabase : RoomDatabase() {
                     )
                 )
 
-               // Dpto Temporal - Viña del Mar
                 propiedadDao.insert(
                     PropiedadEntity(
                         codigo = "AT001",
@@ -271,7 +269,6 @@ abstract class RentifyDatabase : RoomDatabase() {
                         propietario_id = propietarioId
                     )
                 )
-
 
             } catch (e: Exception) {
                 e.printStackTrace()
