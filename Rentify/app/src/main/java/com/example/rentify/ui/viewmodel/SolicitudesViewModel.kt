@@ -6,6 +6,8 @@ import com.example.rentify.data.local.dao.SolicitudDao
 import com.example.rentify.data.local.dao.PropiedadDao
 import com.example.rentify.data.local.dao.CatalogDao
 import com.example.rentify.data.local.entities.SolicitudEntity
+import com.example.rentify.data.remote.RetrofitClient
+import com.example.rentify.data.remote.dto.SolicitudArriendoDTO
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -76,58 +78,48 @@ class SolicitudesViewModel(
     /**
      * Crear una nueva solicitud
      */
-    fun crearSolicitud(
+    // En SolicitudesViewModel.kt - REEMPLAZAR el método crearSolicitud
+
+    fun crearSolicitudRemota(
         usuarioId: Long,
-        propiedadId: Long,
-        mesesArriendo: Int = 1
+        propiedadId: Long
     ) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMsg.value = null
-            _solicitudCreada.value = false
 
             try {
-
-                // Validar límite de 3 solicitudes activas
-                val estadoPendiente = catalogDao.getEstadoByNombre("Pendiente")
-                    ?: throw IllegalStateException("Estado 'Pendiente' no encontrado")
-
-                val activas = solicitudDao.countSolicitudesActivas(
-                    usuarioId,
-                    estadoPendiente.id
+                // Llamada directa a la API
+                val solicitudDTO = SolicitudArriendoDTO(
+                    usuarioId = usuarioId,
+                    propiedadId = propiedadId
                 )
 
-                if (activas >= 3) {
-                    _errorMsg.value = "Ya tienes el máximo de 3 solicitudes activas"
-                    return@launch
+                val response = RetrofitClient.applicationServiceApi.crearSolicitud(solicitudDTO)
+
+                if (response.isSuccessful && response.body() != null) {
+                    val solicitudCreada = response.body()!!
+
+                    // Guardar en BD local
+                    val entity = SolicitudEntity(
+                        id = solicitudCreada.id ?: 0L,
+                        fsolicitud = System.currentTimeMillis(),
+                        total = 0, // Calcular según tu lógica
+                        usuarios_id = usuarioId,
+                        estado_id = 1L, // PENDIENTE
+                        propiedad_id = propiedadId
+                    )
+
+                    solicitudDao.insert(entity)
+                    _solicitudCreada.value = true
+
+                    // Recargar solicitudes
+                    cargarSolicitudesUsuario(usuarioId)
+                } else {
+                    _errorMsg.value = "Error al crear solicitud: ${response.message()}"
                 }
-
-                // Obtener datos de la propiedad
-                val propiedad = propiedadDao.getById(propiedadId)
-                    ?: throw IllegalStateException("Propiedad no encontrada")
-
-                // Cálculo del total
-                val canon = propiedad.precio_mensual * mesesArriendo
-                val garantia = propiedad.precio_mensual
-                val comision = (propiedad.precio_mensual * 0.10).toInt()
-                val total = canon + garantia + comision
-
-                // Crear nueva solicitud
-                val solicitud = SolicitudEntity(
-                    fsolicitud = System.currentTimeMillis(),
-                    total = total,
-                    usuarios_id = usuarioId,
-                    estado_id = estadoPendiente.id,
-                    propiedad_id = propiedadId
-                )
-
-                solicitudDao.insert(solicitud)
-                _solicitudCreada.value = true
-
-                cargarSolicitudesUsuario(usuarioId)
-
             } catch (e: Exception) {
-                _errorMsg.value = "Error al crear solicitud: ${e.message}"
+                _errorMsg.value = "Error de conexión: ${e.message}"
             } finally {
                 _isLoading.value = false
             }

@@ -39,6 +39,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true  // ✅ NUEVO: Habilitar BuildConfig
     }
 }
 
@@ -72,7 +73,20 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("com.google.android.gms:play-services-location:21.1.0")
-
     implementation("androidx.core:core-splashscreen:1.0.1")
 
+    // ========== ✅ NUEVAS DEPENDENCIAS DE RED ==========
+    // Retrofit para llamadas HTTP REST
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
+    // OkHttp para logging e interceptores
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    // Gson para serialización JSON
+    implementation("com.google.code.gson:gson:2.10.1")
+
+    // Coroutines para llamadas asíncronas
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 }

@@ -3,8 +3,9 @@ package com.example.rentify.ui.viewmodel
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.rentify.data.local.entities.UsuarioEntity
-import com.example.rentify.data.repository.RentifyUserRepository
+import com.example.rentify.data.remote.ApiResult
+import com.example.rentify.data.remote.dto.UsuarioRemoteDTO
+import com.example.rentify.data.repository.UserRemoteRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -36,7 +37,7 @@ data class RegisterUiState(
     val pass: String = "",
     val confirm: String = "",
     val codigoReferido: String = "",
-    val rolSeleccionado: String? = null, // ✅ agregado
+    val rolSeleccionado: String? = null,
     // Errores
     val pnombreError: String? = null,
     val snombreError: String? = null,
@@ -59,7 +60,7 @@ data class RegisterUiState(
 // ==================== VIEWMODEL ====================
 
 class RentifyAuthViewModel(
-    private val repository: RentifyUserRepository
+    private val remoteRepository: UserRemoteRepository
 ) : ViewModel() {
 
     private val _login = MutableStateFlow(LoginUiState())
@@ -68,8 +69,8 @@ class RentifyAuthViewModel(
     private val _register = MutableStateFlow(RegisterUiState())
     val register: StateFlow<RegisterUiState> = _register
 
-    private var loggedUser: UsuarioEntity? = null
-    fun getLoggedUser(): UsuarioEntity? = loggedUser
+    private var loggedUser: UsuarioRemoteDTO? = null
+    fun getLoggedUser(): UsuarioRemoteDTO? = loggedUser
 
     // ==================== LOGIN ====================
 
@@ -96,24 +97,27 @@ class RentifyAuthViewModel(
         viewModelScope.launch {
             _login.update { it.copy(isSubmitting = true, errorMsg = null, success = false) }
 
-            try {
-                val result = repository.login(s.email.trim(), s.pass)
-                _login.update {
-                    if (result.isSuccess) {
-                        loggedUser = result.getOrNull()
-                        it.copy(isSubmitting = false, success = true, errorMsg = null)
-                    } else {
+            when (val result = remoteRepository.login(s.email.trim(), s.pass)) {
+                is ApiResult.Success -> {
+                    loggedUser = result.data.usuario
+                    _login.update {
                         it.copy(
                             isSubmitting = false,
-                            success = false,
-                            errorMsg = result.exceptionOrNull()?.message ?: "Credenciales inválidas"
+                            success = true,
+                            errorMsg = null
                         )
                     }
                 }
-            } catch (e: Exception) {
-                _login.update {
-                    it.copy(isSubmitting = false, success = false, errorMsg = "Error de conexión: ${e.message}")
+                is ApiResult.Error -> {
+                    _login.update {
+                        it.copy(
+                            isSubmitting = false,
+                            success = false,
+                            errorMsg = result.message
+                        )
+                    }
                 }
+                is ApiResult.Loading -> { /* No usado aquí */ }
             }
         }
     }
@@ -227,6 +231,7 @@ class RentifyAuthViewModel(
 
     fun onRolChange(rol: String) {
         _register.update { it.copy(rolSeleccionado = rol) }
+        recomputeRegisterCanSubmit()
     }
 
     private fun recomputeRegisterCanSubmit() {
@@ -242,52 +247,67 @@ class RentifyAuthViewModel(
                 s.email.isNotBlank() && s.rut.isNotBlank() &&
                 s.telefono.isNotBlank() && s.pass.isNotBlank() && s.confirm.isNotBlank()
 
-        // Validar que el rol esté seleccionado y sea válido
         val rolValido = !s.rolSeleccionado.isNullOrBlank() &&
                 (s.rolSeleccionado == "Arrendatario" || s.rolSeleccionado == "Propietario")
 
         _register.update { it.copy(canSubmit = noErrors && filled && rolValido) }
     }
 
-
     fun submitRegister() {
         val s = _register.value
         if (s.rolSeleccionado.isNullOrBlank()) {
-            _register.update { it.copy(errorMsg = "Debes seleccionar un rol (Arrendatario o Propietario)") }
+            _register.update { it.copy(errorMsg = "Debes seleccionar un rol") }
             return
         }
         if (!s.canSubmit || s.isSubmitting) return
 
         viewModelScope.launch {
             _register.update { it.copy(isSubmitting = true, errorMsg = null, success = false) }
-            try {
-                val fechaNacimientoTimestamp = parseFecha(s.fechaNacimiento.text)
-                if (fechaNacimientoTimestamp == null) {
-                    _register.update { it.copy(isSubmitting = false, errorMsg = "Fecha de nacimiento inválida") }
-                    return@launch
-                }
 
-                val result = repository.register(
-                    pnombre = s.pnombre.trim(),
-                    snombre = s.snombre.trim(),
-                    papellido = s.papellido.trim(),
-                    fnacimiento = fechaNacimientoTimestamp,
-                    email = s.email.trim(),
-                    rut = s.rut.trim(),
-                    ntelefono = s.telefono.trim(),
-                    password = s.pass,
-                    rolSeleccionado = s.rolSeleccionado ?: "usuario"
-                )
+            // Convertir fecha DD/MM/YYYY a yyyy-MM-dd
+            val fechaISO = convertirFechaAISO(s.fechaNacimiento.text)
+            if (fechaISO == null) {
+                _register.update { it.copy(isSubmitting = false, errorMsg = "Fecha de nacimiento inválida") }
+                return@launch
+            }
 
-                _register.update {
-                    if (result.isSuccess) it.copy(isSubmitting = false, success = true, errorMsg = null)
-                    else it.copy(isSubmitting = false, success = false,
-                        errorMsg = result.exceptionOrNull()?.message ?: "No se pudo registrar")
+            // Mapear rol a ID
+            val rolId = when (s.rolSeleccionado) {
+                "Arrendatario" -> 3L
+                "Propietario" -> 2L
+                else -> 3L
+            }
+
+            when (val result = remoteRepository.registrarUsuario(
+                pnombre = s.pnombre.trim(),
+                snombre = s.snombre.trim(),
+                papellido = s.papellido.trim(),
+                fnacimiento = fechaISO,
+                email = s.email.trim(),
+                rut = s.rut.trim(),
+                ntelefono = s.telefono.trim(),
+                clave = s.pass,
+                rolId = rolId
+            )) {
+                is ApiResult.Success -> {
+                    _register.update {
+                        it.copy(
+                            isSubmitting = false,
+                            success = true,
+                            errorMsg = null
+                        )
+                    }
                 }
-            } catch (e: Exception) {
-                _register.update {
-                    it.copy(isSubmitting = false, success = false, errorMsg = "Error al registrar: ${e.message}")
+                is ApiResult.Error -> {
+                    _register.update {
+                        it.copy(
+                            isSubmitting = false,
+                            success = false,
+                            errorMsg = result.message
+                        )
+                    }
                 }
+                is ApiResult.Loading -> { /* No usado aquí */ }
             }
         }
     }
@@ -297,8 +317,15 @@ class RentifyAuthViewModel(
     }
 
     suspend fun getRoleName(rolId: Long?): String {
-        return repository.getRoleName(rolId)
+        return when (rolId) {
+            1L -> "Administrador"
+            2L -> "Propietario"
+            3L -> "Arrendatario"
+            else -> "Sin Rol"
+        }
     }
+
+    // ==================== HELPERS ====================
 
     private fun parseFecha(fecha: String): Long? {
         return try {
@@ -308,13 +335,23 @@ class RentifyAuthViewModel(
         } catch (e: Exception) { null }
     }
 
-    // ==================== VALIDACIONES SIMPLES ====================
+    private fun convertirFechaAISO(fechaDDMMYYYY: String): String? {
+        return try {
+            val sdfInput = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+            val sdfOutput = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val date = sdfInput.parse(fechaDDMMYYYY) ?: return null
+            sdfOutput.format(date)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     private fun validateEmail(email: String) = if (email.contains("@")) null else "Email inválido"
     private fun validateName(name: String) = if (name.isNotBlank()) null else "Nombre obligatorio"
     private fun validateRut(rut: String) = if (rut.isNotBlank()) null else "Rut obligatorio"
     private fun validatePhoneChileno(phone: String) = if (phone.isNotBlank()) null else "Teléfono obligatorio"
-    private fun validateStrongPassword(pass: String) = if (pass.length >= 6) null else "Contraseña débil"
+    private fun validateStrongPassword(pass: String) = if (pass.length >= 8) null else "Mínimo 8 caracteres"
     private fun validateConfirm(pass: String, confirm: String) = if (pass == confirm) null else "No coincide"
-    private fun validateCodigoReferido(code: String) = if (code.length >= 6) null else "Código inválido"
-    private fun validateFechaNacimiento(timestamp: Long) = null // placeholder
+    private fun validateCodigoReferido(code: String): String? = null // Opcional
+    private fun validateFechaNacimiento(timestamp: Long) = null // Placeholder
 }
