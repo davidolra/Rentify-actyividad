@@ -1,6 +1,7 @@
 package com.example.rentify.data.local
 
 import android.content.Context
+import android.util.Log
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -11,6 +12,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+/**
+ * ✅ CORREGIDO: Base de datos con poblado automático GARANTIZADO
+ */
 @Database(
     entities = [
         RolEntity::class,
@@ -23,14 +27,14 @@ import kotlinx.coroutines.launch
         TipoResenaEntity::class,
         UsuarioEntity::class,
         PropiedadEntity::class,
-        DocumentoEntity::class,  // ✅ NUEVO
+        DocumentoEntity::class,
         FotoEntity::class,
         MasAtributosEntity::class,
         RegistroEntity::class,
         ResenaEntity::class,
         SolicitudEntity::class
     ],
-    version = 2,  // ✅ INCREMENTAR VERSIÓN
+    version = 3,  // ✅ INCREMENTADA para forzar recreación
     exportSchema = false
 )
 abstract class RentifyDatabase : RoomDatabase() {
@@ -39,9 +43,11 @@ abstract class RentifyDatabase : RoomDatabase() {
     abstract fun propiedadDao(): PropiedadDao
     abstract fun catalogDao(): CatalogDao
     abstract fun solicitudDao(): SolicitudDao
-    abstract fun documentoDao(): DocumentoDao  // ✅ NUEVO
+    abstract fun documentoDao(): DocumentoDao
 
     companion object {
+        private const val TAG = "RentifyDatabase"
+
         @Volatile
         private var INSTANCE: RentifyDatabase? = null
 
@@ -52,69 +58,126 @@ abstract class RentifyDatabase : RoomDatabase() {
                     RentifyDatabase::class.java,
                     "rentify_database"
                 )
-                    .fallbackToDestructiveMigration()
-                    .addCallback(object : RoomDatabase.Callback() {
-                        override fun onCreate(db: SupportSQLiteDatabase) {
-                            super.onCreate(db)
-                            INSTANCE?.let { database ->
-                                CoroutineScope(Dispatchers.IO).launch {
-                                    poblarDatosIniciales(database)
-                                }
-                            }
-                        }
-                    })
+                    .fallbackToDestructiveMigration()  // ✅ Recrear si hay cambios
+                    .addCallback(DatabaseCallback())    // ✅ Callback para poblar
                     .build()
+
                 INSTANCE = instance
+
+                // ✅ FORZAR POBLADO INMEDIATO EN PRIMER ACCESO
+                CoroutineScope(Dispatchers.IO).launch {
+                    verificarYPoblarDatos(instance)
+                }
+
                 instance
             }
         }
 
+        /**
+         * ✅ NUEVO: Callback que se ejecuta cuando la BD se crea
+         */
+        private class DatabaseCallback : RoomDatabase.Callback() {
+            override fun onCreate(db: SupportSQLiteDatabase) {
+                super.onCreate(db)
+                Log.d(TAG, "✅ Base de datos creada - Iniciando poblado automático")
+
+                INSTANCE?.let { database ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        Log.d(TAG, "Poblando datos iniciales...")
+                        poblarDatosIniciales(database)
+                    }
+                }
+            }
+        }
+
+        /**
+         * ✅ NUEVO: Verificar si la BD está vacía y poblar si es necesario
+         */
+        private suspend fun verificarYPoblarDatos(db: RentifyDatabase) {
+            try {
+                val catalogDao = db.catalogDao()
+                val estadosExistentes = catalogDao.getAllEstados()
+
+                if (estadosExistentes.isEmpty()) {
+                    Log.d(TAG, "⚠Base de datos vacía detectada - Poblando datos...")
+                    poblarDatosIniciales(db)
+                } else {
+                    Log.d(TAG, " Base de datos ya contiene datos (${estadosExistentes.size} estados)")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error al verificar datos: ${e.message}", e)
+            }
+        }
+
+        /**
+         * ✅ MEJORADO: Poblado de datos con mejor manejo de errores
+         */
         private suspend fun poblarDatosIniciales(db: RentifyDatabase) {
             val catalogDao = db.catalogDao()
             val usuarioDao = db.usuarioDao()
             val propiedadDao = db.propiedadDao()
 
-            if (catalogDao.getAllEstados().isNotEmpty()) return
-
             try {
+                Log.d(TAG, "Insertando Estados...")
                 val estadoActivo = catalogDao.insertEstado(EstadoEntity(nombre = "Activo"))
                 catalogDao.insertEstado(EstadoEntity(nombre = "Inactivo"))
                 catalogDao.insertEstado(EstadoEntity(nombre = "Pendiente"))
                 catalogDao.insertEstado(EstadoEntity(nombre = "Aprobado"))
                 catalogDao.insertEstado(EstadoEntity(nombre = "Rechazado"))
+                Log.d(TAG, "Estados insertados")
 
+                Log.d(TAG, "Insertando Roles...")
                 val rolAdmin = catalogDao.insertRol(RolEntity(nombre = "Administrador"))
                 val rolPropietario = catalogDao.insertRol(RolEntity(nombre = "Propietario"))
                 val rolArrendatario = catalogDao.insertRol(RolEntity(nombre = "Arrendatario"))
+                Log.d(TAG, "Roles insertados")
 
+                Log.d(TAG, "Insertando Regiones...")
                 val regionRM = catalogDao.insertRegion(RegionEntity(nombre = "Región Metropolitana"))
+                val regionValpo = catalogDao.insertRegion(RegionEntity(nombre = "Región de Valparaíso"))
+                Log.d(TAG, "Regiones insertadas")
 
-                // ====== COMUNAS ======
+                Log.d(TAG, "Insertando Comunas...")
                 val comunaSantiago = catalogDao.insertComuna(ComunaEntity(nombre = "Santiago", region_id = regionRM))
                 val comunaNunoa = catalogDao.insertComuna(ComunaEntity(nombre = "Ñuñoa", region_id = regionRM))
                 val comunaMaipu = catalogDao.insertComuna(ComunaEntity(nombre = "Maipú", region_id = regionRM))
-                val comunaVinaDelMar = catalogDao.insertComuna(ComunaEntity(nombre = "Viña del Mar", region_id = regionRM))
+                val comunaVinaDelMar = catalogDao.insertComuna(ComunaEntity(nombre = "Viña del Mar", region_id = regionValpo))
                 val comunaProvidencia = catalogDao.insertComuna(ComunaEntity(nombre = "Providencia", region_id = regionRM))
+                val comunaLasCondes = catalogDao.insertComuna(ComunaEntity(nombre = "Las Condes", region_id = regionRM))
+                Log.d(TAG, "Comunas insertadas")
 
-                // ====== TIPOS ======
+                Log.d(TAG, "Insertando Tipos de Propiedad...")
                 val tipoDepartamento = catalogDao.insertTipo(TipoEntity(nombre = "Departamento"))
                 val tipoCasa = catalogDao.insertTipo(TipoEntity(nombre = "Casa"))
                 val tipoEstudio = catalogDao.insertTipo(TipoEntity(nombre = "Studio"))
+                Log.d(TAG, "Tipos insertados")
 
+                Log.d(TAG, "Insertando Categorías...")
                 catalogDao.insertCategoria(CategoriaEntity(nombre = "Amoblado"))
                 catalogDao.insertCategoria(CategoriaEntity(nombre = "Pet-Friendly"))
+                catalogDao.insertCategoria(CategoriaEntity(nombre = "Con Estacionamiento"))
+                catalogDao.insertCategoria(CategoriaEntity(nombre = "Con Terraza"))
+                Log.d(TAG, "Categorías insertadas")
 
-                // ✅ TIPOS DE DOCUMENTOS (NUEVO)
+                Log.d(TAG, "Insertando Tipos de Documentos...")
                 catalogDao.insertTipoDoc(TipoDocEntity(nombre = "Cédula Identidad"))
                 catalogDao.insertTipoDoc(TipoDocEntity(nombre = "Liquidación Sueldo"))
                 catalogDao.insertTipoDoc(TipoDocEntity(nombre = "Certificado Antecedentes"))
                 catalogDao.insertTipoDoc(TipoDocEntity(nombre = "Certificado AFP"))
                 catalogDao.insertTipoDoc(TipoDocEntity(nombre = "Contrato Trabajo"))
+                Log.d(TAG, "Tipos de documentos insertados")
 
+                Log.d(TAG, "Insertando Tipos de Reseña...")
                 catalogDao.insertTipoResena(TipoResenaEntity(nombre = "Reseña Propiedad"))
+                catalogDao.insertTipoResena(TipoResenaEntity(nombre = "Reseña Usuario"))
+                Log.d(TAG, "Tipos de reseña insertados")
 
                 val now = System.currentTimeMillis()
 
+                // ✅ USUARIOS DE PRUEBA
+                Log.d(TAG, "Insertando Usuarios de prueba...")
+
+                // Admin
                 val adminId = usuarioDao.insert(
                     UsuarioEntity(
                         pnombre = "Admin",
@@ -134,7 +197,9 @@ abstract class RentifyDatabase : RoomDatabase() {
                         rol_id = rolAdmin
                     )
                 )
+                Log.d(TAG, "Admin creado: admin@rentify.cl / Admin123!")
 
+                // Propietario
                 val propietarioId = usuarioDao.insert(
                     UsuarioEntity(
                         pnombre = "María",
@@ -154,8 +219,10 @@ abstract class RentifyDatabase : RoomDatabase() {
                         rol_id = rolPropietario
                     )
                 )
+                Log.d(TAG, "Propietario creado: maria@gmail.com / Maria123!")
 
-                usuarioDao.insert(
+                // Arrendatario
+                val arrendatarioId = usuarioDao.insert(
                     UsuarioEntity(
                         pnombre = "Carlos",
                         snombre = "Andrés",
@@ -174,6 +241,10 @@ abstract class RentifyDatabase : RoomDatabase() {
                         rol_id = rolArrendatario
                     )
                 )
+                Log.d(TAG, "Arrendatario creado: carlos@duocuc.cl / Carlos123!")
+
+                // ✅ PROPIEDADES DE PRUEBA
+                Log.d(TAG, "Insertando Propiedades de prueba...")
 
                 propiedadDao.insert(
                     PropiedadEntity(
@@ -186,6 +257,7 @@ abstract class RentifyDatabase : RoomDatabase() {
                         n_banos = 1,
                         pet_friendly = false,
                         direccion = "Av. Providencia 1234",
+                        descripcion = "Departamento moderno en el corazón de Providencia",
                         fcreacion = now,
                         estado_id = estadoActivo,
                         tipo_id = tipoDepartamento,
@@ -205,6 +277,7 @@ abstract class RentifyDatabase : RoomDatabase() {
                         n_banos = 2,
                         pet_friendly = true,
                         direccion = "Av. Irarrázaval 2500, Ñuñoa",
+                        descripcion = "Hermoso departamento pet-friendly",
                         fcreacion = now,
                         estado_id = estadoActivo,
                         tipo_id = tipoDepartamento,
@@ -224,6 +297,7 @@ abstract class RentifyDatabase : RoomDatabase() {
                         n_banos = 2,
                         pet_friendly = true,
                         direccion = "Calle Los Pinos 1234, Maipú",
+                        descripcion = "Casa amplia con patio y quincho",
                         fcreacion = now,
                         estado_id = estadoActivo,
                         tipo_id = tipoCasa,
@@ -243,6 +317,7 @@ abstract class RentifyDatabase : RoomDatabase() {
                         n_banos = 1,
                         pet_friendly = false,
                         direccion = "Calle Alameda 1000, Santiago Centro",
+                        descripcion = "Studio moderno ideal para estudiantes",
                         fcreacion = now,
                         estado_id = estadoActivo,
                         tipo_id = tipoEstudio,
@@ -262,6 +337,7 @@ abstract class RentifyDatabase : RoomDatabase() {
                         n_banos = 1,
                         pet_friendly = false,
                         direccion = "Av. Libertad 200, Viña del Mar",
+                        descripcion = "Departamento cerca de la playa",
                         fcreacion = now,
                         estado_id = estadoActivo,
                         tipo_id = tipoDepartamento,
@@ -270,8 +346,34 @@ abstract class RentifyDatabase : RoomDatabase() {
                     )
                 )
 
+                Log.d(TAG, "Propiedades insertadas")
+                Log.d(TAG, "POBLADO COMPLETO - Base de datos lista para usar")
+
             } catch (e: Exception) {
+                Log.e(TAG, " Error al poblar datos: ${e.message}", e)
                 e.printStackTrace()
+            }
+        }
+
+        /**
+         * ✅ MÉTODO PARA DEBUGGING: Verificar estado de la BD
+         */
+        suspend fun debugDatabaseState(context: Context) {
+            val db = getInstance(context)
+            try {
+                val estados = db.catalogDao().getAllEstados()
+                val roles = db.catalogDao().getAllRoles()
+                val usuarios = db.usuarioDao().getAll()
+                val propiedades = db.propiedadDao().getAll()
+
+                Log.d(TAG, "=== ESTADO DE LA BASE DE DATOS ===")
+                Log.d(TAG, "Estados: ${estados.size}")
+                Log.d(TAG, "Roles: ${roles.size}")
+                Log.d(TAG, "Usuarios: ${usuarios.size}")
+                Log.d(TAG, "Propiedades: ${propiedades.size}")
+                Log.d(TAG, "==================================")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error al verificar estado de BD: ${e.message}", e)
             }
         }
     }
