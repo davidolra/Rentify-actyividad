@@ -37,14 +37,17 @@ fun LoginScreenVm(
         if (state.success) {
             val usuario = vm.getLoggedUser()
             if (usuario != null) {
-                val rolNombre = vm.getRoleName(usuario.rol_id)
+                // ✅ CAMBIO 1: rol_id → rolId ?: 0L
+                val rolNombre = vm.getRoleName(usuario.rolId ?: 0L)
                 scope.launch {
                     userPrefs.saveUserSession(
-                        userId = usuario.id,
+                        // ✅ CAMBIO 2: id → id ?: 0L
+                        userId = usuario.id ?: 0L,
                         email = usuario.email,
                         name = "${usuario.pnombre} ${usuario.papellido}",
                         role = rolNombre,
-                        isDuocVip = usuario.duoc_vip
+                        // ✅ CAMBIO 3: duoc_vip → duocVip ?: false
+                        isDuocVip = usuario.duocVip ?: false
                     )
                 }
                 vm.clearLoginResult()
@@ -136,7 +139,7 @@ private fun LoginScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Iniciar Sesión",
+                        text = "Iniciar SesiÃ³n",
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -165,7 +168,7 @@ private fun LoginScreen(
                     OutlinedTextField(
                         value = pass,
                         onValueChange = onPassChange,
-                        label = { Text("Contraseña") },
+                        label = { Text("ContraseÃ±a") },
                         singleLine = true,
                         visualTransformation = if (showPass) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
@@ -204,7 +207,7 @@ private fun LoginScreen(
                             Spacer(Modifier.width(8.dp))
                             Text("Validando...")
                         } else {
-                            Text("Iniciar Sesión")
+                            Text("Iniciar SesiÃ³n")
                         }
                     }
 
@@ -225,7 +228,7 @@ private fun LoginScreen(
                 onClick = onGoRegister,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("¿No tienes cuenta? Regístrate")
+                Text("Â¿No tienes cuenta? RegÃ­strate")
             }
 
             Spacer(Modifier.height(24.dp))
@@ -238,7 +241,7 @@ private fun LoginScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "💡 Usuarios @duoc.cl obtienen 20% descuento en comisión de servicio",
+                        "ðŸ’¡ Usuarios @duoc.cl obtienen 20% descuento en comisiÃ³n de servicio",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )

@@ -33,12 +33,21 @@ package com.example.rentify.data.remote.api
 
 /**
  * Contact Service API (Puerto 8085)
+ * ⚠️ INTERFAZ COMENTADA - YA EXISTE EN ContactServiceApi.kt
+ *
+ * ✅ CORREGIDO: Se eliminó la redeclaración de ContactServiceApi
+ * La interfaz real está en ContactServiceApi.kt
+ *
  * TODO: Implementar cuando integremos Contact Service
  */
+/*
+❌ ELIMINADA - DUPLICADA CON ContactServiceApi.kt
+
 interface ContactServiceApi {
     // Endpoints temporalmente vacíos
     // Se implementarán en la siguiente fase
 }
+*/
 
 /**
  * Review Service API (Puerto 8086)

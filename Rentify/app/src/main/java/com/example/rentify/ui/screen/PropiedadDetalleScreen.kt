@@ -15,17 +15,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.rentify.ui.viewmodel.PropiedadDetalleViewModel
+import com.example.rentify.ui.viewmodel.ReviewViewModel  // ✅ NUEVO IMPORT
 import java.text.NumberFormat
 import java.util.*
 
 /**
  * Pantalla de detalle completo de una propiedad
+ * ✅ CORREGIDO: Agregados parámetros reviewViewModel y currentUserId
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PropiedadDetalleScreen(
     propiedadId: Long,
     vm: PropiedadDetalleViewModel,
+    reviewViewModel: ReviewViewModel,  // ✅ NUEVO PARÁMETRO
+    currentUserId: Long,                // ✅ NUEVO PARÁMETRO
     onBack: () -> Unit,
     onSolicitar: (Long) -> Unit
 ) {
@@ -136,7 +140,7 @@ fun PropiedadDetalleScreen(
                         Column(
                             modifier = Modifier.padding(16.dp)
                         ) {
-                            // ========== CÃ“DIGO Y TIPO ==========
+                            // ========== CÓDIGO Y TIPO ==========
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
@@ -167,7 +171,7 @@ fun PropiedadDetalleScreen(
 
                             Spacer(Modifier.height(16.dp))
 
-                            // ========== TÃTULO ==========
+                            // ========== TÍTULO ==========
                             Text(
                                 prop.titulo,
                                 style = MaterialTheme.typography.headlineSmall,
@@ -176,7 +180,7 @@ fun PropiedadDetalleScreen(
 
                             Spacer(Modifier.height(8.dp))
 
-                            // ========== UBICACIÃ“N ==========
+                            // ========== UBICACIÓN ==========
                             Row(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -233,9 +237,9 @@ fun PropiedadDetalleScreen(
 
                             Spacer(Modifier.height(24.dp))
 
-                            // ========== CARACTERÃSTICAS ==========
+                            // ========== CARACTERÍSTICAS ==========
                             Text(
-                                "CaracterÃ­sticas",
+                                "Características",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -245,9 +249,9 @@ fun PropiedadDetalleScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceEvenly
                             ) {
-                                CaracteristicaItem(Icons.Filled.SquareFoot, "${prop.m2} mÂ²")
+                                CaracteristicaItem(Icons.Filled.SquareFoot, "${prop.m2} m²")
                                 CaracteristicaItem(Icons.Filled.Bed, "${prop.n_habit} Dorm")
-                                CaracteristicaItem(Icons.Filled.Bathroom, "${prop.n_banos} BaÃ±os")
+                                CaracteristicaItem(Icons.Filled.Bathroom, "${prop.n_banos} Baños")
                             }
 
                             Spacer(Modifier.height(16.dp))
@@ -274,17 +278,17 @@ fun PropiedadDetalleScreen(
 
                             Spacer(Modifier.height(24.dp))
 
-                            // ========== DESCRIPCIÃ“N ==========
+                            // ========== DESCRIPCIÓN ==========
                             Text(
-                                "DescripciÃ³n",
+                                "Descripción",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Spacer(Modifier.height(8.dp))
                             Text(
                                 "Propiedad ubicada en ${nombreComuna ?: "zona"}, ideal para arriendo. " +
-                                        "Cuenta con ${prop.n_habit} dormitorio(s) y ${prop.n_banos} baÃ±o(s), " +
-                                        "en un total de ${prop.m2} mÂ². " +
+                                        "Cuenta con ${prop.n_habit} dormitorio(s) y ${prop.n_banos} baño(s), " +
+                                        "en un total de ${prop.m2} m². " +
                                         if (prop.pet_friendly) "Admite mascotas." else "No admite mascotas.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -292,22 +296,22 @@ fun PropiedadDetalleScreen(
 
                             Spacer(Modifier.height(24.dp))
 
-                            // ========== INFORMACIÃ“N ADICIONAL ==========
+                            // ========== INFORMACIÓN ADICIONAL ==========
                             Text(
-                                "InformaciÃ³n Adicional",
+                                "Información Adicional",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Spacer(Modifier.height(12.dp))
 
-                            InfoRow("CÃ³digo", prop.codigo)
+                            InfoRow("Código", prop.codigo)
                             InfoRow("Tipo", nombreTipo ?: "N/A")
                             InfoRow("Comuna", nombreComuna ?: "N/A")
-                            InfoRow("DirecciÃ³n", prop.direccion)
+                            InfoRow("Dirección", prop.direccion)
 
                             Spacer(Modifier.height(32.dp))
 
-                            // ========== BOTÃ“N SOLICITAR ==========
+                            // ========== BOTÓN SOLICITAR ==========
                             Button(
                                 onClick = { onSolicitar(prop.id) },
                                 modifier = Modifier.fillMaxWidth(),
@@ -330,7 +334,7 @@ fun PropiedadDetalleScreen(
 }
 
 /**
- * Item de caracterÃ­stica con icono
+ * Item de característica con icono
  */
 @Composable
 private fun CaracteristicaItem(
@@ -363,7 +367,7 @@ private fun CaracteristicaItem(
 }
 
 /**
- * Fila de informaciÃ³n
+ * Fila de información
  */
 @Composable
 private fun InfoRow(label: String, value: String) {
