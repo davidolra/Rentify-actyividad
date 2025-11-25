@@ -20,7 +20,7 @@ import com.example.rentify.ui.screen.*
 import com.example.rentify.ui.viewmodel.*
 
 /**
- * ✅ Grafo de navegación SIN ROLES
+ * ✅ Grafo de navegación CON REVIEW VIEWMODEL
  */
 @Composable
 fun AppNavGraph(
@@ -29,8 +29,8 @@ fun AppNavGraph(
     propiedadViewModel: PropiedadViewModel,
     propiedadDetalleViewModel: PropiedadDetalleViewModel,
     solicitudesViewModel: SolicitudesViewModel,
-    perfilViewModel: PerfilUsuarioViewModel
-
+    perfilViewModel: PerfilUsuarioViewModel,
+    reviewViewModel: ReviewViewModel  // ✅ NUEVO PARÁMETRO
 ) {
     val context = LocalContext.current
     val userPrefs = remember { UserPreferences(context) }
@@ -254,6 +254,8 @@ fun AppNavGraph(
                     PropiedadDetalleScreen(
                         propiedadId = propiedadId,
                         vm = propiedadDetalleViewModel,
+                        reviewViewModel = reviewViewModel,  // ✅ PASAR REVIEW VIEWMODEL
+                        currentUserId = actualUserId,  // ✅ PASAR USER ID
                         onBack = { navController.popBackStack() },
                         onSolicitar = { idPropiedad ->
                             solicitudesViewModel.crearSolicitud(

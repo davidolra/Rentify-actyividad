@@ -23,10 +23,7 @@ package com.example.rentify.data.remote.api
  * Property Service API (Puerto 8082)
  * TODO: Implementar cuando integremos Property Service
  */
-interface PropertyServiceApi {
-    // Endpoints temporalmente vacíos
-    // Se implementarán en la siguiente fase
-}
+
 
 /**
  * Document Service API (Puerto 8083)
@@ -47,7 +44,3 @@ interface ContactServiceApi {
  * Review Service API (Puerto 8086)
  * TODO: Implementar cuando integremos Review Service
  */
-interface ReviewServiceApi {
-    // Endpoints temporalmente vacíos
-    // Se implementarán en la siguiente fase
-}

@@ -12,6 +12,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.rentify.data.local.RentifyDatabase
 import com.example.rentify.data.repository.ApplicationRemoteRepository
 import com.example.rentify.data.repository.PropertyRemoteRepository
+import com.example.rentify.data.repository.ReviewRemoteRepository
 import com.example.rentify.data.repository.UserRemoteRepository
 import com.example.rentify.navigation.AppNavGraph
 import com.example.rentify.ui.theme.RentifyTheme
@@ -34,13 +35,17 @@ class MainActivity : ComponentActivity() {
                     // User Remote Repository (para autenticación)
                     val userRemoteRepository = UserRemoteRepository()
 
-                    // ✅ CORREGIDO: Application Remote Repository
+                    // Application Remote Repository
                     val applicationRemoteRepository = ApplicationRemoteRepository(
                         solicitudDao = db.solicitudDao(),
                         catalogDao = db.catalogDao()
                     )
 
+                    // Property Remote Repository
                     val propertyRemoteRepository = PropertyRemoteRepository()
+
+                    // ✅ NUEVO: Review Remote Repository
+                    val reviewRemoteRepository = ReviewRemoteRepository()
 
                     // ==================== VIEWMODELS ====================
 
@@ -54,7 +59,7 @@ class MainActivity : ComponentActivity() {
                         factory = PropiedadViewModelFactory(
                             db.propiedadDao(),
                             db.catalogDao(),
-                            propertyRemoteRepository  // ✅ AGREGAR
+                            propertyRemoteRepository
                         )
                     )
 
@@ -66,13 +71,13 @@ class MainActivity : ComponentActivity() {
                         )
                     )
 
-                    // ✅ CORREGIDO: Solicitudes ViewModel con remote repository
+                    // Solicitudes ViewModel
                     val solicitudesViewModel: SolicitudesViewModel = viewModel(
                         factory = SolicitudesViewModelFactory(
                             db.solicitudDao(),
                             db.propiedadDao(),
                             db.catalogDao(),
-                            applicationRemoteRepository  // ✅ AÑADIDO
+                            applicationRemoteRepository
                         )
                     )
 
@@ -85,6 +90,11 @@ class MainActivity : ComponentActivity() {
                         )
                     )
 
+                    // ✅ NUEVO: Review ViewModel
+                    val reviewViewModel: ReviewViewModel = viewModel(
+                        factory = ReviewViewModelFactory(reviewRemoteRepository)
+                    )
+
                     // ==================== NAVEGACIÓN ====================
 
                     AppNavGraph(
@@ -93,7 +103,8 @@ class MainActivity : ComponentActivity() {
                         propiedadViewModel = propiedadViewModel,
                         propiedadDetalleViewModel = propiedadDetalleViewModel,
                         solicitudesViewModel = solicitudesViewModel,
-                        perfilViewModel = perfilViewModel
+                        perfilViewModel = perfilViewModel,
+                        reviewViewModel = reviewViewModel  // ✅ NUEVO PARÁMETRO
                     )
                 }
             }

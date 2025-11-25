@@ -6,13 +6,11 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import java.text.SimpleDateFormat
-import java.util.*
 import java.util.concurrent.TimeUnit
 
 /**
  * Cliente Retrofit para comunicación con microservicios de Rentify
- * ✅ CORREGIDO: Gson configurado para manejar fechas correctamente
+ * ✅ ACTUALIZADO: Incluye Review Service (Puerto 8086)
  */
 object RetrofitClient {
 
@@ -26,7 +24,7 @@ object RetrofitClient {
     private const val BASE_URL_DOCUMENT_SERVICE = "http://10.0.2.2:8083/"
     private const val BASE_URL_APPLICATION_SERVICE = "http://10.0.2.2:8084/"
     private const val BASE_URL_CONTACT_SERVICE = "http://10.0.2.2:8085/"
-    private const val BASE_URL_REVIEW_SERVICE = "http://10.0.2.2:8086/"
+    private const val BASE_URL_REVIEW_SERVICE = "http://10.0.2.2:8086/"  // ✅ NUEVO
 
     // ==================== CONFIGURACIÓN DE OKHTTP ====================
 
@@ -86,14 +84,12 @@ object RetrofitClient {
     }
 
     /**
-     * Application Service API (Puerto 8084) ✅ CORREGIDO
+     * Application Service API (Puerto 8084)
      * Gestión de solicitudes y registros de arriendo
      */
     val applicationServiceApi: ApplicationServiceApi by lazy {
         createRetrofit(BASE_URL_APPLICATION_SERVICE).create(ApplicationServiceApi::class.java)
     }
-
-
 
     /**
      * Contact Service API (Puerto 8085)
@@ -104,7 +100,7 @@ object RetrofitClient {
     }
 
     /**
-     * Review Service API (Puerto 8086)
+     * Review Service API (Puerto 8086) ✅ NUEVO
      * Gestión de reseñas y valoraciones
      */
     val reviewServiceApi: ReviewServiceApi by lazy {
