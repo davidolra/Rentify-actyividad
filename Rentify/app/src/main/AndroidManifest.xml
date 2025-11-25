@@ -2,17 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- ========== PERMISOS CÁMARA ========== -->
-    <uses-feature
-        android:name="android.hardware.camera"
-        android:required="false" />
-
-    <!-- ========== PERMISOS GPS/UBICACIÓN ========== -->
+    <!-- Permisos existentes -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-
-    <!-- Permiso de internet (para mapas si decides agregar Google Maps después) -->
-    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="true"
@@ -20,11 +13,11 @@
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:networkSecurityConfig="@xml/network_security_config"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Rentify"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="true">  <!-- ✅ AGREGAR ESTA LÍNEA -->
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -36,7 +29,7 @@
             </intent-filter>
         </activity>
 
-        <!-- FileProvider para compartir fotos de la cámara -->
+        <!-- FileProvider -->
         <provider
             android:authorities="com.example.rentify.fileprovider"
             android:name="androidx.core.content.FileProvider"

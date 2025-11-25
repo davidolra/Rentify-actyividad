@@ -19,12 +19,12 @@ object RetrofitClient {
     // Para emulador Android: usar 10.0.2.2 en lugar de localhost
     // Para dispositivo físico: usar la IP de tu PC en la red local
 
-    private const val BASE_URL_USER_SERVICE = "http://10.0.2.2:8081/"
-    private const val BASE_URL_PROPERTY_SERVICE = "http://10.0.2.2:8082/"
-    private const val BASE_URL_DOCUMENT_SERVICE = "http://10.0.2.2:8083/"
-    private const val BASE_URL_APPLICATION_SERVICE = "http://10.0.2.2:8084/"
-    private const val BASE_URL_CONTACT_SERVICE = "http://10.0.2.2:8085/"
-    private const val BASE_URL_REVIEW_SERVICE = "http://10.0.2.2:8086/"  // ✅ NUEVO
+    private const val BASE_URL_USER_SERVICE = "http://192.168.100.7:8081/"
+    private const val BASE_URL_PROPERTY_SERVICE = "http://192.168.100.7:8082/"
+    private const val BASE_URL_DOCUMENT_SERVICE = "http://192.168.100.7:8083/"
+    private const val BASE_URL_APPLICATION_SERVICE = "http://192.168.100.7:8084/"
+    private const val BASE_URL_CONTACT_SERVICE = "http://192.168.100.7:8085/"
+    private const val BASE_URL_REVIEW_SERVICE = "http://192.168.100.7:8086/"  // ✅ NUEVO
 
     // ==================== CONFIGURACIÓN DE OKHTTP ====================
 
