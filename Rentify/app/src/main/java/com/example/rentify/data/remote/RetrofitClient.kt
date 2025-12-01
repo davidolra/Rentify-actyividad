@@ -2,15 +2,19 @@ package com.example.rentify.data.remote
 
 import com.example.rentify.data.remote.api.*
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonDeserializer
+import com.google.gson.JsonSerializer
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.text.SimpleDateFormat
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 /**
  * Cliente Retrofit para comunicación con microservicios de Rentify
- * ✅ ACTUALIZADO: Incluye Review Service (Puerto 8086)
+ * ✅ MEJORADO: Manejo robusto de fechas y logging detallado
  */
 object RetrofitClient {
 
@@ -19,12 +23,12 @@ object RetrofitClient {
     // Para emulador Android: usar 10.0.2.2 en lugar de localhost
     // Para dispositivo físico: usar la IP de tu PC en la red local
 
-    private const val BASE_URL_USER_SERVICE = "http://192.168.100.7:8081/"
-    private const val BASE_URL_PROPERTY_SERVICE = "http://192.168.100.7:8082/"
-    private const val BASE_URL_DOCUMENT_SERVICE = "http://192.168.100.7:8083/"
-    private const val BASE_URL_APPLICATION_SERVICE = "http://192.168.100.7:8084/"
-    private const val BASE_URL_CONTACT_SERVICE = "http://192.168.100.7:8085/"
-    private const val BASE_URL_REVIEW_SERVICE = "http://192.168.100.7:8086/"  // ✅ NUEVO
+    private const val BASE_URL_USER_SERVICE = "http://10.0.2.2:8081/"
+    private const val BASE_URL_PROPERTY_SERVICE = "http://10.0.2.2:8082/"
+    private const val BASE_URL_DOCUMENT_SERVICE = "http://10.0.2.2:8083/"
+    private const val BASE_URL_APPLICATION_SERVICE = "http://10.0.2.2:8084/"
+    private const val BASE_URL_CONTACT_SERVICE = "http://10.0.2.2:8085/"
+    private const val BASE_URL_REVIEW_SERVICE = "http://10.0.2.2:8086/"
 
     // ==================== CONFIGURACIÓN DE OKHTTP ====================
 
@@ -39,13 +43,51 @@ object RetrofitClient {
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    // ==================== CONFIGURACIÓN DE GSON ====================
-    // ✅ CORREGIDO: Formato de fecha compatible con backend Spring Boot
+    // ==================== CONFIGURACIÓN DE GSON MEJORADA ====================
+    // ✅ MEJORADO: Manejo robusto de fechas con múltiples formatos
 
     private val gson = GsonBuilder()
         .setLenient()
-        .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")  // ✅ Formato ISO 8601 completo
+        // ✅ Deserializador personalizado para manejar múltiples formatos de fecha
+        .registerTypeAdapter(Date::class.java, JsonDeserializer<Date> { json, _, _ ->
+            val dateString = json.asString
+            parseDateSafely(dateString)
+        })
+        // ✅ Serializador para enviar fechas al backend en formato ISO 8601
+        .registerTypeAdapter(Date::class.java, JsonSerializer<Date> { date, _, _ ->
+            val formatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.US)
+            formatter.timeZone = TimeZone.getTimeZone("UTC")
+            com.google.gson.JsonPrimitive(formatter.format(date))
+        })
         .create()
+
+    /**
+     * ✅ NUEVO: Parsea fechas de forma segura intentando múltiples formatos
+     */
+    private fun parseDateSafely(dateString: String): Date {
+        val formats = listOf(
+            "yyyy-MM-dd'T'HH:mm:ss.SSSZ",     // ISO 8601 completo con timezone
+            "yyyy-MM-dd'T'HH:mm:ss.SSS",      // ISO 8601 completo sin timezone
+            "yyyy-MM-dd'T'HH:mm:ss",          // ISO 8601 sin milisegundos
+            "yyyy-MM-dd HH:mm:ss",            // Formato SQL
+            "yyyy-MM-dd"                       // Solo fecha
+        )
+
+        for (format in formats) {
+            try {
+                val formatter = SimpleDateFormat(format, Locale.US)
+                formatter.timeZone = TimeZone.getTimeZone("UTC")
+                return formatter.parse(dateString)!!
+            } catch (e: Exception) {
+                // Intentar siguiente formato
+                continue
+            }
+        }
+
+        // Si ningún formato funciona, retornar fecha actual
+        android.util.Log.e("RetrofitClient", "⚠️ No se pudo parsear fecha: $dateString")
+        return Date()
+    }
 
     // ==================== FUNCIÓN HELPER PARA CREAR RETROFIT ====================
 
@@ -100,7 +142,7 @@ object RetrofitClient {
     }
 
     /**
-     * Review Service API (Puerto 8086) ✅ NUEVO
+     * Review Service API (Puerto 8086)
      * Gestión de reseñas y valoraciones
      */
     val reviewServiceApi: ReviewServiceApi by lazy {
