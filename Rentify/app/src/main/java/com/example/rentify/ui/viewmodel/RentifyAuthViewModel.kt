@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.rentify.data.remote.ApiResult
 import com.example.rentify.data.remote.dto.UsuarioRemoteDTO
 import com.example.rentify.data.repository.UserRemoteRepository
+import com.example.rentify.data.repository.RentifyUserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -60,7 +61,8 @@ data class RegisterUiState(
 // ==================== VIEWMODEL ====================
 
 class RentifyAuthViewModel(
-    private val remoteRepository: UserRemoteRepository
+    private val remoteRepository: UserRemoteRepository,
+    private val localRepository: RentifyUserRepository  // ✅ NUEVO
 ) : ViewModel() {
 
     private val _login = MutableStateFlow(LoginUiState())
@@ -100,6 +102,12 @@ class RentifyAuthViewModel(
             when (val result = remoteRepository.login(s.email.trim(), s.pass)) {
                 is ApiResult.Success -> {
                     loggedUser = result.data.usuario
+
+                    // ✅ NUEVO: Sincronizar usuario en BD local
+                    loggedUser?.let { usuario ->
+                        localRepository.syncUsuarioFromRemote(usuario)
+                    }
+
                     _login.update {
                         it.copy(
                             isSubmitting = false,
@@ -317,12 +325,7 @@ class RentifyAuthViewModel(
     }
 
     suspend fun getRoleName(rolId: Long?): String {
-        return when (rolId) {
-            1L -> "Administrador"
-            2L -> "Propietario"
-            3L -> "Arrendatario"
-            else -> "Sin Rol"
-        }
+        return localRepository.getRoleName(rolId)
     }
 
     // ==================== HELPERS ====================

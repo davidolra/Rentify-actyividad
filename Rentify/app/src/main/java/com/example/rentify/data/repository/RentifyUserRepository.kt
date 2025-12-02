@@ -133,4 +133,85 @@ class RentifyUserRepository(
         val usuario = usuarioDao.getById(userId)
         return usuario?.duoc_vip == true
     }
+
+    /**
+     * ✅ NUEVO: Guarda/actualiza usuario remoto en la base de datos local
+     * Convierte UsuarioRemoteDTO a UsuarioEntity
+     */
+    suspend fun syncUsuarioFromRemote(
+        usuarioRemoto: com.example.rentify.data.remote.dto.UsuarioRemoteDTO
+    ): Result<Long> {
+        return try {
+            // Verificar si el usuario ya existe en la BD local
+            val usuarioExistente = usuarioDao.getById(usuarioRemoto.id ?: 0L)
+
+            // Parsear fecha de nacimiento
+            val fnacimiento = parseFechaNacimiento(usuarioRemoto.fnacimiento)
+
+            // Obtener estado activo
+            val estadoActivo = catalogDao.getEstadoByNombre("Activo")
+                ?: return Result.failure(IllegalStateException("Estado 'Activo' no encontrado"))
+
+            val now = System.currentTimeMillis()
+
+            val usuarioLocal = UsuarioEntity(
+                id = usuarioRemoto.id ?: 0L,
+                pnombre = usuarioRemoto.pnombre,
+                snombre = usuarioRemoto.snombre,
+                papellido = usuarioRemoto.papellido,
+                fnacimiento = fnacimiento,
+                email = usuarioRemoto.email,
+                rut = usuarioRemoto.rut,
+                ntelefono = usuarioRemoto.ntelefono,
+                direccion = usuarioExistente?.direccion, // Mantener dirección local si existe
+                comuna = usuarioExistente?.comuna, // Mantener comuna local si existe
+                fotoPerfil = usuarioExistente?.fotoPerfil, // Mantener foto local si existe
+                clave = usuarioRemoto.clave,
+                duoc_vip = usuarioRemoto.duocVip ?: false,
+                puntos = usuarioRemoto.puntos ?: 0,
+                codigo_ref = usuarioRemoto.codigoRef ?: generarCodigoReferido(),
+                fcreacion = parseFechaCreacion(usuarioRemoto.fcreacion) ?: now,
+                factualizacion = now,
+                estado_id = usuarioRemoto.estadoId ?: estadoActivo.id,
+                rol_id = usuarioRemoto.rolId
+            )
+
+            if (usuarioExistente != null) {
+                // Actualizar usuario existente
+                usuarioDao.update(usuarioLocal)
+                Result.success(usuarioLocal.id)
+            } else {
+                // Insertar nuevo usuario
+                val id = usuarioDao.insert(usuarioLocal)
+                Result.success(id)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Parsea fecha en formato "yyyy-MM-dd" a timestamp
+     */
+    private fun parseFechaNacimiento(fechaString: String): Long {
+        return try {
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+            sdf.parse(fechaString)?.time ?: System.currentTimeMillis()
+        } catch (e: Exception) {
+            System.currentTimeMillis()
+        }
+    }
+
+    /**
+     * Parsea fecha de creación (puede ser null)
+     */
+    private fun parseFechaCreacion(fechaString: String?): Long? {
+        if (fechaString == null) return null
+        return try {
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+            sdf.parse(fechaString)?.time
+        } catch (e: Exception) {
+            null
+        }
+    }
 }

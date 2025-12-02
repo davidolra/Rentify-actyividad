@@ -14,6 +14,7 @@ import com.example.rentify.data.repository.ApplicationRemoteRepository
 import com.example.rentify.data.repository.PropertyRemoteRepository
 import com.example.rentify.data.repository.ReviewRemoteRepository
 import com.example.rentify.data.repository.UserRemoteRepository
+import com.example.rentify.data.repository.RentifyUserRepository
 import com.example.rentify.navigation.AppNavGraph
 import com.example.rentify.ui.theme.RentifyTheme
 import com.example.rentify.ui.viewmodel.*
@@ -32,6 +33,12 @@ class MainActivity : ComponentActivity() {
 
                     // ==================== REPOSITORIOS ====================
 
+                    // ✅ NUEVO: Repositorio local de usuarios (para sincronización)
+                    val rentifyUserRepository = RentifyUserRepository(
+                        usuarioDao = db.usuarioDao(),
+                        catalogDao = db.catalogDao()
+                    )
+
                     // User Remote Repository (para autenticación)
                     val userRemoteRepository = UserRemoteRepository()
 
@@ -49,9 +56,12 @@ class MainActivity : ComponentActivity() {
 
                     // ==================== VIEWMODELS ====================
 
-                    // Auth ViewModel
+                    // Auth ViewModel - ✅ ACTUALIZADO: ahora recibe ambos repositorios
                     val authViewModel: RentifyAuthViewModel = viewModel(
-                        factory = RentifyAuthViewModelFactory(userRemoteRepository)
+                        factory = RentifyAuthViewModelFactory(
+                            userRemoteRepository = userRemoteRepository,
+                            rentifyUserRepository = rentifyUserRepository
+                        )
                     )
 
                     // Propiedad ViewModel
