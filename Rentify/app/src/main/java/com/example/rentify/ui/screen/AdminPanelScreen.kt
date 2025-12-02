@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,12 +18,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.rentify.data.local.RentifyDatabase
 import com.example.rentify.data.local.entities.UsuarioEntity
-import com.example.rentify.ui.screen.UserManagementScreen
+import com.example.rentify.data.remote.RetrofitClient
+import com.example.rentify.data.repository.UserRepository
 import com.example.rentify.ui.viewmodel.AdminPanelViewModel
 import com.example.rentify.ui.viewmodel.AdminPanelViewModelFactory
+import com.example.rentify.ui.viewmodel.UserManagementViewModel
+import com.example.rentify.ui.viewmodel.UserManagementViewModelFactory
 
 /**
  * Panel de Administración - Dashboard para ADMIN
+ * ✅ CORREGIDO: Llama correctamente a UserManagementScreen y corrige todos los warnings e imports.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,17 +58,18 @@ fun AdminPanelScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Panel de Administración") },
+                title = { Text(if (mostrarUserManagement) "Gestión de Usuarios" else "Panel de Administración") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, "Volver")
+                    IconButton(onClick = {
+                        if (mostrarUserManagement) {
+                            mostrarUserManagement = false
+                        } else {
+                            onBack()
+                        }
+                    }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                }
             )
         }
     ) { padding ->
@@ -72,10 +79,24 @@ fun AdminPanelScreen(
                 .padding(padding)
         ) {
             if (mostrarUserManagement) {
-                // Pantalla de gestión de usuarios
+                // Inyectar el ViewModel para la gestión de usuarios
+                val userRepository = UserRepository(RetrofitClient.userServiceApi)
+                val userManagementViewModel: UserManagementViewModel = viewModel(
+                    factory = UserManagementViewModelFactory(userRepository)
+                )
+
+                val users by userManagementViewModel.users.collectAsStateWithLifecycle()
+                val userIsLoading by userManagementViewModel.isLoading.collectAsStateWithLifecycle()
+                val userError by userManagementViewModel.error.collectAsStateWithLifecycle()
+
                 UserManagementScreen(
-                    currentUser = currentUser,
-                    onBack = { mostrarUserManagement = false }
+                    users = users,
+                    isLoading = userIsLoading,
+                    error = userError,
+                    onBack = { mostrarUserManagement = false },
+                    onUpdateUser = { user -> userManagementViewModel.updateUser(user.id!!, user) },
+                    onDeleteUser = { user -> userManagementViewModel.deleteUser(user.id!!) },
+                    onRetry = { userManagementViewModel.loadUsers() }
                 )
             } else {
                 if (isLoading) {
@@ -156,7 +177,7 @@ fun AdminPanelScreen(
                             StatCard(
                                 title = "Solicitudes",
                                 value = "${stats.totalSolicitudes}",
-                                icon = Icons.Filled.Assignment,
+                                icon = Icons.AutoMirrored.Filled.Assignment,
                                 modifier = Modifier.weight(1f)
                             )
                             StatCard(
@@ -206,7 +227,6 @@ fun AdminPanelScreen(
     }
 }
 
-// --- Tarjetas privadas dentro del mismo archivo ---
 @Composable
 private fun StatCard(
     title: String,

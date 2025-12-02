@@ -2,26 +2,34 @@ package com.example.rentify.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import kotlinx.coroutines.launch
+import com.example.rentify.data.local.RentifyDatabase
 import com.example.rentify.data.local.storage.UserPreferences
-import com.example.rentify.data.local.RentifyDatabase  // ✅ AGREGADO
+import com.example.rentify.data.remote.RetrofitClient
+import com.example.rentify.data.remote.dto.*
+import com.example.rentify.data.repository.ApplicationRemoteRepository
+import com.example.rentify.data.repository.UserRepository
 import com.example.rentify.ui.components.*
-import com.example.rentify.ui.screen.*  // ✅ CORRECTO: sin 's'
+import com.example.rentify.ui.screen.*
 import com.example.rentify.ui.viewmodel.*
+import kotlinx.coroutines.launch
 
 /**
- * ✅ Grafo de navegación COMPLETAMENTE CORREGIDO
+ * Grafo de navegacion
  */
 @Composable
 fun AppNavGraph(
@@ -31,19 +39,20 @@ fun AppNavGraph(
     propiedadDetalleViewModel: PropiedadDetalleViewModel,
     solicitudesViewModel: SolicitudesViewModel,
     perfilViewModel: PerfilUsuarioViewModel,
-    reviewViewModel: ReviewViewModel
+    reviewViewModel: ReviewViewModel,
+    userRepository: UserRepository
 ) {
     val context = LocalContext.current
     val userPrefs = remember { UserPreferences(context) }
     val scope = rememberCoroutineScope()
 
-    // ✅ Observar estado de autenticación Y ROL
+    // Observar estado de autenticacion Y ROL
     val isLoggedIn by userPrefs.isLoggedIn.collectAsStateWithLifecycle(initialValue = false)
     val userRole by userPrefs.userRole.collectAsStateWithLifecycle(initialValue = null)
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
-    // ========== FUNCIONES DE NAVEGACIÓN ==========
+    // ========== FUNCIONES DE NAVEGACION ==========
 
     val goWelcome: () -> Unit = {
         navController.navigate(Route.Welcome.path) {
@@ -90,7 +99,7 @@ fun AppNavGraph(
         }
     }
 
-    // ================== MAPEO NOMBRE → ID ==================
+    // ================== MAPEO NOMBRE -> ID ==================
     fun mapRoleNameToId(roleName: String?): Long? {
         return when (roleName?.uppercase()) {
             "ADMINISTRADOR" -> 1L
@@ -101,7 +110,7 @@ fun AppNavGraph(
     }
 
 
-    // ========== MENÚ DRAWER CONTEXTUAL POR ROL ==========
+    // ========== MENU DRAWER CONTEXTUAL POR ROL ==========
     val drawerItems = if (isLoggedIn) {
         buildList {
             add(DrawerItem("Inicio", Icons.Filled.Home) {
@@ -117,15 +126,15 @@ fun AppNavGraph(
                 goPerfil()
             })
 
-            // Opciones según rol
+            // Opciones segun rol
             when (userRole?.uppercase()) {
                 "ADMINISTRADOR" -> {
-                    add(DrawerItem("Gestión Usuarios", Icons.Filled.People) {
+                    add(DrawerItem("Gestion Usuarios", Icons.Filled.People) {
                         scope.launch { drawerState.close() }
                         navController.navigate(Route.GestionUsuarios.path)
                     })
 
-                    add(DrawerItem("Gestión Propiedades", Icons.Filled.Business) {
+                    add(DrawerItem("Gestion Propiedades", Icons.Filled.Business) {
                         scope.launch { drawerState.close() }
                         navController.navigate(Route.GestionPropiedades.path)
                     })
@@ -142,7 +151,7 @@ fun AppNavGraph(
                     })
                 }
 
-                "ARRENDATARIO" -> add(DrawerItem("Mis Solicitudes", Icons.Filled.Assignment) {
+                "ARRENDATARIO" -> add(DrawerItem("Mis Solicitudes", Icons.AutoMirrored.Filled.Assignment) {
                     scope.launch { drawerState.close() }
                     goSolicitudes()
                 })
@@ -154,7 +163,7 @@ fun AppNavGraph(
                 scope.launch { drawerState.close() }
                 goHome()
             },
-            DrawerItem("Iniciar Sesión", Icons.Filled.Login) {
+            DrawerItem("Iniciar Sesion", Icons.AutoMirrored.Filled.Login) {
                 scope.launch { drawerState.close() }
                 goLogin()
             },
@@ -231,7 +240,7 @@ fun AppNavGraph(
                     )
                 }
 
-                // ========== CATÁLOGO PROPIEDADES ==========
+                // ========== CATALOGO PROPIEDADES ==========
                 composable(Route.Propiedades.path) {
                     CatalogoPropiedadesScreen(
                         vm = propiedadViewModel,
@@ -259,7 +268,7 @@ fun AppNavGraph(
                         propiedadId = propiedadId,
                         vm = propiedadDetalleViewModel,
                         reviewViewModel = reviewViewModel,
-                        currentUserId = actualUserId, // ✅ CORRECCIÓN FINAL: Se pasa como Long, sin rol
+                        currentUserId = actualUserId,
                         onBack = { navController.popBackStack() },
                         onSolicitar = { idPropiedad ->
                             rolId?.let {
@@ -286,11 +295,9 @@ fun AppNavGraph(
 
                 // ========== MIS SOLICITUDES ==========
                 composable(Route.Solicitudes.path) {
-                    // ✅ CORRECCIÓN DEFINITIVA: Todos los parámetros correctos
                     val database = RentifyDatabase.getInstance(context)
 
-                    // ✅ ApplicationRemoteRepository necesita solicitudDao y catalogDao
-                    val applicationRepository = com.example.rentify.data.repository.ApplicationRemoteRepository(
+                    val applicationRepository = ApplicationRemoteRepository(
                         solicitudDao = database.solicitudDao(),
                         catalogDao = database.catalogDao()
                     )
@@ -309,15 +316,28 @@ fun AppNavGraph(
                     )
                 }
 
-                // ======== ADMIN: GESTIÓN DE USUARIOS ========
+                // ======== ADMIN: GESTION DE USUARIOS ========
                 composable(Route.GestionUsuarios.path) {
+                    val userManagementViewModel: UserManagementViewModel = viewModel(
+                        factory = UserManagementViewModelFactory(userRepository)
+                    )
+
+                    val users by userManagementViewModel.users.collectAsStateWithLifecycle()
+                    val isLoading by userManagementViewModel.isLoading.collectAsStateWithLifecycle()
+                    val error by userManagementViewModel.error.collectAsStateWithLifecycle()
+
                     UserManagementScreen(
-                        currentUserRol = mapRoleNameToId(userRole),
-                        onBack = { navController.popBackStack() }
+                        users = users,
+                        isLoading = isLoading,
+                        error = error,
+                        onBack = { navController.popBackStack() },
+                        onUpdateUser = { user: UsuarioDTO -> userManagementViewModel.updateUser(user.id!!, user) },
+                        onDeleteUser = { user: UsuarioDTO -> userManagementViewModel.deleteUser(user.id!!) },
+                        onRetry = { userManagementViewModel.loadUsers() }
                     )
                 }
 
-                // ======== ADMIN: GESTIÓN DE PROPIEDADES ========
+                // ======== ADMIN: GESTION DE PROPIEDADES ========
                 composable(Route.GestionPropiedades.path) {
                     GestionPropiedadesScreen(
                         onBack = { navController.popBackStack() }

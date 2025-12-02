@@ -1,99 +1,47 @@
 package com.example.rentify.ui.screen
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.*
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.rentify.data.local.RentifyDatabase
-import com.example.rentify.data.local.entities.UsuarioEntity
-import kotlinx.coroutines.launch
+import com.example.rentify.data.remote.dto.UsuarioDTO
 
+/**
+ * Pantalla para la gestion de usuarios por parte de un administrador.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserManagementScreen(
-    currentUser: UsuarioEntity?,
-    onBack: () -> Unit
+    users: List<UsuarioDTO>,
+    isLoading: Boolean,
+    error: String?,
+    onBack: () -> Unit,
+    onUpdateUser: (UsuarioDTO) -> Unit,
+    onDeleteUser: (UsuarioDTO) -> Unit,
+    onRetry: () -> Unit
 ) {
-    val context = LocalContext.current
-    val db = RentifyDatabase.getInstance(context)
-    val coroutineScope = rememberCoroutineScope()
-
-    var usuarios by remember { mutableStateOf<List<UsuarioEntity>>(emptyList()) }
-    var editarUsuario by remember { mutableStateOf<UsuarioEntity?>(null) }
-    var nuevoNombre by remember { mutableStateOf("") }
-    var nuevoEmail by remember { mutableStateOf("") }
-
-    fun cargarUsuarios() {
-        coroutineScope.launch {
-            usuarios = db.usuarioDao().getAll()
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        cargarUsuarios()
-    }
-
-    if (editarUsuario != null) {
-        AlertDialog(
-            onDismissRequest = { editarUsuario = null },
-            title = { Text("Editar Usuario") },
-            text = {
-                Column {
-                    OutlinedTextField(
-                        value = nuevoNombre,
-                        onValueChange = { nuevoNombre = it },
-                        label = { Text("Nombre completo") }
-                    )
-                    OutlinedTextField(
-                        value = nuevoEmail,
-                        onValueChange = { nuevoEmail = it },
-                        label = { Text("Email") }
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    coroutineScope.launch {
-                        editarUsuario?.let {
-                            db.usuarioDao().update(
-                                it.copy(
-                                    pnombre = nuevoNombre.split(" ").firstOrNull() ?: it.pnombre,
-                                    snombre = nuevoNombre.split(" ").getOrNull(1) ?: it.snombre,
-                                    papellido = nuevoNombre.split(" ").getOrNull(2) ?: it.papellido,
-                                    email = nuevoEmail
-                                )
-                            )
-                        }
-                        editarUsuario = null
-                        cargarUsuarios()
-                    }
-                }) {
-                    Text("Guardar")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { editarUsuario = null }) {
-                    Text("Cancelar")
-                }
-            }
-        )
-    }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var selectedUser by remember { mutableStateOf<UsuarioDTO?>(null) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Gestión de Usuarios") },
+                title = { Text("Gestion de Usuarios") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 }
             )
@@ -104,63 +52,289 @@ fun UserManagementScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (usuarios.isEmpty()) {
-                Text(
-                    text = "No hay usuarios registrados.",
-                    modifier = Modifier.align(Alignment.Center)
-                )
+            if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (error != null) {
+                ErrorState(message = error, onRetry = onRetry)
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(usuarios) { usuario ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { /* opcional */ }
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    text = "${usuario.pnombre} ${usuario.snombre} ${usuario.papellido}",
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Text(
-                                    text = "Email: ${usuario.email}",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                Spacer(Modifier.height(8.dp))
-
-                                // --- Solo el admin ve los botones ---
-                                if (currentUser?.rol_id == 1L) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        OutlinedButton(onClick = {
-                                            editarUsuario = usuario
-                                            nuevoNombre = "${usuario.pnombre} ${usuario.snombre} ${usuario.papellido}"
-                                            nuevoEmail = usuario.email
-                                        }) {
-                                            Icon(Icons.Filled.Edit, contentDescription = "Editar")
-                                            Spacer(Modifier.width(4.dp))
-                                            Text("Editar")
-                                        }
-                                        OutlinedButton(onClick = {
-                                            coroutineScope.launch {
-                                                db.usuarioDao().delete(usuario)
-                                                cargarUsuarios()
-                                            }
-                                        }) {
-                                            Icon(Icons.Filled.Delete, contentDescription = "Eliminar")
-                                            Spacer(Modifier.width(4.dp))
-                                            Text("Eliminar")
-                                        }
-                                    }
-                                }
+                    items(users, key = { it.id!! }) { user ->
+                        UserItem(
+                            user = user,
+                            onEditClick = {
+                                selectedUser = user
+                                showEditDialog = true
+                            },
+                            onDeleteClick = {
+                                selectedUser = user
+                                showDeleteDialog = true
                             }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // Dialogo para editar usuario
+    if (showEditDialog && selectedUser != null) {
+        EditUserDialog(
+            user = selectedUser!!,
+            onDismiss = { showEditDialog = false },
+            onConfirm = {
+                onUpdateUser(it)
+                showEditDialog = false
+            }
+        )
+    }
+
+    // Dialogo para confirmar eliminacion
+    if (showDeleteDialog && selectedUser != null) {
+        val userName = "${selectedUser!!.pnombre} ${selectedUser!!.papellido}"
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Confirmar Eliminacion") },
+            text = { Text("Estas seguro de que quieres eliminar a $userName?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDeleteUser(selectedUser!!)
+                        showDeleteDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun UserItem(
+    user: UsuarioDTO,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
+    val fullName = "${user.pnombre} ${user.papellido}"
+    val rolNombre = user.rol?.nombre ?: when(user.rolId) {
+        1 -> "ADMIN"
+        2 -> "PROPIETARIO"
+        3 -> "ARRIENDATARIO"
+        else -> "N/A"
+    }
+    val estadoNombre = user.estado?.nombre ?: when(user.estadoId) {
+        1 -> "ACTIVO"
+        2 -> "INACTIVO"
+        3 -> "SUSPENDIDO"
+        else -> "N/A"
+    }
+
+    Card(elevation = CardDefaults.cardElevation(2.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1.0f)) {
+                Text(fullName, fontWeight = FontWeight.Bold)
+                Text(user.email, style = MaterialTheme.typography.bodyMedium)
+                Text("Rol: $rolNombre", style = MaterialTheme.typography.bodySmall)
+                Text("Estado: $estadoNombre", style = MaterialTheme.typography.bodySmall)
+            }
+            IconButton(onClick = onEditClick) {
+                Icon(Icons.Default.Edit, contentDescription = "Editar")
+            }
+            IconButton(onClick = onDeleteClick) {
+                Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditUserDialog(
+    user: UsuarioDTO,
+    onDismiss: () -> Unit,
+    onConfirm: (UsuarioDTO) -> Unit
+) {
+    var pnombre by remember { mutableStateOf(user.pnombre) }
+    var snombre by remember { mutableStateOf(user.snombre) }
+    var papellido by remember { mutableStateOf(user.papellido) }
+    var email by remember { mutableStateOf(user.email) }
+    var ntelefono by remember { mutableStateOf(user.ntelefono ?: "") }
+    var selectedRolId by remember { mutableStateOf(user.rolId ?: user.rol?.id ?: 3) }
+    var selectedEstadoId by remember { mutableStateOf(user.estadoId ?: user.estado?.id ?: 1) }
+
+    var rolExpanded by remember { mutableStateOf(false) }
+    var estadoExpanded by remember { mutableStateOf(false) }
+
+    val roles = listOf(
+        1 to "ADMIN",
+        2 to "PROPIETARIO",
+        3 to "ARRIENDATARIO"
+    )
+
+    val estados = listOf(
+        1 to "ACTIVO",
+        2 to "INACTIVO",
+        3 to "SUSPENDIDO"
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Editar Usuario") },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = pnombre,
+                    onValueChange = { pnombre = it },
+                    label = { Text("Primer Nombre") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = snombre,
+                    onValueChange = { snombre = it },
+                    label = { Text("Segundo Nombre") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = papellido,
+                    onValueChange = { papellido = it },
+                    label = { Text("Primer Apellido") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Correo Electronico") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = ntelefono,
+                    onValueChange = { ntelefono = it },
+                    label = { Text("Telefono") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                // Selector de Rol
+                ExposedDropdownMenuBox(
+                    expanded = rolExpanded,
+                    onExpandedChange = { rolExpanded = !rolExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = roles.find { it.first == selectedRolId }?.second ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Rol") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rolExpanded) },
+                        modifier = Modifier
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = rolExpanded,
+                        onDismissRequest = { rolExpanded = false }
+                    ) {
+                        roles.forEach { (id, nombre) ->
+                            DropdownMenuItem(
+                                text = { Text(nombre) },
+                                onClick = {
+                                    selectedRolId = id
+                                    rolExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Selector de Estado
+                ExposedDropdownMenuBox(
+                    expanded = estadoExpanded,
+                    onExpandedChange = { estadoExpanded = !estadoExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = estados.find { it.first == selectedEstadoId }?.second ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Estado") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = estadoExpanded) },
+                        modifier = Modifier
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = estadoExpanded,
+                        onDismissRequest = { estadoExpanded = false }
+                    ) {
+                        estados.forEach { (id, nombre) ->
+                            DropdownMenuItem(
+                                text = { Text(nombre) },
+                                onClick = {
+                                    selectedEstadoId = id
+                                    estadoExpanded = false
+                                }
+                            )
                         }
                     }
                 }
             }
+        },
+        confirmButton = {
+            Button(onClick = {
+                val updatedUser = user.copy(
+                    pnombre = pnombre,
+                    snombre = snombre,
+                    papellido = papellido,
+                    email = email,
+                    ntelefono = ntelefono,
+                    rolId = selectedRolId,
+                    estadoId = selectedEstadoId
+                )
+                onConfirm(updatedUser)
+            }) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
+@Composable
+private fun ErrorState(message: String, onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(Icons.Default.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(64.dp))
+        Spacer(Modifier.height(16.dp))
+        Text(message, color = MaterialTheme.colorScheme.error)
+        Spacer(Modifier.height(16.dp))
+        Button(onClick = onRetry) {
+            Text("Reintentar")
         }
     }
 }

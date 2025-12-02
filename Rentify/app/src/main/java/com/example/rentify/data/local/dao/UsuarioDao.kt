@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.rentify.data.local.entities.UsuarioEntity
+import kotlinx.coroutines.flow.Flow
 
 /**
  * DAO para operaciones CRUD de usuarios
@@ -40,6 +41,10 @@ interface UsuarioDao {
     // Buscar por ID
     @Query("SELECT * FROM usuarios WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): UsuarioEntity?
+
+    // Buscar por ID y devolver como Flow
+    @Query("SELECT * FROM usuarios WHERE id = :id LIMIT 1")
+    fun getByIdAsFlow(id: Long): Flow<UsuarioEntity?>
 
     // Listar todos los usuarios
     @Query("SELECT * FROM usuarios ORDER BY id ASC")

@@ -49,6 +49,25 @@ data class UsuarioRemoteDTO(
 )
 
 /**
+ * DTO para actualizacion de usuario (admin)
+ * Coincide con UsuarioUpdateDTO.java del backend
+ * No requiere campos sensibles como clave, rut, fnacimiento
+ */
+data class UsuarioUpdateRemoteDTO(
+    val pnombre: String,
+    val snombre: String,
+    val papellido: String,
+    val email: String,
+    val ntelefono: String,
+
+    @SerializedName("rolId")
+    val rolId: Long? = null,
+
+    @SerializedName("estadoId")
+    val estadoId: Long? = null
+)
+
+/**
  * DTO para login request
  */
 data class LoginRemoteDTO(
@@ -81,7 +100,7 @@ data class EstadoRemoteDTO(
 )
 
 /**
- * ✅ NUEVO: Respuesta de error estructurada del backend User Service
+ * Respuesta de error estructurada del backend User Service
  * Coincide con ErrorResponse.java del backend
  */
 data class UserServiceErrorResponse(
@@ -95,39 +114,39 @@ data class UserServiceErrorResponse(
      * Obtiene un mensaje de error legible para mostrar al usuario
      */
     fun getUserFriendlyMessage(): String {
-        // Si hay errores de validación específicos, mostrarlos
+        // Si hay errores de validacion especificos, mostrarlos
         if (!validationErrors.isNullOrEmpty()) {
             return validationErrors.values.joinToString("\n")
         }
 
-        // Personalizar mensajes según el código HTTP
+        // Personalizar mensajes segun el codigo HTTP
         return when (status) {
-            400 -> "Error de validación: $message"
-            401 -> "Error de autenticación: $message"
+            400 -> "Error de validacion: $message"
+            401 -> "Error de autenticacion: $message"
             404 -> "Recurso no encontrado: $message"
             409 -> "Conflicto: $message"
             500 -> "Error del servidor. Por favor intente nuevamente."
-            503 -> "Servicio no disponible. Por favor intente más tarde."
+            503 -> "Servicio no disponible. Por favor intente mas tarde."
             else -> message
         }
     }
 
     /**
-     * Obtiene el primer error de validación (útil para mostrar en un campo específico)
+     * Obtiene el primer error de validacion
      */
     fun getFirstValidationError(): String? {
         return validationErrors?.values?.firstOrNull()
     }
 
     /**
-     * Verifica si es un error de validación de campo específico
+     * Verifica si es un error de validacion de campo especifico
      */
     fun hasFieldError(field: String): Boolean {
         return validationErrors?.containsKey(field) == true
     }
 
     /**
-     * Obtiene el error de un campo específico
+     * Obtiene el error de un campo especifico
      */
     fun getFieldError(field: String): String? {
         return validationErrors?.get(field)

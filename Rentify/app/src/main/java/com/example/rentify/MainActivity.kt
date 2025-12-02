@@ -10,10 +10,12 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.rentify.data.local.RentifyDatabase
+import com.example.rentify.data.remote.RetrofitClient
 import com.example.rentify.data.repository.ApplicationRemoteRepository
 import com.example.rentify.data.repository.PropertyRemoteRepository
 import com.example.rentify.data.repository.ReviewRemoteRepository
 import com.example.rentify.data.repository.UserRemoteRepository
+import com.example.rentify.data.repository.UserRepository
 import com.example.rentify.data.repository.RentifyUserRepository
 import com.example.rentify.navigation.AppNavGraph
 import com.example.rentify.ui.theme.RentifyTheme
@@ -33,14 +35,17 @@ class MainActivity : ComponentActivity() {
 
                     // ==================== REPOSITORIOS ====================
 
-                    // ✅ NUEVO: Repositorio local de usuarios (para sincronización)
+                    // Repositorio local de usuarios (para sincronizacion)
                     val rentifyUserRepository = RentifyUserRepository(
                         usuarioDao = db.usuarioDao(),
                         catalogDao = db.catalogDao()
                     )
 
-                    // User Remote Repository (para autenticación)
+                    // User Remote Repository (para autenticacion)
                     val userRemoteRepository = UserRemoteRepository()
+
+                    // UserRepository para operaciones de perfil (usa API remota)
+                    val userRepository = UserRepository(RetrofitClient.userServiceApi)
 
                     // Application Remote Repository
                     val applicationRemoteRepository = ApplicationRemoteRepository(
@@ -51,12 +56,12 @@ class MainActivity : ComponentActivity() {
                     // Property Remote Repository
                     val propertyRemoteRepository = PropertyRemoteRepository()
 
-                    // ✅ NUEVO: Review Remote Repository
+                    // Review Remote Repository
                     val reviewRemoteRepository = ReviewRemoteRepository()
 
                     // ==================== VIEWMODELS ====================
 
-                    // Auth ViewModel - ✅ ACTUALIZADO: ahora recibe ambos repositorios
+                    // Auth ViewModel
                     val authViewModel: RentifyAuthViewModel = viewModel(
                         factory = RentifyAuthViewModelFactory(
                             userRemoteRepository = userRemoteRepository,
@@ -91,21 +96,17 @@ class MainActivity : ComponentActivity() {
                         )
                     )
 
-                    // Perfil ViewModel
+                    // Perfil ViewModel - Usa UserRepository (API remota)
                     val perfilViewModel: PerfilUsuarioViewModel = viewModel(
-                        factory = PerfilUsuarioViewModelFactory(
-                            db.usuarioDao(),
-                            db.catalogDao(),
-                            db.solicitudDao()
-                        )
+                        factory = PerfilUsuarioViewModelFactory(userRepository)
                     )
 
-                    // ✅ NUEVO: Review ViewModel
+                    // Review ViewModel
                     val reviewViewModel: ReviewViewModel = viewModel(
                         factory = ReviewViewModelFactory(reviewRemoteRepository)
                     )
 
-                    // ==================== NAVEGACIÓN ====================
+                    // ==================== NAVEGACION ====================
 
                     AppNavGraph(
                         navController = navController,
@@ -114,7 +115,8 @@ class MainActivity : ComponentActivity() {
                         propiedadDetalleViewModel = propiedadDetalleViewModel,
                         solicitudesViewModel = solicitudesViewModel,
                         perfilViewModel = perfilViewModel,
-                        reviewViewModel = reviewViewModel  // ✅ NUEVO PARÁMETRO
+                        reviewViewModel = reviewViewModel,
+                        userRepository = userRepository
                     )
                 }
             }

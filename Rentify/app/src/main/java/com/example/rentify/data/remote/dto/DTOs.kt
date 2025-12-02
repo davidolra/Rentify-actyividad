@@ -7,7 +7,6 @@ import java.util.Date
 
 /**
  * DTO para Solicitud de Arriendo
- * ✅ CORREGIDO: Compatible 100% con backend
  */
 data class SolicitudArriendoDTO(
     val id: Long? = null,
@@ -18,10 +17,10 @@ data class SolicitudArriendoDTO(
     @SerializedName("propiedadId")
     val propiedadId: Long,
 
-    val estado: String? = null,  // Backend genera automáticamente
+    val estado: String? = null,
 
     @SerializedName("fechaSolicitud")
-    val fechaSolicitud: Date? = null,  // ✅ CORREGIDO: Date en lugar de String
+    val fechaSolicitud: Date? = null,
 
     val usuario: UsuarioDTO? = null,
     val propiedad: PropiedadDTO? = null
@@ -29,7 +28,6 @@ data class SolicitudArriendoDTO(
 
 /**
  * DTO para Registro de Arriendo
- * ✅ CORREGIDO: Compatible 100% con backend
  */
 data class RegistroArriendoDTO(
     val id: Long? = null,
@@ -38,7 +36,7 @@ data class RegistroArriendoDTO(
     val solicitudId: Long,
 
     @SerializedName("fechaInicio")
-    val fechaInicio: Date,  // ✅ CORREGIDO: Date
+    val fechaInicio: Date,
 
     @SerializedName("fechaFin")
     val fechaFin: Date? = null,
@@ -51,8 +49,7 @@ data class RegistroArriendoDTO(
 )
 
 /**
- * DTO de Usuario (desde User Service)
- * ✅ CORREGIDO: Compatible 100% con backend
+ * DTO de Usuario usado en la UI
  */
 data class UsuarioDTO(
     val id: Long? = null,
@@ -63,7 +60,10 @@ data class UsuarioDTO(
     val ntelefono: String? = null,
 
     @SerializedName("rolId")
-    val rolId: Int? = null,  // ✅ Backend usa Integer
+    val rolId: Int? = null,
+
+    @SerializedName("estadoId")
+    val estadoId: Int? = null,
 
     val rol: RolInfo? = null,
     val estado: EstadoInfo? = null,
@@ -83,8 +83,7 @@ data class UsuarioDTO(
 }
 
 /**
- * DTO de Propiedad (desde Property Service)
- * ✅ CORREGIDO: Compatible 100% con backend
+ * DTO de Propiedad
  */
 data class PropiedadDTO(
     val id: Long? = null,
@@ -99,10 +98,10 @@ data class PropiedadDTO(
     val m2: Double,
 
     @SerializedName("nHabit")
-    val nHabit: Int? = null,  // ✅ Puede ser null si backend no lo envía
+    val nHabit: Int? = null,
 
     @SerializedName("nBanos")
-    val nBanos: Int? = null,  // ✅ Puede ser null si backend no lo envía
+    val nBanos: Int? = null,
 
     @SerializedName("petFriendly")
     val petFriendly: Boolean,
