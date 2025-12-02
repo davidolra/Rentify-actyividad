@@ -1,8 +1,13 @@
 package com.example.rentify.ui.viewmodel
 
+import android.net.Uri
+import android.util.Log
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.rentify.data.model.DocumentoRegistro
+import com.example.rentify.data.model.DocumentosRegistroState
+import com.example.rentify.data.model.TipoDocumentoRegistro
 import com.example.rentify.data.remote.ApiResult
 import com.example.rentify.data.remote.dto.UsuarioRemoteDTO
 import com.example.rentify.data.repository.UserRemoteRepository
@@ -29,7 +34,7 @@ data class LoginUiState(
 
 data class RegisterUiState(
     val pnombre: String = "",
-    val snombre: String = "",
+    val snombre: String = "",  // Ahora es OPCIONAL
     val papellido: String = "",
     val fechaNacimiento: TextFieldValue = TextFieldValue(""),
     val email: String = "",
@@ -41,7 +46,7 @@ data class RegisterUiState(
     val rolSeleccionado: String? = null,
     // Errores
     val pnombreError: String? = null,
-    val snombreError: String? = null,
+    val snombreError: String? = null,  // Solo se valida si tiene contenido
     val papellidoError: String? = null,
     val fechaNacimientoError: String? = null,
     val emailError: String? = null,
@@ -62,14 +67,22 @@ data class RegisterUiState(
 
 class RentifyAuthViewModel(
     private val remoteRepository: UserRemoteRepository,
-    private val localRepository: RentifyUserRepository  // ✅ NUEVO
+    private val localRepository: RentifyUserRepository
 ) : ViewModel() {
+
+    companion object {
+        private const val TAG = "RentifyAuthViewModel"
+    }
 
     private val _login = MutableStateFlow(LoginUiState())
     val login: StateFlow<LoginUiState> = _login
 
     private val _register = MutableStateFlow(RegisterUiState())
     val register: StateFlow<RegisterUiState> = _register
+
+    // Estado de documentos para el registro
+    private val _documentosRegistro = MutableStateFlow(DocumentosRegistroState())
+    val documentosRegistro: StateFlow<DocumentosRegistroState> = _documentosRegistro
 
     private var loggedUser: UsuarioRemoteDTO? = null
     fun getLoggedUser(): UsuarioRemoteDTO? = loggedUser
@@ -103,7 +116,7 @@ class RentifyAuthViewModel(
                 is ApiResult.Success -> {
                     loggedUser = result.data.usuario
 
-                    // ✅ NUEVO: Sincronizar usuario en BD local
+                    // Sincronizar usuario en BD local
                     loggedUser?.let { usuario ->
                         localRepository.syncUsuarioFromRemote(usuario)
                     }
@@ -138,19 +151,24 @@ class RentifyAuthViewModel(
 
     fun onPnombreChange(value: String) {
         val filtered = value.filter { it.isLetter() || it.isWhitespace() }
-        _register.update { it.copy(pnombre = filtered, pnombreError = validateName(filtered)) }
+        _register.update { it.copy(pnombre = filtered, pnombreError = validateNameRequired(filtered)) }
         recomputeRegisterCanSubmit()
     }
 
+    /**
+     * Segundo nombre es OPCIONAL - solo se valida formato si tiene contenido
+     */
     fun onSnombreChange(value: String) {
         val filtered = value.filter { it.isLetter() || it.isWhitespace() }
-        _register.update { it.copy(snombre = filtered, snombreError = validateName(filtered)) }
+        // Solo validar si tiene contenido
+        val error = if (filtered.isNotBlank()) validateNameOptional(filtered) else null
+        _register.update { it.copy(snombre = filtered, snombreError = error) }
         recomputeRegisterCanSubmit()
     }
 
     fun onPapellidoChange(value: String) {
         val filtered = value.filter { it.isLetter() || it.isWhitespace() }
-        _register.update { it.copy(papellido = filtered, papellidoError = validateName(filtered)) }
+        _register.update { it.copy(papellido = filtered, papellidoError = validateNameRequired(filtered)) }
         recomputeRegisterCanSubmit()
     }
 
@@ -242,31 +260,116 @@ class RentifyAuthViewModel(
         recomputeRegisterCanSubmit()
     }
 
+    // ==================== DOCUMENTOS ====================
+
+    /**
+     * Agrega o reemplaza un documento seleccionado
+     */
+    fun onDocumentoSeleccionado(tipo: TipoDocumentoRegistro, uri: Uri, nombreArchivo: String) {
+        Log.d(TAG, "Documento seleccionado: ${tipo.name} - $nombreArchivo")
+
+        val documento = DocumentoRegistro(
+            tipo = tipo,
+            uri = uri,
+            nombreArchivo = nombreArchivo,
+            mimeType = null, // Se puede obtener del ContentResolver si es necesario
+            tamanoBytes = null
+        )
+
+        _documentosRegistro.update { state ->
+            state.copy(
+                documentos = state.documentos + (tipo to documento),
+                error = null
+            )
+        }
+
+        recomputeRegisterCanSubmit()
+    }
+
+    /**
+     * Elimina un documento seleccionado
+     */
+    fun onDocumentoEliminado(tipo: TipoDocumentoRegistro) {
+        Log.d(TAG, "Documento eliminado: ${tipo.name}")
+
+        _documentosRegistro.update { state ->
+            state.copy(
+                documentos = state.documentos - tipo
+            )
+        }
+
+        recomputeRegisterCanSubmit()
+    }
+
+    /**
+     * Obtiene los documentos seleccionados para enviar al backend
+     */
+    fun getDocumentosSeleccionados(): List<DocumentoRegistro> {
+        return _documentosRegistro.value.documentos.values.toList()
+    }
+
+    /**
+     * Limpia todos los documentos
+     */
+    fun clearDocumentos() {
+        _documentosRegistro.value = DocumentosRegistroState()
+    }
+
+    // ==================== VALIDACIÓN Y SUBMIT ====================
+
     private fun recomputeRegisterCanSubmit() {
         val s = _register.value
+        val docState = _documentosRegistro.value
+
         val errors = listOf(
-            s.pnombreError, s.snombreError, s.papellidoError,
-            s.fechaNacimientoError, s.emailError, s.rutError,
-            s.telefonoError, s.passError, s.confirmError, s.codigoReferidoError
+            s.pnombreError,
+            s.snombreError,  // Puede ser null si está vacío (es opcional)
+            s.papellidoError,
+            s.fechaNacimientoError,
+            s.emailError,
+            s.rutError,
+            s.telefonoError,
+            s.passError,
+            s.confirmError,
+            s.codigoReferidoError
         )
         val noErrors = errors.all { it == null }
-        val filled = s.pnombre.isNotBlank() && s.snombre.isNotBlank() &&
-                s.papellido.isNotBlank() && s.fechaNacimiento.text.length == 10 &&
-                s.email.isNotBlank() && s.rut.isNotBlank() &&
-                s.telefono.isNotBlank() && s.pass.isNotBlank() && s.confirm.isNotBlank()
+
+        // Campos obligatorios (SIN segundo nombre)
+        val filled = s.pnombre.isNotBlank() &&
+                s.papellido.isNotBlank() &&
+                s.fechaNacimiento.text.length == 10 &&
+                s.email.isNotBlank() &&
+                s.rut.isNotBlank() &&
+                s.telefono.isNotBlank() &&
+                s.pass.isNotBlank() &&
+                s.confirm.isNotBlank()
 
         val rolValido = !s.rolSeleccionado.isNullOrBlank() &&
                 (s.rolSeleccionado == "Arrendatario" || s.rolSeleccionado == "Propietario")
 
-        _register.update { it.copy(canSubmit = noErrors && filled && rolValido) }
+        // Verificar documentos obligatorios
+        val documentosOk = docState.todosObligatoriosCargados
+
+        _register.update { it.copy(canSubmit = noErrors && filled && rolValido && documentosOk) }
     }
 
     fun submitRegister() {
         val s = _register.value
+        val docState = _documentosRegistro.value
+
         if (s.rolSeleccionado.isNullOrBlank()) {
             _register.update { it.copy(errorMsg = "Debes seleccionar un rol") }
             return
         }
+
+        if (!docState.todosObligatoriosCargados) {
+            _register.update {
+                it.copy(errorMsg = "Debes subir los documentos obligatorios: ${docState.obligatoriosFaltantes.joinToString { t -> t.displayName }}")
+            }
+            return
+        }
+
         if (!s.canSubmit || s.isSubmitting) return
 
         viewModelScope.launch {
@@ -286,9 +389,16 @@ class RentifyAuthViewModel(
                 else -> 3L
             }
 
+            // El segundo nombre se envía vacío si no se llenó
+            val segundoNombre = s.snombre.trim().ifBlank { "" }
+
+            Log.d(TAG, "Registrando usuario: ${s.email}")
+            Log.d(TAG, "  Segundo nombre: '${segundoNombre}' (${if (segundoNombre.isEmpty()) "vacío" else "con valor"})")
+            Log.d(TAG, "  Documentos cargados: ${docState.cantidadCargados}")
+
             when (val result = remoteRepository.registrarUsuario(
                 pnombre = s.pnombre.trim(),
-                snombre = s.snombre.trim(),
+                snombre = segundoNombre,
                 papellido = s.papellido.trim(),
                 fnacimiento = fechaISO,
                 email = s.email.trim(),
@@ -298,6 +408,14 @@ class RentifyAuthViewModel(
                 rolId = rolId
             )) {
                 is ApiResult.Success -> {
+                    Log.d(TAG, "Usuario registrado exitosamente: ID=${result.data.id}")
+
+                    // TODO: Aquí se integraría con DocumentService para subir los documentos
+                    // Por ahora solo logueamos los documentos seleccionados
+                    docState.documentos.forEach { (tipo, doc) ->
+                        Log.d(TAG, "  Documento pendiente de subir: ${tipo.name} - ${doc.nombreArchivo}")
+                    }
+
                     _register.update {
                         it.copy(
                             isSubmitting = false,
@@ -305,8 +423,12 @@ class RentifyAuthViewModel(
                             errorMsg = null
                         )
                     }
+
+                    // Limpiar documentos después de registro exitoso
+                    clearDocumentos()
                 }
                 is ApiResult.Error -> {
+                    Log.e(TAG, "Error al registrar: ${result.message}")
                     _register.update {
                         it.copy(
                             isSubmitting = false,
@@ -349,12 +471,25 @@ class RentifyAuthViewModel(
         }
     }
 
-    private fun validateEmail(email: String) = if (email.contains("@")) null else "Email inválido"
-    private fun validateName(name: String) = if (name.isNotBlank()) null else "Nombre obligatorio"
-    private fun validateRut(rut: String) = if (rut.isNotBlank()) null else "Rut obligatorio"
+    // Validación para campos obligatorios
+    private fun validateNameRequired(name: String) = if (name.isNotBlank()) null else "Campo obligatorio"
+
+    // Validación para campos opcionales (solo formato)
+    private fun validateNameOptional(name: String): String? {
+        // Si tiene contenido, validar que tenga al menos 2 caracteres
+        return if (name.length < 2) "Mínimo 2 caracteres" else null
+    }
+
+    private fun validateEmail(email: String) = if (email.contains("@") && email.contains(".")) null else "Email inválido"
+    private fun validateRut(rut: String) = if (rut.isNotBlank()) null else "RUT obligatorio"
     private fun validatePhoneChileno(phone: String) = if (phone.isNotBlank()) null else "Teléfono obligatorio"
     private fun validateStrongPassword(pass: String) = if (pass.length >= 8) null else "Mínimo 8 caracteres"
-    private fun validateConfirm(pass: String, confirm: String) = if (pass == confirm) null else "No coincide"
+    private fun validateConfirm(pass: String, confirm: String) = if (pass == confirm) null else "Las contraseñas no coinciden"
     private fun validateCodigoReferido(code: String): String? = null // Opcional
-    private fun validateFechaNacimiento(timestamp: Long) = null // Placeholder
+
+    private fun validateFechaNacimiento(timestamp: Long): String? {
+        val now = System.currentTimeMillis()
+        val edad = (now - timestamp) / (1000L * 60 * 60 * 24 * 365)
+        return if (edad >= 18) null else "Debes ser mayor de 18 años"
+    }
 }
