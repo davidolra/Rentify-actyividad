@@ -10,7 +10,7 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
 
 /**
- * Repositorio para sincronización con Property Service (remoto)
+ * Repositorio para sincronizacion con Property Service (remoto)
  */
 class PropertyRemoteRepository {
 
@@ -77,7 +77,7 @@ class PropertyRemoteRepository {
     }
 
     /**
-     * Obtener propiedad por código
+     * Obtener propiedad por codigo
      */
     suspend fun obtenerPropiedadPorCodigo(
         codigo: String,
@@ -176,7 +176,7 @@ class PropertyRemoteRepository {
         }
     }
 
-    // ==================== CATÁLOGOS ====================
+    // ==================== CATALOGOS ====================
 
     /**
      * Listar todos los tipos
@@ -197,7 +197,7 @@ class PropertyRemoteRepository {
     }
 
     /**
-     * Obtener comunas por región
+     * Obtener comunas por region
      */
     suspend fun obtenerComunasPorRegion(regionId: Long): ApiResult<List<ComunaRemoteDTO>> {
         return safeApiCall {
@@ -215,7 +215,7 @@ class PropertyRemoteRepository {
     }
 
     /**
-     * Listar todas las categorías
+     * Listar todas las categorias
      */
     suspend fun listarCategorias(): ApiResult<List<CategoriaRemoteDTO>> {
         return safeApiCall {

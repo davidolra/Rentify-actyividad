@@ -111,12 +111,12 @@ fun AppNavGraph(
 
             when (userRole?.uppercase()) {
                 "ADMINISTRADOR" -> {
-                    add(DrawerItem("Gestión Usuarios", Icons.Filled.People) {
+                    add(DrawerItem("Gestion Usuarios", Icons.Filled.People) {
                         scope.launch { drawerState.close() }
                         navController.navigate(Route.GestionUsuarios.path)
                     })
 
-                    add(DrawerItem("Gestión Propiedades", Icons.Filled.Business) {
+                    add(DrawerItem("Gestion Propiedades", Icons.Filled.Business) {
                         scope.launch { drawerState.close() }
                         navController.navigate(Route.GestionPropiedades.path)
                     })
@@ -145,7 +145,7 @@ fun AppNavGraph(
                 scope.launch { drawerState.close() }
                 goHome()
             },
-            DrawerItem("Iniciar Sesión", Icons.Filled.Login) {
+            DrawerItem("Iniciar Sesion", Icons.Filled.Login) {
                 scope.launch { drawerState.close() }
                 goLogin()
             },

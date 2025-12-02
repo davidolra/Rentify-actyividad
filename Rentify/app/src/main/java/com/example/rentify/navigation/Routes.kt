@@ -1,11 +1,11 @@
 package com.example.rentify.navigation
 
 /**
- * ✅ Rutas simplicadas + rutas ADMIN
+ * Rutas simplificadas + rutas ADMIN
  */
 sealed class Route(val path: String) {
 
-    // ----- PÚBLICAS -----
+    // ----- PUBLICAS -----
     data object Welcome : Route("welcome")
     data object Home : Route("home")
     data object Login : Route("login")
@@ -30,6 +30,4 @@ sealed class Route(val path: String) {
 
     // ----- PROPIETARIO -----
     data object MisPropiedades : Route("mis_propiedades")
-
-
 }

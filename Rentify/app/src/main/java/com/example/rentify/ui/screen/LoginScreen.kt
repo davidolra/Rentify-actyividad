@@ -1,5 +1,6 @@
 package com.example.rentify.ui.screen
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -19,8 +20,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.rentify.ui.viewmodel.RentifyAuthViewModel
 import com.example.rentify.data.local.storage.UserPreferences
-import kotlinx.coroutines.launch
+import com.example.rentify.data.local.RentifyDatabase
 import com.example.rentify.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun LoginScreenVm(
@@ -31,29 +34,78 @@ fun LoginScreenVm(
     val state by vm.login.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val userPrefs = remember { UserPreferences(context) }
-    val scope = rememberCoroutineScope()
 
+    // Garantizar que la BD este inicializada
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            try {
+                val db = RentifyDatabase.getInstance(context)
+                // Forzar inicializacion verificando que hay roles
+                val roles = db.catalogDao().getAllRoles()
+                Log.d("LoginScreen", "BD inicializada: ${roles.size} roles encontrados")
+            } catch (e: Exception) {
+                Log.e("LoginScreen", "Error al inicializar BD: ${e.message}", e)
+            }
+        }
+    }
+
+    // Manejo robusto del exito de login
     LaunchedEffect(state.success) {
         if (state.success) {
             val usuario = vm.getLoggedUser()
             if (usuario != null) {
-                // ✅ CAMBIO 1: rol_id → rolId ?: 0L
-                val rolNombre = vm.getRoleName(usuario.rolId ?: 0L)
-                scope.launch {
+                try {
+                    Log.d("LoginScreen", "Obteniendo rol para usuario: ${usuario.email}")
+
+                    // Obtener nombre del rol (ahora con manejo de errores interno)
+                    val rolNombre = vm.getRoleName(usuario.rolId ?: 0L)
+
+                    Log.d("LoginScreen", "Rol obtenido: $rolNombre")
+
+                    // Guardar sesion
                     userPrefs.saveUserSession(
-                        // ✅ CAMBIO 2: id → id ?: 0L
                         userId = usuario.id ?: 0L,
                         email = usuario.email,
                         name = "${usuario.pnombre} ${usuario.papellido}",
                         role = rolNombre,
-                        // ✅ CAMBIO 3: duoc_vip → duocVip ?: false
                         isDuocVip = usuario.duocVip ?: false
                     )
+
+                    Log.d("LoginScreen", "Sesion guardada exitosamente")
+
+                    vm.clearLoginResult()
+                    onLoginOkNavigateHome()
+
+                } catch (e: Exception) {
+                    // Capturar cualquier error y permitir login con rol por defecto
+                    Log.e("LoginScreen", "Error en proceso de login: ${e.message}", e)
+
+                    try {
+                        // Intentar guardar con rol por defecto
+                        userPrefs.saveUserSession(
+                            userId = usuario.id ?: 0L,
+                            email = usuario.email,
+                            name = "${usuario.pnombre} ${usuario.papellido}",
+                            role = "Usuario",
+                            isDuocVip = usuario.duocVip ?: false
+                        )
+
+                        Log.d("LoginScreen", "Sesion guardada con rol por defecto")
+
+                        vm.clearLoginResult()
+                        onLoginOkNavigateHome()
+                    } catch (e2: Exception) {
+                        Log.e("LoginScreen", "Error critico al guardar sesion: ${e2.message}", e2)
+                        // Ultimo recurso: marcar como logged in
+                        userPrefs.setLoggedIn(true)
+                        vm.clearLoginResult()
+                        onLoginOkNavigateHome()
+                    }
                 }
-                vm.clearLoginResult()
-                onLoginOkNavigateHome()
             } else {
-                scope.launch { userPrefs.setLoggedIn(true) }
+                // Fallback si el usuario es null
+                Log.w("LoginScreen", "Usuario null, usando fallback")
+                userPrefs.setLoggedIn(true)
                 vm.clearLoginResult()
                 onLoginOkNavigateHome()
             }
@@ -168,7 +220,7 @@ private fun LoginScreen(
                     OutlinedTextField(
                         value = pass,
                         onValueChange = onPassChange,
-                        label = { Text("Contraseña") },
+                        label = { Text("Contrasena") },
                         singleLine = true,
                         visualTransformation = if (showPass) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
@@ -228,7 +280,7 @@ private fun LoginScreen(
                 onClick = onGoRegister,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("¿No tienes cuenta? Registrate")
+                Text("No tienes cuenta? Registrate")
             }
 
             Spacer(Modifier.height(24.dp))
@@ -241,7 +293,7 @@ private fun LoginScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "¡ Usuarios @duocuc.cl obtienen 20% descuento en comision de servicio",
+                        "Usuarios @duocuc.cl obtienen 20% descuento en comision de servicio!",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )

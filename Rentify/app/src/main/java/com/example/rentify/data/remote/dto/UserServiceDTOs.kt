@@ -1,6 +1,9 @@
 package com.example.rentify.data.remote.dto
 
+import com.example.rentify.data.local.entities.UsuarioEntity
 import com.google.gson.annotations.SerializedName
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 data class UsuarioRemoteDTO(
     val id: Long? = null,
@@ -32,6 +35,49 @@ data class UsuarioRemoteDTO(
     val rol: RolRemoteDTO? = null,
     val estado: EstadoRemoteDTO? = null
 )
+
+fun UsuarioRemoteDTO.toEntity(): UsuarioEntity {
+    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    val fnacimientoTimestamp = try {
+        sdf.parse(this.fnacimiento)?.time ?: 0L
+    } catch (e: Exception) {
+        0L
+    }
+
+    val fcreacionTimestamp = try {
+        this.fcreacion?.let { sdf.parse(it)?.time } ?: System.currentTimeMillis()
+    } catch (e: Exception) {
+        System.currentTimeMillis()
+    }
+
+    val factualizacionTimestamp = try {
+        this.factualizacion?.let { sdf.parse(it)?.time } ?: System.currentTimeMillis()
+    } catch (e: Exception) {
+        System.currentTimeMillis()
+    }
+
+    return UsuarioEntity(
+        id = this.id ?: 0L,
+        pnombre = this.pnombre,
+        snombre = this.snombre,
+        papellido = this.papellido,
+        fnacimiento = fnacimientoTimestamp,
+        email = this.email,
+        rut = this.rut,
+        ntelefono = this.ntelefono,
+        direccion = this.direccion,
+        comuna = this.comuna,
+        fotoPerfil = null, // El DTO no tiene foto de perfil, se maneja localmente
+        clave = this.clave ?: "", // La entidad requiere una clave no nula
+        duoc_vip = this.duocVip ?: false,
+        puntos = this.puntos ?: 0,
+        codigo_ref = this.codigoRef ?: "", // La entidad requiere un código de referencia no nulo
+        fcreacion = fcreacionTimestamp,
+        factualizacion = factualizacionTimestamp,
+        estado_id = this.estadoId ?: 1L, // Asumiendo 1 como estado por defecto
+        rol_id = this.rolId
+    )
+}
 
 data class LoginRemoteDTO(
     val email: String,
@@ -65,12 +111,12 @@ data class UserServiceErrorResponse(
             return validationErrors.values.joinToString("\n")
         }
         return when (status) {
-            400 -> "Error de validación: $message"
-            401 -> "Error de autenticación: $message"
+            400 -> "Error de validacion: $message"
+            401 -> "Error de autenticacion: $message"
             404 -> "Recurso no encontrado: $message"
             409 -> "Conflicto: $message"
             500 -> "Error del servidor. Por favor intente nuevamente."
-            503 -> "Servicio no disponible. Por favor intente más tarde."
+            503 -> "Servicio no disponible. Por favor intente mas tarde."
             else -> message
         }
     }

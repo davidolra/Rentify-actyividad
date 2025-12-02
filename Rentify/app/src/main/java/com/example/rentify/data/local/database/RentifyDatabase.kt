@@ -13,7 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /**
- * ✅ CORREGIDO: Base de datos con poblado automático GARANTIZADO
+ * Base de datos con poblado automatico GARANTIZADO
  */
 @Database(
     entities = [
@@ -34,7 +34,7 @@ import kotlinx.coroutines.launch
         ResenaEntity::class,
         SolicitudEntity::class
     ],
-    version = 3,  // ✅ INCREMENTADA para forzar recreación
+    version = 3,
     exportSchema = false
 )
 abstract class RentifyDatabase : RoomDatabase() {
@@ -58,13 +58,13 @@ abstract class RentifyDatabase : RoomDatabase() {
                     RentifyDatabase::class.java,
                     "rentify_database"
                 )
-                    .fallbackToDestructiveMigration()  // ✅ Recrear si hay cambios
-                    .addCallback(DatabaseCallback())    // ✅ Callback para poblar
+                    .fallbackToDestructiveMigration()
+                    .addCallback(DatabaseCallback())
                     .build()
 
                 INSTANCE = instance
 
-                // ✅ FORZAR POBLADO INMEDIATO EN PRIMER ACCESO
+                // FORZAR POBLADO INMEDIATO EN PRIMER ACCESO
                 CoroutineScope(Dispatchers.IO).launch {
                     verificarYPoblarDatos(instance)
                 }
@@ -74,12 +74,12 @@ abstract class RentifyDatabase : RoomDatabase() {
         }
 
         /**
-         * ✅ NUEVO: Callback que se ejecuta cuando la BD se crea
+         * Callback que se ejecuta cuando la BD se crea
          */
         private class DatabaseCallback : RoomDatabase.Callback() {
             override fun onCreate(db: SupportSQLiteDatabase) {
                 super.onCreate(db)
-                Log.d(TAG, "✅ Base de datos creada - Iniciando poblado automático")
+                Log.d(TAG, "Base de datos creada - Iniciando poblado automatico")
 
                 INSTANCE?.let { database ->
                     CoroutineScope(Dispatchers.IO).launch {
@@ -91,7 +91,7 @@ abstract class RentifyDatabase : RoomDatabase() {
         }
 
         /**
-         * ✅ NUEVO: Verificar si la BD está vacía y poblar si es necesario
+         * Verificar si la BD esta vacia y poblar si es necesario
          */
         private suspend fun verificarYPoblarDatos(db: RentifyDatabase) {
             try {
@@ -99,10 +99,10 @@ abstract class RentifyDatabase : RoomDatabase() {
                 val estadosExistentes = catalogDao.getAllEstados()
 
                 if (estadosExistentes.isEmpty()) {
-                    Log.d(TAG, "⚠Base de datos vacía detectada - Poblando datos...")
+                    Log.d(TAG, "Base de datos vacia detectada - Poblando datos...")
                     poblarDatosIniciales(db)
                 } else {
-                    Log.d(TAG, " Base de datos ya contiene datos (${estadosExistentes.size} estados)")
+                    Log.d(TAG, "Base de datos ya contiene datos (${estadosExistentes.size} estados)")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error al verificar datos: ${e.message}", e)
@@ -110,7 +110,7 @@ abstract class RentifyDatabase : RoomDatabase() {
         }
 
         /**
-         * ✅ MEJORADO: Poblado de datos con mejor manejo de errores
+         * Poblado de datos con mejor manejo de errores
          */
         private suspend fun poblarDatosIniciales(db: RentifyDatabase) {
             val catalogDao = db.catalogDao()
@@ -133,15 +133,15 @@ abstract class RentifyDatabase : RoomDatabase() {
                 Log.d(TAG, "Roles insertados")
 
                 Log.d(TAG, "Insertando Regiones...")
-                val regionRM = catalogDao.insertRegion(RegionEntity(nombre = "Región Metropolitana"))
-                val regionValpo = catalogDao.insertRegion(RegionEntity(nombre = "Región de Valparaíso"))
+                val regionRM = catalogDao.insertRegion(RegionEntity(nombre = "Region Metropolitana"))
+                val regionValpo = catalogDao.insertRegion(RegionEntity(nombre = "Region de Valparaiso"))
                 Log.d(TAG, "Regiones insertadas")
 
                 Log.d(TAG, "Insertando Comunas...")
                 val comunaSantiago = catalogDao.insertComuna(ComunaEntity(nombre = "Santiago", region_id = regionRM))
-                val comunaNunoa = catalogDao.insertComuna(ComunaEntity(nombre = "Ñuñoa", region_id = regionRM))
-                val comunaMaipu = catalogDao.insertComuna(ComunaEntity(nombre = "Maipú", region_id = regionRM))
-                val comunaVinaDelMar = catalogDao.insertComuna(ComunaEntity(nombre = "Viña del Mar", region_id = regionValpo))
+                val comunaNunoa = catalogDao.insertComuna(ComunaEntity(nombre = "Nunoa", region_id = regionRM))
+                val comunaMaipu = catalogDao.insertComuna(ComunaEntity(nombre = "Maipu", region_id = regionRM))
+                val comunaVinaDelMar = catalogDao.insertComuna(ComunaEntity(nombre = "Vina del Mar", region_id = regionValpo))
                 val comunaProvidencia = catalogDao.insertComuna(ComunaEntity(nombre = "Providencia", region_id = regionRM))
                 val comunaLasCondes = catalogDao.insertComuna(ComunaEntity(nombre = "Las Condes", region_id = regionRM))
                 Log.d(TAG, "Comunas insertadas")
@@ -152,29 +152,29 @@ abstract class RentifyDatabase : RoomDatabase() {
                 val tipoEstudio = catalogDao.insertTipo(TipoEntity(nombre = "Studio"))
                 Log.d(TAG, "Tipos insertados")
 
-                Log.d(TAG, "Insertando Categorías...")
+                Log.d(TAG, "Insertando Categorias...")
                 catalogDao.insertCategoria(CategoriaEntity(nombre = "Amoblado"))
                 catalogDao.insertCategoria(CategoriaEntity(nombre = "Pet-Friendly"))
                 catalogDao.insertCategoria(CategoriaEntity(nombre = "Con Estacionamiento"))
                 catalogDao.insertCategoria(CategoriaEntity(nombre = "Con Terraza"))
-                Log.d(TAG, "Categorías insertadas")
+                Log.d(TAG, "Categorias insertadas")
 
                 Log.d(TAG, "Insertando Tipos de Documentos...")
-                catalogDao.insertTipoDoc(TipoDocEntity(nombre = "Cédula Identidad"))
-                catalogDao.insertTipoDoc(TipoDocEntity(nombre = "Liquidación Sueldo"))
+                catalogDao.insertTipoDoc(TipoDocEntity(nombre = "Cedula Identidad"))
+                catalogDao.insertTipoDoc(TipoDocEntity(nombre = "Liquidacion Sueldo"))
                 catalogDao.insertTipoDoc(TipoDocEntity(nombre = "Certificado Antecedentes"))
                 catalogDao.insertTipoDoc(TipoDocEntity(nombre = "Certificado AFP"))
                 catalogDao.insertTipoDoc(TipoDocEntity(nombre = "Contrato Trabajo"))
                 Log.d(TAG, "Tipos de documentos insertados")
 
-                Log.d(TAG, "Insertando Tipos de Reseña...")
-                catalogDao.insertTipoResena(TipoResenaEntity(nombre = "Reseña Propiedad"))
-                catalogDao.insertTipoResena(TipoResenaEntity(nombre = "Reseña Usuario"))
-                Log.d(TAG, "Tipos de reseña insertados")
+                Log.d(TAG, "Insertando Tipos de Resena...")
+                catalogDao.insertTipoResena(TipoResenaEntity(nombre = "Resena Propiedad"))
+                catalogDao.insertTipoResena(TipoResenaEntity(nombre = "Resena Usuario"))
+                Log.d(TAG, "Tipos de resena insertados")
 
                 val now = System.currentTimeMillis()
 
-                // ✅ USUARIOS DE PRUEBA
+                // USUARIOS DE PRUEBA
                 Log.d(TAG, "Insertando Usuarios de prueba...")
 
                 // Admin
@@ -188,7 +188,7 @@ abstract class RentifyDatabase : RoomDatabase() {
                         rut = "11111111-1",
                         ntelefono = "+56911111111",
                         clave = "Admin123!",
-                        duoc_vip = true,
+                        duoc_vip = false,
                         puntos = 1000,
                         codigo_ref = "ADMIN2024",
                         fcreacion = now,
@@ -202,9 +202,9 @@ abstract class RentifyDatabase : RoomDatabase() {
                 // Propietario
                 val propietarioId = usuarioDao.insert(
                     UsuarioEntity(
-                        pnombre = "María",
+                        pnombre = "Maria",
                         snombre = "Elena",
-                        papellido = "González",
+                        papellido = "Gonzalez",
                         fnacimiento = now - (35L * 365 * 24 * 60 * 60 * 1000),
                         email = "maria@gmail.com",
                         rut = "22222222-2",
@@ -225,7 +225,7 @@ abstract class RentifyDatabase : RoomDatabase() {
                 val arrendatarioId = usuarioDao.insert(
                     UsuarioEntity(
                         pnombre = "Carlos",
-                        snombre = "Andrés",
+                        snombre = "Andres",
                         papellido = "Soto",
                         fnacimiento = now - (22L * 365 * 24 * 60 * 60 * 1000),
                         email = "carlos@duocuc.cl",
@@ -243,7 +243,7 @@ abstract class RentifyDatabase : RoomDatabase() {
                 )
                 Log.d(TAG, "Arrendatario creado: carlos@duocuc.cl / Carlos123!")
 
-                // ✅ PROPIEDADES DE PRUEBA
+                // PROPIEDADES DE PRUEBA
                 Log.d(TAG, "Insertando Propiedades de prueba...")
 
                 propiedadDao.insert(
@@ -257,7 +257,7 @@ abstract class RentifyDatabase : RoomDatabase() {
                         n_banos = 1,
                         pet_friendly = false,
                         direccion = "Av. Providencia 1234",
-                        descripcion = "Departamento moderno en el corazón de Providencia",
+                        descripcion = "Departamento moderno en el corazon de Providencia",
                         fcreacion = now,
                         estado_id = estadoActivo,
                         tipo_id = tipoDepartamento,
@@ -269,14 +269,14 @@ abstract class RentifyDatabase : RoomDatabase() {
                 propiedadDao.insert(
                     PropiedadEntity(
                         codigo = "DP002",
-                        titulo = "Dpto 2D/2B Ñuñoa",
+                        titulo = "Dpto 2D/2B Nunoa",
                         precio_mensual = 750000,
                         divisa = "CLP",
                         m2 = 70.0,
                         n_habit = 2,
                         n_banos = 2,
                         pet_friendly = true,
-                        direccion = "Av. Irarrázaval 2500, Ñuñoa",
+                        direccion = "Av. Irarrazaval 2500, Nunoa",
                         descripcion = "Hermoso departamento pet-friendly",
                         fcreacion = now,
                         estado_id = estadoActivo,
@@ -289,14 +289,14 @@ abstract class RentifyDatabase : RoomDatabase() {
                 propiedadDao.insert(
                     PropiedadEntity(
                         codigo = "CASA001",
-                        titulo = "Casa 3D/2B Maipú",
+                        titulo = "Casa 3D/2B Maipu",
                         precio_mensual = 950000,
                         divisa = "CLP",
                         m2 = 120.0,
                         n_habit = 3,
                         n_banos = 2,
                         pet_friendly = true,
-                        direccion = "Calle Los Pinos 1234, Maipú",
+                        direccion = "Calle Los Pinos 1234, Maipu",
                         descripcion = "Casa amplia con patio y quincho",
                         fcreacion = now,
                         estado_id = estadoActivo,
@@ -329,14 +329,14 @@ abstract class RentifyDatabase : RoomDatabase() {
                 propiedadDao.insert(
                     PropiedadEntity(
                         codigo = "AT001",
-                        titulo = "Dpto Temporal Viña del Mar",
+                        titulo = "Dpto Temporal Vina del Mar",
                         precio_mensual = 500000,
                         divisa = "CLP",
                         m2 = 50.0,
                         n_habit = 1,
                         n_banos = 1,
                         pet_friendly = false,
-                        direccion = "Av. Libertad 200, Viña del Mar",
+                        direccion = "Av. Libertad 200, Vina del Mar",
                         descripcion = "Departamento cerca de la playa",
                         fcreacion = now,
                         estado_id = estadoActivo,
@@ -350,13 +350,13 @@ abstract class RentifyDatabase : RoomDatabase() {
                 Log.d(TAG, "POBLADO COMPLETO - Base de datos lista para usar")
 
             } catch (e: Exception) {
-                Log.e(TAG, " Error al poblar datos: ${e.message}", e)
+                Log.e(TAG, "Error al poblar datos: ${e.message}", e)
                 e.printStackTrace()
             }
         }
 
         /**
-         * ✅ MÉTODO PARA DEBUGGING: Verificar estado de la BD
+         * METODO PARA DEBUGGING: Verificar estado de la BD
          */
         suspend fun debugDatabaseState(context: Context) {
             val db = getInstance(context)

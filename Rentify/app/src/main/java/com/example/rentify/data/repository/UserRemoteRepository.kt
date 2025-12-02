@@ -92,8 +92,28 @@ class UserRemoteRepository {
         return safeApiCall { api.obtenerTodosUsuarios(includeDetails) }
     }
 
-    suspend fun actualizarUsuario(userId: Long, updateData: Map<String, Any?>): ApiResult<UsuarioRemoteDTO> {
-        Log.d(TAG, "Actualizando usuario: $userId con datos parciales")
+    /**
+     * ✅ MÉTODO PARA ACTUALIZACIÓN COMPLETA (PUT)
+     * Reemplaza todos los datos del usuario
+     */
+    suspend fun actualizarUsuario(
+        userId: Long,
+        usuario: UsuarioRemoteDTO
+    ): ApiResult<UsuarioRemoteDTO> {
+        Log.d(TAG, "📝 Actualizando usuario completo: $userId")
+        return safeApiCall { api.actualizarUsuario(userId, usuario) }
+    }
+
+    /**
+     * ✅ MÉTODO PARA ACTUALIZACIÓN PARCIAL (PATCH)
+     * Solo actualiza los campos especificados en el Map
+     */
+    suspend fun actualizarUsuarioParcial(
+        userId: Long,
+        updateData: Map<String, Any?>
+    ): ApiResult<UsuarioRemoteDTO> {
+        Log.d(TAG, "🔄 Actualizando usuario parcialmente: $userId con ${updateData.size} campos")
+        Log.d(TAG, "Campos a actualizar: ${updateData.keys}")
         return safeApiCall { api.actualizarUsuarioParcial(userId, updateData) }
     }
 

@@ -1,8 +1,11 @@
 package com.example.rentify.data.repository
 
+import android.util.Log
 import com.example.rentify.data.local.dao.CatalogDao
 import com.example.rentify.data.local.dao.UsuarioDao
 import com.example.rentify.data.local.entities.UsuarioEntity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 class RentifyUserRepository(
@@ -31,12 +34,33 @@ class RentifyUserRepository(
     }
 
     /**
-     * ✅ RESTAURADO: Obtiene el nombre del rol de un usuario
+     * ✅ CORREGIDO: Obtiene el nombre del rol con manejo robusto de errores
      */
     suspend fun getRoleName(rolId: Long?): String {
-        if (rolId == null) return "Sin Rol"
-        val rol = catalogDao.getRolById(rolId)
-        return rol?.nombre ?: "Sin Rol"
+        return withContext(Dispatchers.IO) {
+            try {
+                // Manejar IDs inválidos
+                if (rolId == null || rolId == 0L) {
+                    Log.w("RentifyUserRepository", "rolId inválido: $rolId")
+                    return@withContext "Usuario"
+                }
+
+                // Intentar obtener el rol
+                val rol = catalogDao.getRolById(rolId)
+
+                if (rol == null) {
+                    Log.w("RentifyUserRepository", "Rol no encontrado para ID: $rolId")
+                    return@withContext "Usuario"
+                }
+
+                Log.d("RentifyUserRepository", "✅ Rol obtenido: ${rol.nombre} (ID: $rolId)")
+                rol.nombre
+
+            } catch (e: Exception) {
+                Log.e("RentifyUserRepository", "❌ Error al obtener rol: ${e.message}", e)
+                "Usuario"  // Fallback seguro
+            }
+        }
     }
 
     /**
@@ -51,7 +75,7 @@ class RentifyUserRepository(
         rut: String,
         ntelefono: String,
         password: String,
-        rolSeleccionado: String = "Arrendatario"  // ✅ Por defecto Arrendatario
+        rolSeleccionado: String = "Arrendatario"
     ): Result<Long> {
         val emailLower = email.trim().lowercase()
         val rutLimpio = rut.trim().replace(".", "")
@@ -75,7 +99,7 @@ class RentifyUserRepository(
         val estadoActivo = catalogDao.getEstadoByNombre("Activo")
             ?: return Result.failure(IllegalStateException("Estado 'Activo' no encontrado en BD"))
 
-        // ✅ OBTENER ROL SEGÚN SELECCIÓN
+        // Obtener rol según selección
         val rol = when (rolSeleccionado) {
             "Propietario" -> catalogDao.getRolByNombre("Propietario")
             "Arrendatario" -> catalogDao.getRolByNombre("Arrendatario")
@@ -99,7 +123,7 @@ class RentifyUserRepository(
             fcreacion = now,
             factualizacion = now,
             estado_id = estadoActivo.id,
-            rol_id = rol.id  // ✅ ASIGNAR ROL
+            rol_id = rol.id
         )
 
         val id = usuarioDao.insert(nuevoUsuario)
@@ -135,58 +159,66 @@ class RentifyUserRepository(
     }
 
     /**
-     * ✅ NUEVO: Guarda/actualiza usuario remoto en la base de datos local
-     * Convierte UsuarioRemoteDTO a UsuarioEntity
+     * ✅ MEJORADO: Guarda/actualiza usuario remoto en BD local con mejor manejo de errores
      */
     suspend fun syncUsuarioFromRemote(
         usuarioRemoto: com.example.rentify.data.remote.dto.UsuarioRemoteDTO
     ): Result<Long> {
-        return try {
-            // Verificar si el usuario ya existe en la BD local
-            val usuarioExistente = usuarioDao.getById(usuarioRemoto.id ?: 0L)
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("RentifyUserRepository", "Sincronizando usuario: ${usuarioRemoto.email}")
 
-            // Parsear fecha de nacimiento
-            val fnacimiento = parseFechaNacimiento(usuarioRemoto.fnacimiento)
+                val usuarioExistente = usuarioDao.getById(usuarioRemoto.id ?: 0L)
+                val fnacimiento = parseFechaNacimiento(usuarioRemoto.fnacimiento)
 
-            // Obtener estado activo
-            val estadoActivo = catalogDao.getEstadoByNombre("Activo")
-                ?: return Result.failure(IllegalStateException("Estado 'Activo' no encontrado"))
+                // ✅ Verificar que la BD esté inicializada
+                val estadoActivo = catalogDao.getEstadoByNombre("Activo")
+                if (estadoActivo == null) {
+                    Log.e("RentifyUserRepository", "⚠️ Estado 'Activo' no encontrado - BD no inicializada")
+                    return@withContext Result.failure(
+                        IllegalStateException("Base de datos no inicializada")
+                    )
+                }
 
-            val now = System.currentTimeMillis()
+                val now = System.currentTimeMillis()
 
-            val usuarioLocal = UsuarioEntity(
-                id = usuarioRemoto.id ?: 0L,
-                pnombre = usuarioRemoto.pnombre,
-                snombre = usuarioRemoto.snombre,
-                papellido = usuarioRemoto.papellido,
-                fnacimiento = fnacimiento,
-                email = usuarioRemoto.email,
-                rut = usuarioRemoto.rut,
-                ntelefono = usuarioRemoto.ntelefono,
-                direccion = usuarioExistente?.direccion, // Mantener dirección local si existe
-                comuna = usuarioExistente?.comuna, // Mantener comuna local si existe
-                fotoPerfil = usuarioExistente?.fotoPerfil, // Mantener foto local si existe
-                clave = usuarioRemoto.clave ?: usuarioExistente?.clave ?: "",
-                duoc_vip = usuarioRemoto.duocVip ?: false,
-                puntos = usuarioRemoto.puntos ?: 0,
-                codigo_ref = usuarioRemoto.codigoRef ?: generarCodigoReferido(),
-                fcreacion = parseFechaCreacion(usuarioRemoto.fcreacion) ?: now,
-                factualizacion = now,
-                estado_id = usuarioRemoto.estadoId ?: estadoActivo.id,
-                rol_id = usuarioRemoto.rolId
-            )
+                val usuarioLocal = UsuarioEntity(
+                    id = usuarioRemoto.id ?: 0L,
+                    pnombre = usuarioRemoto.pnombre,
+                    snombre = usuarioRemoto.snombre,
+                    papellido = usuarioRemoto.papellido,
+                    fnacimiento = fnacimiento,
+                    email = usuarioRemoto.email,
+                    rut = usuarioRemoto.rut,
+                    ntelefono = usuarioRemoto.ntelefono,
+                    direccion = usuarioExistente?.direccion,
+                    comuna = usuarioExistente?.comuna,
+                    fotoPerfil = usuarioExistente?.fotoPerfil,
+                    clave = usuarioRemoto.clave ?: usuarioExistente?.clave ?: "",
+                    duoc_vip = usuarioRemoto.duocVip ?: false,
+                    puntos = usuarioRemoto.puntos ?: 0,
+                    codigo_ref = usuarioRemoto.codigoRef ?: generarCodigoReferido(),
+                    fcreacion = parseFechaCreacion(usuarioRemoto.fcreacion) ?: now,
+                    factualizacion = now,
+                    estado_id = usuarioRemoto.estadoId ?: estadoActivo.id,
+                    rol_id = usuarioRemoto.rolId
+                )
 
-            if (usuarioExistente != null) {
-                // Actualizar usuario existente
-                usuarioDao.update(usuarioLocal)
-                Result.success(usuarioLocal.id)
-            } else {
-                // Insertar nuevo usuario
-                val id = usuarioDao.insert(usuarioLocal)
+                val id = if (usuarioExistente != null) {
+                    usuarioDao.update(usuarioLocal)
+                    Log.d("RentifyUserRepository", "✅ Usuario actualizado: ${usuarioLocal.id}")
+                    usuarioLocal.id
+                } else {
+                    val newId = usuarioDao.insert(usuarioLocal)
+                    Log.d("RentifyUserRepository", "✅ Usuario insertado: $newId")
+                    newId
+                }
+
                 Result.success(id)
+            } catch (e: Exception) {
+                Log.e("RentifyUserRepository", "❌ Error al sincronizar usuario: ${e.message}", e)
+                Result.failure(e)
             }
-        } catch (e: Exception) {
-            Result.failure(e)
         }
     }
 

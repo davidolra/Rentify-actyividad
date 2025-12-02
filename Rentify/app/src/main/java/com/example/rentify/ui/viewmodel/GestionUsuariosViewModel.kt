@@ -30,13 +30,7 @@ class GestionUsuariosViewModel(private val userRemoteRepository: UserRemoteRepos
 
     fun updateUser(userId: Long, updatedUser: UsuarioRemoteDTO) {
         viewModelScope.launch {
-            val updateData = mapOf(
-                "pnombre" to updatedUser.pnombre,
-                "snombre" to updatedUser.snombre,
-                "papellido" to updatedUser.papellido,
-                "email" to updatedUser.email
-            )
-            val result = userRemoteRepository.actualizarUsuario(userId, updateData)
+            val result = userRemoteRepository.actualizarUsuario(userId, updatedUser)
             if (result is com.example.rentify.data.remote.ApiResult.Success) {
                 loadUsers()
             }

@@ -20,7 +20,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.rentify.ui.viewmodel.RentifyAuthViewModel
 
 /**
- * ✅ Pantalla de registro SIN SELECCIÓN DE ROL
+ * Pantalla de registro
  */
 @Composable
 fun RegisterScreenVm(
@@ -111,8 +111,8 @@ private fun RegisterScreen(
     errorMsg: String?,
     isDuocDetected: Boolean,
 
-    rolSeleccionado: String,  // ✅ AGREGADO
-    onRolChange: (String) -> Unit,  // ✅ AGREGADO
+    rolSeleccionado: String,
+    onRolChange: (String) -> Unit,
 
     onPnombreChange: (String) -> Unit,
     onSnombreChange: (String) -> Unit,
@@ -147,7 +147,7 @@ private fun RegisterScreen(
         ) {
             // ========== ENCABEZADO ==========
             Text(
-                text = "Únete a Rentify",
+                text = "Unete a Rentify",
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -160,7 +160,7 @@ private fun RegisterScreen(
             )
             Spacer(Modifier.height(24.dp))
 
-            // ========== SECCIÓN: DATOS PERSONALES ==========
+            // ========== SECCION: DATOS PERSONALES ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -230,7 +230,7 @@ private fun RegisterScreen(
 
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "Debes ser mayor de 18 años",
+                        "Debes ser mayor de 18 anos",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -239,7 +239,7 @@ private fun RegisterScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // ========== SECCIÓN: SELECCIÓN DE ROL ==========
+            // ========== SECCION: SELECCION DE ROL ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -248,7 +248,7 @@ private fun RegisterScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "¿Cómo usarás Rentify?",
+                        "Como usaras Rentify?",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -309,7 +309,7 @@ private fun RegisterScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // ========== SECCIÓN: CONTACTO ==========
+            // ========== SECCION: CONTACTO ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -349,7 +349,7 @@ private fun RegisterScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    "🎉 ¡Eres DUOC VIP! 20% descuento de por vida en comisión de servicio",
+                                    "Eres DUOC VIP! 20% descuento de por vida en comision de servicio",
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
@@ -376,7 +376,7 @@ private fun RegisterScreen(
                     OutlinedTextField(
                         value = telefono,
                         onValueChange = onTelefonoChange,
-                        label = { Text("Teléfono *") },
+                        label = { Text("Telefono *") },
                         singleLine = true,
                         isError = telefonoError != null,
                         placeholder = { Text("+56912345678") },
@@ -391,7 +391,7 @@ private fun RegisterScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // ========== SECCIÓN: SEGURIDAD ==========
+            // ========== SECCION: SEGURIDAD ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -409,7 +409,7 @@ private fun RegisterScreen(
                     OutlinedTextField(
                         value = pass,
                         onValueChange = onPassChange,
-                        label = { Text("Contraseña *") },
+                        label = { Text("Contrasena *") },
                         singleLine = true,
                         isError = passError != null,
                         visualTransformation = if (showPass) VisualTransformation.None else PasswordVisualTransformation(),
@@ -431,7 +431,7 @@ private fun RegisterScreen(
                     OutlinedTextField(
                         value = confirm,
                         onValueChange = onConfirmChange,
-                        label = { Text("Confirmar Contraseña *") },
+                        label = { Text("Confirmar Contrasena *") },
                         singleLine = true,
                         isError = confirmError != null,
                         visualTransformation = if (showConfirm) VisualTransformation.None else PasswordVisualTransformation(),
@@ -453,7 +453,7 @@ private fun RegisterScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // ========== SECCIÓN: CÓDIGO REFERIDO (OPCIONAL) ==========
+            // ========== SECCION: CODIGO REFERIDO (OPCIONAL) ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -462,7 +462,7 @@ private fun RegisterScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "¿Tienes un código de referido? (Opcional)",
+                        "Tienes un codigo de referido? (Opcional)",
                         style = MaterialTheme.typography.titleSmall
                     )
                     Spacer(Modifier.height(8.dp))
@@ -470,7 +470,7 @@ private fun RegisterScreen(
                     OutlinedTextField(
                         value = codigoReferido,
                         onValueChange = onCodigoReferidoChange,
-                        label = { Text("Código Referido") },
+                        label = { Text("Codigo Referido") },
                         singleLine = true,
                         isError = codigoReferidoError != null,
                         placeholder = { Text("ABC12345") },
@@ -482,7 +482,7 @@ private fun RegisterScreen(
 
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "Gana RentifyPoints al registrarte con un código",
+                        "Gana RentifyPoints al registrarte con un codigo",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -491,7 +491,7 @@ private fun RegisterScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // ========== BOTÓN REGISTRAR ==========
+            // ========== BOTON REGISTRAR ==========
             Button(
                 onClick = onSubmit,
                 enabled = canSubmit && !isSubmitting,
@@ -514,7 +514,7 @@ private fun RegisterScreen(
             Spacer(Modifier.height(12.dp))
 
             OutlinedButton(onClick = onGoLogin, modifier = Modifier.fillMaxWidth()) {
-                Text("Ya tengo cuenta - Iniciar Sesión")
+                Text("Ya tengo cuenta - Iniciar Sesion")
             }
 
             Spacer(Modifier.height(24.dp))

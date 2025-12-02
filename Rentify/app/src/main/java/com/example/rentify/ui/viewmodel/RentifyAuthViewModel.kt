@@ -62,7 +62,7 @@ data class RegisterUiState(
 
 class RentifyAuthViewModel(
     private val remoteRepository: UserRemoteRepository,
-    private val localRepository: RentifyUserRepository  // ✅ NUEVO
+    private val localRepository: RentifyUserRepository
 ) : ViewModel() {
 
     private val _login = MutableStateFlow(LoginUiState())
@@ -103,7 +103,7 @@ class RentifyAuthViewModel(
                 is ApiResult.Success -> {
                     loggedUser = result.data.usuario
 
-                    // ✅ NUEVO: Sincronizar usuario en BD local
+                    // Sincronizar usuario en BD local
                     loggedUser?.let { usuario ->
                         localRepository.syncUsuarioFromRemote(usuario)
                     }
@@ -125,7 +125,7 @@ class RentifyAuthViewModel(
                         )
                     }
                 }
-                is ApiResult.Loading -> { /* No usado aquí */ }
+                is ApiResult.Loading -> { /* No usado aqui */ }
             }
         }
     }
@@ -189,7 +189,7 @@ class RentifyAuthViewModel(
 
         val error = if (formatted.length == 10) {
             val timestamp = parseFecha(formatted)
-            if (timestamp != null) validateFechaNacimiento(timestamp) else "Fecha inválida"
+            if (timestamp != null) validateFechaNacimiento(timestamp) else "Fecha invalida"
         } else if (formatted.isNotEmpty()) {
             "Formato: DD/MM/YYYY"
         } else {
@@ -275,7 +275,7 @@ class RentifyAuthViewModel(
             // Convertir fecha DD/MM/YYYY a yyyy-MM-dd
             val fechaISO = convertirFechaAISO(s.fechaNacimiento.text)
             if (fechaISO == null) {
-                _register.update { it.copy(isSubmitting = false, errorMsg = "Fecha de nacimiento inválida") }
+                _register.update { it.copy(isSubmitting = false, errorMsg = "Fecha de nacimiento invalida") }
                 return@launch
             }
 
@@ -315,7 +315,7 @@ class RentifyAuthViewModel(
                         )
                     }
                 }
-                is ApiResult.Loading -> { /* No usado aquí */ }
+                is ApiResult.Loading -> { /* No usado aqui */ }
             }
         }
     }
@@ -349,11 +349,11 @@ class RentifyAuthViewModel(
         }
     }
 
-    private fun validateEmail(email: String) = if (email.contains("@")) null else "Email inválido"
+    private fun validateEmail(email: String) = if (email.contains("@")) null else "Email invalido"
     private fun validateName(name: String) = if (name.isNotBlank()) null else "Nombre obligatorio"
     private fun validateRut(rut: String) = if (rut.isNotBlank()) null else "Rut obligatorio"
-    private fun validatePhoneChileno(phone: String) = if (phone.isNotBlank()) null else "Teléfono obligatorio"
-    private fun validateStrongPassword(pass: String) = if (pass.length >= 8) null else "Mínimo 8 caracteres"
+    private fun validatePhoneChileno(phone: String) = if (phone.isNotBlank()) null else "Telefono obligatorio"
+    private fun validateStrongPassword(pass: String) = if (pass.length >= 8) null else "Minimo 8 caracteres"
     private fun validateConfirm(pass: String, confirm: String) = if (pass == confirm) null else "No coincide"
     private fun validateCodigoReferido(code: String): String? = null // Opcional
     private fun validateFechaNacimiento(timestamp: Long) = null // Placeholder

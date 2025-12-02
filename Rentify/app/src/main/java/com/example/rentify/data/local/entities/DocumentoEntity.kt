@@ -8,6 +8,8 @@ import androidx.room.PrimaryKey
 /**
  * Entidad para la tabla DOCUMENTOS
  * Documentos subidos por usuarios para validación
+ *
+ * ✅ CORREGIDO: Campo url eliminado para coincidir con backend
  */
 @Entity(
     tableName = "documentos",
@@ -43,10 +45,11 @@ data class DocumentoEntity(
 
     val f_subido: Long,               // Fecha de subida (timestamp)
     val nombre: String,               // Nombre del archivo
-    val url: String?,                 // URL o path local del documento
 
     // Relaciones
     val usuarios_id: Long,            // FK a usuarios
     val estado_id: Long,              // FK a estado (Pendiente/Aprobado/Rechazado)
     val tipo_doc_id: Long             // FK a tipo_doc
+
+    // ✅ ELIMINADO: val url: String? (no existe en backend)
 )

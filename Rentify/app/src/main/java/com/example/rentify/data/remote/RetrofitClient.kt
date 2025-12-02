@@ -12,20 +12,20 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 /**
- * ✅ MEJORADO: Cliente Retrofit optimizado para comunicación con microservicios de Rentify
+ * Cliente Retrofit optimizado para comunicacion con microservicios de Rentify
  *
  * Mejoras:
- * - ✅ Manejo simplificado de fechas LocalDate (yyyy-MM-dd)
- * - ✅ Parseo estructurado de ErrorResponse del backend
- * - ✅ Logging mejorado con información de contexto
- * - ✅ Configuración optimizada de timeouts
+ * - Manejo simplificado de fechas LocalDate (yyyy-MM-dd)
+ * - Parseo estructurado de ErrorResponse del backend
+ * - Logging mejorado con informacion de contexto
+ * - Configuracion optimizada de timeouts
  */
 object RetrofitClient {
 
-    // ==================== CONFIGURACIÓN DE URLs ====================
-    // ⚠️ IMPORTANTE: Cambiar estas URLs según tu entorno
+    // ==================== CONFIGURACION DE URLs ====================
+    // IMPORTANTE: Cambiar estas URLs segun tu entorno
     // Para emulador Android: usar 10.0.2.2 en lugar de localhost
-    // Para dispositivo físico: usar la IP de tu PC en la red local
+    // Para dispositivo fisico: usar la IP de tu PC en la red local
     private const val PC_IP = "192.168.100.7"
     private const val emu_IP = "10.0.2.2"
     private const val BASE_URL_USER_SERVICE = "http://$PC_IP:8081/"
@@ -35,7 +35,7 @@ object RetrofitClient {
     private const val BASE_URL_CONTACT_SERVICE = "http://$PC_IP:8085/"
     private const val BASE_URL_REVIEW_SERVICE = "http://$PC_IP:8086/"
 
-    // ==================== CONFIGURACIÓN DE OKHTTP ====================
+    // ==================== CONFIGURACION DE OKHTTP ====================
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
@@ -48,17 +48,17 @@ object RetrofitClient {
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    // ==================== CONFIGURACIÓN DE GSON SIMPLIFICADA ====================
-    // ✅ MEJORADO: Configuración simple y eficiente para fechas LocalDate
+    // ==================== CONFIGURACION DE GSON SIMPLIFICADA ====================
+    // Configuracion simple y eficiente para fechas LocalDate
 
     private val gson = GsonBuilder()
         .setLenient()
-        // ✅ No necesitamos deserializadores complejos para LocalDate
-        // El backend envía fechas como String "yyyy-MM-dd"
-        // Gson los maneja automáticamente
+        // No necesitamos deserializadores complejos para LocalDate
+        // El backend envia fechas como String "yyyy-MM-dd"
+        // Gson los maneja automaticamente
         .create()
 
-    // ==================== FUNCIÓN HELPER PARA CREAR RETROFIT ====================
+    // ==================== FUNCION HELPER PARA CREAR RETROFIT ====================
 
     private fun createRetrofit(baseUrl: String): Retrofit {
         return Retrofit.Builder()
@@ -72,7 +72,7 @@ object RetrofitClient {
 
     /**
      * User Service API (Puerto 8081)
-     * Gestión de usuarios, roles y estados
+     * Gestion de usuarios, roles y estados
      */
     val userServiceApi: UserServiceApi by lazy {
         createRetrofit(BASE_URL_USER_SERVICE).create(UserServiceApi::class.java)
@@ -80,7 +80,7 @@ object RetrofitClient {
 
     /**
      * Property Service API (Puerto 8082)
-     * Gestión de propiedades, fotos, comunas y regiones
+     * Gestion de propiedades, fotos, comunas y regiones
      */
     val propertyServiceApi: PropertyServiceApi by lazy {
         createRetrofit(BASE_URL_PROPERTY_SERVICE).create(PropertyServiceApi::class.java)
@@ -88,7 +88,7 @@ object RetrofitClient {
 
     /**
      * Document Service API (Puerto 8083)
-     * Gestión de documentos de usuarios
+     * Gestion de documentos de usuarios
      */
     val documentServiceApi: DocumentServiceApi by lazy {
         createRetrofit(BASE_URL_DOCUMENT_SERVICE).create(DocumentServiceApi::class.java)
@@ -96,7 +96,7 @@ object RetrofitClient {
 
     /**
      * Application Service API (Puerto 8084)
-     * Gestión de solicitudes y registros de arriendo
+     * Gestion de solicitudes y registros de arriendo
      */
     val applicationServiceApi: ApplicationServiceApi by lazy {
         createRetrofit(BASE_URL_APPLICATION_SERVICE).create(ApplicationServiceApi::class.java)
@@ -104,7 +104,7 @@ object RetrofitClient {
 
     /**
      * Contact Service API (Puerto 8085)
-     * Gestión de mensajes de contacto
+     * Gestion de mensajes de contacto
      */
     val contactServiceApi: ContactServiceApi by lazy {
         createRetrofit(BASE_URL_CONTACT_SERVICE).create(ContactServiceApi::class.java)
@@ -112,7 +112,7 @@ object RetrofitClient {
 
     /**
      * Review Service API (Puerto 8086)
-     * Gestión de reseñas y valoraciones
+     * Gestion de resenas y valoraciones
      */
     val reviewServiceApi: ReviewServiceApi by lazy {
         createRetrofit(BASE_URL_REVIEW_SERVICE).create(ReviewServiceApi::class.java)
@@ -127,17 +127,17 @@ sealed class ApiResult<out T> {
     data class Error(
         val message: String,
         val code: Int? = null,
-        val errorResponse: UserServiceErrorResponse? = null  // ✅ NUEVO: Error estructurado
+        val errorResponse: UserServiceErrorResponse? = null
     ) : ApiResult<Nothing>()
     object Loading : ApiResult<Nothing>()
 }
 
 /**
- * ✅ MEJORADO: Extensión para simplificar el manejo de respuestas de Retrofit
+ * Extension para simplificar el manejo de respuestas de Retrofit
  *
  * Mejoras:
  * - Parsea ErrorResponse estructurado del backend
- * - Proporciona mensajes de error más informativos
+ * - Proporciona mensajes de error mas informativos
  * - Maneja casos especiales (401, 404, 500)
  */
 suspend fun <T> safeApiCall(apiCall: suspend () -> Response<T>): ApiResult<T> {
@@ -148,11 +148,11 @@ suspend fun <T> safeApiCall(apiCall: suspend () -> Response<T>): ApiResult<T> {
             response.body()?.let {
                 ApiResult.Success(it)
             } ?: ApiResult.Error(
-                message = "Respuesta vacía del servidor",
+                message = "Respuesta vacia del servidor",
                 code = response.code()
             )
         } else {
-            // ✅ MEJORADO: Intentar parsear ErrorResponse estructurado
+            // Intentar parsear ErrorResponse estructurado
             val errorBody = response.errorBody()?.string()
             val errorResponse = parseErrorResponse(errorBody)
 
@@ -174,7 +174,7 @@ suspend fun <T> safeApiCall(apiCall: suspend () -> Response<T>): ApiResult<T> {
 }
 
 /**
- * ✅ NUEVO: Parsea el ErrorResponse del backend
+ * Parsea el ErrorResponse del backend
  */
 private fun parseErrorResponse(errorBody: String?): UserServiceErrorResponse? {
     if (errorBody.isNullOrBlank()) return null
@@ -190,23 +190,23 @@ private fun parseErrorResponse(errorBody: String?): UserServiceErrorResponse? {
 }
 
 /**
- * ✅ NUEVO: Obtiene un mensaje de error amigable según el tipo de excepción
+ * Obtiene un mensaje de error amigable segun el tipo de excepcion
  */
 private fun getExceptionMessage(e: Exception): String {
     return when {
         e is java.net.UnknownHostException ->
-            "Sin conexión a internet. Verifica tu conexión."
+            "Sin conexion a internet. Verifica tu conexion."
 
         e is java.net.SocketTimeoutException ->
             "Tiempo de espera agotado. El servidor no responde."
 
         e is java.net.ConnectException ->
-            "No se pudo conectar al servidor. Verifica que esté en ejecución."
+            "No se pudo conectar al servidor. Verifica que este en ejecucion."
 
         e is javax.net.ssl.SSLException ->
-            "Error de seguridad en la conexión."
+            "Error de seguridad en la conexion."
 
         else ->
-            e.message ?: "Error de conexión desconocido"
+            e.message ?: "Error de conexion desconocido"
     }
 }

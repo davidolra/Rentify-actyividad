@@ -16,20 +16,20 @@ import kotlinx.coroutines.launch
 import kotlin.math.*
 
 /**
- * ViewModel para gestión de propiedades con ubicación GPS
- * ✅ ACTUALIZADO: Integrado con PropertyService remoto
+ * ViewModel para gestion de propiedades con ubicacion GPS
+ * ACTUALIZADO: Integrado con PropertyService remoto
  */
 class PropiedadViewModel(
     private val propiedadDao: PropiedadDao,
     private val catalogDao: CatalogDao,
-    private val remoteRepository: PropertyRemoteRepository  // ✅ AGREGADO
+    private val remoteRepository: PropertyRemoteRepository
 ) : ViewModel() {
 
     // Estado de las propiedades
     private val _propiedades = MutableStateFlow<List<PropiedadConDistancia>>(emptyList())
     val propiedades: StateFlow<List<PropiedadConDistancia>> = _propiedades
 
-    // Estado de ubicación del usuario
+    // Estado de ubicacion del usuario
     private val _ubicacionUsuario = MutableStateFlow<UbicacionUsuario?>(null)
     val ubicacionUsuario: StateFlow<UbicacionUsuario?> = _ubicacionUsuario
 
@@ -42,7 +42,7 @@ class PropiedadViewModel(
     val permisoUbicacion: StateFlow<Boolean> = _permisoUbicacion
 
     /**
-     * Actualiza la ubicación del usuario
+     * Actualiza la ubicacion del usuario
      */
     fun actualizarUbicacion(latitud: Double, longitud: Double) {
         _ubicacionUsuario.value = UbicacionUsuario(latitud, longitud)
@@ -50,21 +50,21 @@ class PropiedadViewModel(
     }
 
     /**
-     * Actualiza el estado del permiso de ubicación
+     * Actualiza el estado del permiso de ubicacion
      */
     fun setPermisoUbicacion(concedido: Boolean) {
         _permisoUbicacion.value = concedido
     }
 
     /**
-     * ✅ ACTUALIZADO: Carga propiedades desde el backend remoto
+     * Carga propiedades desde el backend remoto
      */
     fun cargarPropiedadesCercanas() {
         viewModelScope.launch {
             _isLoading.value = true
 
             try {
-                // ✅ Llamar al backend remoto
+                // Llamar al backend remoto
                 when (val result = remoteRepository.listarTodasPropiedades(includeDetails = true)) {
                     is ApiResult.Success -> {
                         // Mapear DTOs remotos a entidades locales
@@ -75,7 +75,7 @@ class PropiedadViewModel(
                             val entidadLocal = propiedadDao.getById(dto.id ?: 0L)
                                 ?: mapearRemotoALocal(dto)
 
-                            // Calcular distancia si hay ubicación
+                            // Calcular distancia si hay ubicacion
                             val nombreComuna = dto.comuna?.nombre ?: "Desconocida"
                             val coordenadas = obtenerCoordenadasComuna(nombreComuna)
                             val distancia = if (ubicacion != null) {
@@ -93,7 +93,7 @@ class PropiedadViewModel(
                         _propiedades.value = propiedadesConDistancia
                     }
                     is ApiResult.Error -> {
-                        // ✅ Fallback: Cargar desde BD local
+                        // Fallback: Cargar desde BD local
                         cargarPropiedadesLocales()
                     }
                     is ApiResult.Loading -> { /* No hacer nada */ }
@@ -108,7 +108,7 @@ class PropiedadViewModel(
     }
 
     /**
-     * ✅ NUEVO: Fallback para cargar propiedades desde BD local
+     * Fallback para cargar propiedades desde BD local
      */
     private suspend fun cargarPropiedadesLocales() {
         val propiedades = propiedadDao.getPropiedadesActivas()
@@ -132,7 +132,7 @@ class PropiedadViewModel(
     }
 
     /**
-     * ✅ NUEVO: Mapea DTO remoto a entidad local
+     * Mapea DTO remoto a entidad local
      */
     private fun mapearRemotoALocal(dto: com.example.rentify.data.remote.dto.PropertyRemoteDTO): PropiedadEntity {
         return PropiedadEntity(
@@ -150,13 +150,13 @@ class PropiedadViewModel(
             estado_id = 1L,
             tipo_id = dto.tipoId,
             comuna_id = dto.comunaId,
-            propietario_id = 0L  // No usado en visualización
+            propietario_id = 0L  // No usado en visualizacion
         )
     }
 
     /**
-     * Calcula la distancia entre dos puntos GPS (fórmula de Haversine)
-     * Retorna la distancia en kilómetros
+     * Calcula la distancia entre dos puntos GPS (formula de Haversine)
+     * Retorna la distancia en kilometros
      */
     private fun calcularDistancia(
         lat1: Double, lon1: Double,
@@ -178,26 +178,26 @@ class PropiedadViewModel(
 
     /**
      * Obtiene coordenadas aproximadas de comunas de Santiago
-     * En producción, estas coordenadas deberían estar en la BD
+     * En produccion, estas coordenadas deberian estar en la BD
      */
     private fun obtenerCoordenadasComuna(nombreComuna: String): Pair<Double, Double> {
         return when (nombreComuna.lowercase()) {
             "santiago" -> Pair(-33.4489, -70.6693)
             "providencia" -> Pair(-33.4372, -70.6106)
-            "ñuñoa" -> Pair(-33.4569, -70.5989)
-            "maipú" -> Pair(-33.5115, -70.7582)
+            "nunoa" -> Pair(-33.4569, -70.5989)
+            "maipu" -> Pair(-33.5115, -70.7582)
             "las condes" -> Pair(-33.4138, -70.5835)
             "la reina" -> Pair(-33.4436, -70.5385)
-            "peñalolén" -> Pair(-33.4967, -70.5426)
+            "penalolen" -> Pair(-33.4967, -70.5426)
             "san miguel" -> Pair(-33.4978, -70.6519)
-            "viña del mar" -> Pair(-33.0246, -71.5518)
+            "vina del mar" -> Pair(-33.0246, -71.5518)
             else -> Pair(-33.4489, -70.6693) // Default: Santiago Centro
         }
     }
 }
 
 /**
- * Data class para ubicación del usuario
+ * Data class para ubicacion del usuario
  */
 data class UbicacionUsuario(
     val latitud: Double,

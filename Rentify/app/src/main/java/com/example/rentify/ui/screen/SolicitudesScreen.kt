@@ -1,4 +1,4 @@
-package com.example.rentify.ui.screen  // ✅ CORREGIDO: sin 's'
+package com.example.rentify.ui.screen
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,7 +18,7 @@ import com.example.rentify.ui.viewmodel.SolicitudesViewModel
 import com.example.rentify.ui.viewmodel.SolicitudesViewModelFactory
 
 /**
- * ✅ SCREEN MEJORADO: Lista de solicitudes con manejo de estados y errores
+ * SCREEN MEJORADO: Lista de solicitudes con manejo de estados y errores
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,11 +36,11 @@ fun SolicitudesScreen(
     val errorMsg by viewModel.errorMsg.collectAsState()
     val solicitudCreada by viewModel.solicitudCreada.collectAsState()
 
-    // ✅ CORREGIDO: Obtener datos del usuario usando Flow
+    // Obtener datos del usuario usando Flow
     val userId by userPreferences.userId.collectAsState(initial = null)
     val userRole by userPreferences.userRole.collectAsState(initial = null)
 
-    // ✅ FIX: Crear variables locales para evitar smart cast error
+    // FIX: Crear variables locales para evitar smart cast error
     val currentUserId = userId
     val currentUserRole = userRole
 
@@ -51,10 +51,10 @@ fun SolicitudesScreen(
         }
     }
 
-    // Mostrar mensaje de éxito cuando se crea solicitud
+    // Mostrar mensaje de exito cuando se crea solicitud
     LaunchedEffect(solicitudCreada) {
         if (solicitudCreada) {
-            // Aquí podrías mostrar un Snackbar de éxito
+            // Aqui podrias mostrar un Snackbar de exito
             viewModel.clearSolicitudCreada()
         }
     }
@@ -64,7 +64,7 @@ fun SolicitudesScreen(
             TopAppBar(
                 title = { Text("Mis Solicitudes") },
                 actions = {
-                    // Botón de refresh
+                    // Boton de refresh
                     IconButton(
                         onClick = {
                             currentUserId?.let { id ->
@@ -114,7 +114,7 @@ fun SolicitudesScreen(
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = "❌",
+                            text = "Error",
                             style = MaterialTheme.typography.displayMedium
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -148,7 +148,7 @@ fun SolicitudesScreen(
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = "📋",
+                            text = "Sin solicitudes",
                             style = MaterialTheme.typography.displayLarge
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -173,7 +173,7 @@ fun SolicitudesScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Header con estadísticas
+                        // Header con estadisticas
                         item {
                             SolicitudesStatsCard(solicitudes = solicitudes)
                             Spacer(modifier = Modifier.height(8.dp))
@@ -243,7 +243,7 @@ fun SolicitudesScreen(
 }
 
 /**
- * ✅ COMPONENTE: Card con estadísticas de solicitudes
+ * COMPONENTE: Card con estadisticas de solicitudes
  */
 @Composable
 private fun SolicitudesStatsCard(
@@ -269,7 +269,7 @@ private fun SolicitudesStatsCard(
             StatItem(
                 label = "Pendientes",
                 value = pendientes,
-                emoji = "⏳"
+                emoji = "Pendiente"
             )
 
             Divider(
@@ -282,7 +282,7 @@ private fun SolicitudesStatsCard(
             StatItem(
                 label = "Aceptadas",
                 value = aceptadas,
-                emoji = "✅"
+                emoji = "Aceptada"
             )
 
             Divider(
@@ -295,14 +295,14 @@ private fun SolicitudesStatsCard(
             StatItem(
                 label = "Rechazadas",
                 value = rechazadas,
-                emoji = "❌"
+                emoji = "Rechazada"
             )
         }
     }
 }
 
 /**
- * ✅ COMPONENTE: Item de estadística
+ * COMPONENTE: Item de estadistica
  */
 @Composable
 private fun StatItem(

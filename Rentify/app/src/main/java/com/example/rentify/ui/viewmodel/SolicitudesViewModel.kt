@@ -26,7 +26,7 @@ data class SolicitudConDatos(
 )
 
 /**
- * ✅ VIEWMODEL FINAL: Con validaciones y parámetro rolString
+ * VIEWMODEL FINAL: Con validaciones y parametro rolString
  */
 class SolicitudesViewModel(
     private val solicitudDao: SolicitudDao,
@@ -54,7 +54,7 @@ class SolicitudesViewModel(
     val solicitudCreada: StateFlow<Boolean> = _solicitudCreada
 
     /**
-     * ✅ MEJORADO: Cargar solicitudes con mejor mapeo de datos
+     * Cargar solicitudes con mejor mapeo de datos
      */
     fun cargarSolicitudesUsuario(usuarioId: Long) {
         viewModelScope.launch {
@@ -62,11 +62,11 @@ class SolicitudesViewModel(
             _errorMsg.value = null
 
             try {
-                Log.d(TAG, "📥 Cargando solicitudes del usuario: $usuarioId")
+                Log.d(TAG, "Cargando solicitudes del usuario: $usuarioId")
 
                 when (val result = remoteRepository.obtenerSolicitudesUsuario(usuarioId)) {
                     is ApiResult.Success -> {
-                        Log.d(TAG, "✅ Solicitudes cargadas: ${result.data.size}")
+                        Log.d(TAG, "Solicitudes cargadas: ${result.data.size}")
 
                         val solicitudesConDatos = result.data.map { dto ->
                             // Buscar datos locales de la propiedad si no vienen del backend
@@ -84,20 +84,20 @@ class SolicitudesViewModel(
                                 tituloPropiedad = dto.propiedad?.titulo ?: propiedad?.titulo,
                                 codigoPropiedad = dto.propiedad?.codigo ?: propiedad?.codigo,
                                 nombreEstado = dto.estado ?: "PENDIENTE",
-                                precioMensual = dto.propiedad?.precioMensual ?: propiedad?.precio_mensual?.toDouble() // ✅ CORREGIDO
+                                precioMensual = dto.propiedad?.precioMensual ?: propiedad?.precio_mensual?.toDouble()
                             )
                         }
 
                         _solicitudes.value = solicitudesConDatos
                     }
                     is ApiResult.Error -> {
-                        Log.e(TAG, "❌ Error al cargar solicitudes: ${result.message}")
+                        Log.e(TAG, "Error al cargar solicitudes: ${result.message}")
                         _errorMsg.value = result.message
                     }
                     is ApiResult.Loading -> { /* No hacer nada */ }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "❌ Excepción al cargar solicitudes: ${e.message}", e)
+                Log.e(TAG, "Excepcion al cargar solicitudes: ${e.message}", e)
                 _errorMsg.value = "Error al cargar solicitudes: ${e.message}"
             } finally {
                 _isLoading.value = false
@@ -106,75 +106,75 @@ class SolicitudesViewModel(
     }
 
     /**
-     * ✅ NUEVO: Validar si el usuario puede crear una solicitud
+     * Validar si el usuario puede crear una solicitud
      */
     private suspend fun validarPuedeCrearSolicitud(
         usuarioId: Long,
         propiedadId: Long,
         rolId: Int
     ): String? {
-        // VALIDACIÓN 1: Verificar rol
+        // VALIDACION 1: Verificar rol
         if (rolId != ROL_ARRIENDATARIO) {
-            Log.w(TAG, "⚠️ Usuario $usuarioId no tiene rol arriendatario (rol=$rolId)")
+            Log.w(TAG, "Usuario $usuarioId no tiene rol arriendatario (rol=$rolId)")
             return "Solo usuarios arriendatarios pueden crear solicitudes"
         }
 
-        // VALIDACIÓN 2: Verificar que la propiedad existe localmente
+        // VALIDACION 2: Verificar que la propiedad existe localmente
         val propiedad = propiedadDao.getById(propiedadId)
         if (propiedad == null) {
-            Log.w(TAG, "⚠️ Propiedad $propiedadId no encontrada localmente")
-            return "La propiedad seleccionada no está disponible"
+            Log.w(TAG, "Propiedad $propiedadId no encontrada localmente")
+            return "La propiedad seleccionada no esta disponible"
         }
 
-        // VALIDACIÓN 3: Verificar límite de solicitudes activas
+        // VALIDACION 3: Verificar limite de solicitudes activas
         val solicitudesActivas = solicitudDao.countSolicitudesActivas(usuarioId, estadoActivo = 1L)
         if (solicitudesActivas >= MAX_SOLICITUDES_ACTIVAS) {
-            Log.w(TAG, "⚠️ Usuario $usuarioId alcanzó el límite: $solicitudesActivas solicitudes")
+            Log.w(TAG, "Usuario $usuarioId alcanzo el limite: $solicitudesActivas solicitudes")
             return "Ya tienes $MAX_SOLICITUDES_ACTIVAS solicitudes activas. " +
-                    "Debes esperar a que se procesen antes de crear más."
+                    "Debes esperar a que se procesen antes de crear mas."
         }
 
-        // VALIDACIÓN 4: Verificar solicitud duplicada
+        // VALIDACION 4: Verificar solicitud duplicada
         val existePendiente = solicitudDao.existeSolicitudPendiente(usuarioId, propiedadId, 1L)
         if (existePendiente > 0) {
-            Log.w(TAG, "⚠️ Ya existe solicitud pendiente: usuario=$usuarioId, propiedad=$propiedadId")
+            Log.w(TAG, "Ya existe solicitud pendiente: usuario=$usuarioId, propiedad=$propiedadId")
             return "Ya tienes una solicitud pendiente para esta propiedad"
         }
 
-        Log.d(TAG, "✅ Validaciones pasadas para usuario $usuarioId")
+        Log.d(TAG, "Validaciones pasadas para usuario $usuarioId")
         return null // Todo OK
     }
 
     /**
-     * ✅ FINAL: Crear solicitud con rolString en lugar de rolId
+     * Crear solicitud con rolString en lugar de rolId
      */
     fun crearSolicitud(
         usuarioId: Long,
         propiedadId: Long,
-        rolString: String?  // ✅ Recibe String directamente
+        rolString: String?
     ) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMsg.value = null
 
             try {
-                Log.d(TAG, "🚀 Iniciando creación de solicitud")
+                Log.d(TAG, "Iniciando creacion de solicitud")
                 Log.d(TAG, "   Usuario: $usuarioId, Propiedad: $propiedadId, Rol: $rolString")
 
-                // ✅ MAPEAR String a Int
+                // MAPEAR String a Int
                 val rolId = when (rolString?.uppercase()) {
                     "ADMIN" -> 1
                     "PROPIETARIO" -> 2
                     "ARRIENDATARIO" -> 3
                     else -> {
-                        Log.w(TAG, "⚠️ Rol desconocido: $rolString, usando ARRIENDATARIO por defecto")
+                        Log.w(TAG, "Rol desconocido: $rolString, usando ARRIENDATARIO por defecto")
                         3 // Default: Arriendatario
                     }
                 }
 
                 Log.d(TAG, "   Rol mapeado: $rolString -> $rolId")
 
-                // ✅ VALIDACIONES DEL LADO DEL CLIENTE
+                // VALIDACIONES DEL LADO DEL CLIENTE
                 val validationError = validarPuedeCrearSolicitud(usuarioId, propiedadId, rolId)
                 if (validationError != null) {
                     _errorMsg.value = validationError
@@ -182,25 +182,25 @@ class SolicitudesViewModel(
                     return@launch
                 }
 
-                // ✅ Si pasa todas las validaciones, crear en el backend
-                Log.d(TAG, "✅ Validaciones pasadas, enviando al backend...")
+                // Si pasa todas las validaciones, crear en el backend
+                Log.d(TAG, "Validaciones pasadas, enviando al backend...")
 
                 when (val result = remoteRepository.crearSolicitudRemota(usuarioId, propiedadId)) {
                     is ApiResult.Success -> {
-                        Log.d(TAG, "✅ Solicitud creada exitosamente")
+                        Log.d(TAG, "Solicitud creada exitosamente")
                         _solicitudCreada.value = true
                         // Recargar solicitudes para actualizar UI
                         cargarSolicitudesUsuario(usuarioId)
                     }
                     is ApiResult.Error -> {
-                        Log.e(TAG, "❌ Error del backend: ${result.message}")
+                        Log.e(TAG, "Error del backend: ${result.message}")
                         _errorMsg.value = result.message
                     }
                     is ApiResult.Loading -> { /* No hacer nada */ }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "❌ Excepción al crear solicitud: ${e.message}", e)
-                _errorMsg.value = "Error de conexión: ${e.message}"
+                Log.e(TAG, "Excepcion al crear solicitud: ${e.message}", e)
+                _errorMsg.value = "Error de conexion: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -208,7 +208,7 @@ class SolicitudesViewModel(
     }
 
     /**
-     * ✅ NUEVO: Actualizar estado de una solicitud
+     * Actualizar estado de una solicitud
      */
     fun actualizarEstadoSolicitud(
         solicitudId: Long,
@@ -220,22 +220,22 @@ class SolicitudesViewModel(
             _errorMsg.value = null
 
             try {
-                Log.d(TAG, "🔄 Actualizando estado de solicitud $solicitudId a $nuevoEstado")
+                Log.d(TAG, "Actualizando estado de solicitud $solicitudId a $nuevoEstado")
 
                 when (val result = remoteRepository.actualizarEstadoSolicitud(solicitudId, nuevoEstado)) {
                     is ApiResult.Success -> {
-                        Log.d(TAG, "✅ Estado actualizado exitosamente")
+                        Log.d(TAG, "Estado actualizado exitosamente")
                         // Recargar solicitudes
                         cargarSolicitudesUsuario(usuarioId)
                     }
                     is ApiResult.Error -> {
-                        Log.e(TAG, "❌ Error al actualizar estado: ${result.message}")
+                        Log.e(TAG, "Error al actualizar estado: ${result.message}")
                         _errorMsg.value = result.message
                     }
                     is ApiResult.Loading -> { /* No hacer nada */ }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "❌ Excepción al actualizar estado: ${e.message}", e)
+                Log.e(TAG, "Excepcion al actualizar estado: ${e.message}", e)
                 _errorMsg.value = "Error al actualizar: ${e.message}"
             } finally {
                 _isLoading.value = false
@@ -258,7 +258,7 @@ class SolicitudesViewModel(
     }
 
     /**
-     * ✅ HELPER: Mapear nombre de estado a ID local
+     * HELPER: Mapear nombre de estado a ID local
      */
     private suspend fun mapEstadoNombreToId(nombre: String): Long {
         return try {

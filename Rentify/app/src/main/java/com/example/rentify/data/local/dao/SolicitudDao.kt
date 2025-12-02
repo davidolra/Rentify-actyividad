@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 
 /**
  * DAO para operaciones CRUD de solicitudes de arriendo
- * ✅ MEJORADO: Métodos adicionales para validaciones
+ * MEJORADO: Metodos adicionales para validaciones
  */
 @Dao
 interface SolicitudDao {
@@ -31,18 +31,18 @@ interface SolicitudDao {
     @Query("SELECT * FROM solicitud WHERE usuarios_id = :usuarioId ORDER BY fsolicitud DESC")
     fun getSolicitudesByUsuario(usuarioId: Long): Flow<List<SolicitudEntity>>
 
-    // Contar solicitudes activas de un usuario (para validar límite de 3)
+    // Contar solicitudes activas de un usuario (para validar limite de 3)
     @Query("SELECT COUNT(*) FROM solicitud WHERE usuarios_id = :usuarioId AND estado_id = :estadoActivo")
     suspend fun countSolicitudesActivas(usuarioId: Long, estadoActivo: Long = 1): Int
 
-    // ✅ NUEVO: Obtener lista de solicitudes por usuario y estado
+    // Obtener lista de solicitudes por usuario y estado
     @Query("SELECT * FROM solicitud WHERE usuarios_id = :usuarioId AND estado_id = :estadoId ORDER BY fsolicitud DESC")
     suspend fun getSolicitudesPorUsuarioYEstado(
         usuarioId: Long,
         estadoId: Long
     ): List<SolicitudEntity>
 
-    // ✅ NUEVO: Verificar si existe solicitud pendiente para una propiedad
+    // Verificar si existe solicitud pendiente para una propiedad
     @Query("SELECT COUNT(*) FROM solicitud WHERE usuarios_id = :usuarioId AND propiedad_id = :propiedadId AND estado_id = :estadoPendiente")
     suspend fun existeSolicitudPendiente(
         usuarioId: Long,
@@ -62,11 +62,11 @@ interface SolicitudDao {
     @Query("UPDATE solicitud SET estado_id = :nuevoEstadoId WHERE id = :solicitudId")
     suspend fun cambiarEstado(solicitudId: Long, nuevoEstadoId: Long)
 
-    // ✅ NUEVO: Eliminar solicitud por ID
+    // Eliminar solicitud por ID
     @Query("DELETE FROM solicitud WHERE id = :solicitudId")
     suspend fun deleteById(solicitudId: Long)
 
-    // ✅ NUEVO: Obtener solicitudes por estado
+    // Obtener solicitudes por estado
     @Query("SELECT * FROM solicitud WHERE estado_id = :estadoId ORDER BY fsolicitud DESC")
     suspend fun getSolicitudesByEstado(estadoId: Long): List<SolicitudEntity>
 }
