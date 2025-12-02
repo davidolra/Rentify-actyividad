@@ -1,4 +1,4 @@
-package com.example.rentify.ui.screens
+package com.example.rentify.ui.screen  // ✅ CORREGIDO: sin 's'
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -189,7 +189,7 @@ fun SolicitudesScreen(
                                 onClick = {
                                     onNavigateToDetalle(solicitudConDatos.solicitud.id)
                                 },
-                                onActualizarEstado = if (currentUserRole == "PROPIETARIO") { // ✅ CORREGIDO
+                                onActualizarEstado = if (currentUserRole == "PROPIETARIO") {
                                     { nuevoEstado ->
                                         currentUserId?.let { id ->
                                             viewModel.actualizarEstadoSolicitud(

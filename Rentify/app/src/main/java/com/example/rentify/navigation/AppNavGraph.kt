@@ -15,12 +15,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import kotlinx.coroutines.launch
 import com.example.rentify.data.local.storage.UserPreferences
+import com.example.rentify.data.local.RentifyDatabase  // ✅ AGREGADO
 import com.example.rentify.ui.components.*
-import com.example.rentify.ui.screen.*
+import com.example.rentify.ui.screen.*  // ✅ CORRECTO: sin 's'
 import com.example.rentify.ui.viewmodel.*
 
 /**
- * ✅ Grafo de navegación CON REVIEW VIEWMODEL
+ * ✅ Grafo de navegación COMPLETAMENTE CORREGIDO
  */
 @Composable
 fun AppNavGraph(
@@ -30,7 +31,7 @@ fun AppNavGraph(
     propiedadDetalleViewModel: PropiedadDetalleViewModel,
     solicitudesViewModel: SolicitudesViewModel,
     perfilViewModel: PerfilUsuarioViewModel,
-    reviewViewModel: ReviewViewModel  // ✅ NUEVO PARÁMETRO
+    reviewViewModel: ReviewViewModel
 ) {
     val context = LocalContext.current
     val userPrefs = remember { UserPreferences(context) }
@@ -251,16 +252,21 @@ fun AppNavGraph(
                     val userId by userPrefs.userId.collectAsStateWithLifecycle(initialValue = 0L)
                     val actualUserId = userId ?: 0L
 
+                    // ✅ CORREGIDO: Obtener rol como String
+                    val rolString by userPrefs.userRole.collectAsStateWithLifecycle(initialValue = null)
+
                     PropiedadDetalleScreen(
                         propiedadId = propiedadId,
                         vm = propiedadDetalleViewModel,
-                        reviewViewModel = reviewViewModel,  // ✅ PASAR REVIEW VIEWMODEL
-                        currentUserId = actualUserId,  // ✅ PASAR USER ID
+                        reviewViewModel = reviewViewModel,
+                        currentUserId = actualUserId,
                         onBack = { navController.popBackStack() },
                         onSolicitar = { idPropiedad ->
+                            // ✅ CORREGIDO: Pasar los 3 parámetros incluyendo rolString
                             solicitudesViewModel.crearSolicitud(
                                 usuarioId = actualUserId,
-                                propiedadId = idPropiedad
+                                propiedadId = idPropiedad,
+                                rolString = rolString  // ✅ AGREGADO
                             )
                             goSolicitudes()
                         }
@@ -279,10 +285,26 @@ fun AppNavGraph(
 
                 // ========== MIS SOLICITUDES ==========
                 composable(Route.Solicitudes.path) {
+                    // ✅ CORRECCIÓN DEFINITIVA: Todos los parámetros correctos
+                    val database = RentifyDatabase.getInstance(context)
+
+                    // ✅ ApplicationRemoteRepository necesita solicitudDao y catalogDao
+                    val applicationRepository = com.example.rentify.data.repository.ApplicationRemoteRepository(
+                        solicitudDao = database.solicitudDao(),
+                        catalogDao = database.catalogDao()
+                    )
+
+                    val solicitudesViewModelFactory = SolicitudesViewModelFactory(
+                        solicitudDao = database.solicitudDao(),
+                        propiedadDao = database.propiedadDao(),
+                        catalogDao = database.catalogDao(),
+                        remoteRepository = applicationRepository
+                    )
+
                     SolicitudesScreen(
-                        vm = solicitudesViewModel,
-                        onBack = { navController.popBackStack() },
-                        onVerPropiedad = goPropiedadDetalle
+                        userPreferences = userPrefs,
+                        viewModelFactory = solicitudesViewModelFactory,
+                        onNavigateToDetalle = goPropiedadDetalle
                     )
                 }
 
@@ -305,7 +327,7 @@ fun AppNavGraph(
                 composable(Route.AgregarPropiedad.path) {
                     AgregarPropiedadScreen(
                         onBack = { navController.popBackStack() },
-                        onPropiedadCreada = { navController.popBackStack() } // vuelve atrás tras crear
+                        onPropiedadCreada = { navController.popBackStack() }
                     )
                 }
 

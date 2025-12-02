@@ -81,7 +81,8 @@ data class EstadoRemoteDTO(
 )
 
 /**
- * Respuesta de error del backend User Service
+ * ✅ NUEVO: Respuesta de error estructurada del backend User Service
+ * Coincide con ErrorResponse.java del backend
  */
 data class UserServiceErrorResponse(
     val timestamp: String,
@@ -89,4 +90,46 @@ data class UserServiceErrorResponse(
     val error: String,
     val message: String,
     val validationErrors: Map<String, String>? = null
-)
+) {
+    /**
+     * Obtiene un mensaje de error legible para mostrar al usuario
+     */
+    fun getUserFriendlyMessage(): String {
+        // Si hay errores de validación específicos, mostrarlos
+        if (!validationErrors.isNullOrEmpty()) {
+            return validationErrors.values.joinToString("\n")
+        }
+
+        // Personalizar mensajes según el código HTTP
+        return when (status) {
+            400 -> "Error de validación: $message"
+            401 -> "Error de autenticación: $message"
+            404 -> "Recurso no encontrado: $message"
+            409 -> "Conflicto: $message"
+            500 -> "Error del servidor. Por favor intente nuevamente."
+            503 -> "Servicio no disponible. Por favor intente más tarde."
+            else -> message
+        }
+    }
+
+    /**
+     * Obtiene el primer error de validación (útil para mostrar en un campo específico)
+     */
+    fun getFirstValidationError(): String? {
+        return validationErrors?.values?.firstOrNull()
+    }
+
+    /**
+     * Verifica si es un error de validación de campo específico
+     */
+    fun hasFieldError(field: String): Boolean {
+        return validationErrors?.containsKey(field) == true
+    }
+
+    /**
+     * Obtiene el error de un campo específico
+     */
+    fun getFieldError(field: String): String? {
+        return validationErrors?.get(field)
+    }
+}

@@ -55,14 +55,14 @@ class UserRemoteRepository {
 
         return when (val result = safeApiCall { api.registrarUsuario(usuarioDTO) }) {
             is ApiResult.Success -> {
-                Log.d(TAG, "✅ Usuario registrado exitosamente")
+                Log.d(TAG, "Usuario registrado exitosamente")
                 Log.d(TAG, "   ID: ${result.data.id}")
                 Log.d(TAG, "   DUOC VIP: ${result.data.duocVip}")
                 Log.d(TAG, "   Código Ref: ${result.data.codigoRef}")
                 result
             }
             is ApiResult.Error -> {
-                Log.e(TAG, "❌ Error al registrar usuario: ${result.message}")
+                Log.e(TAG, "Error al registrar usuario: ${result.message}")
                 Log.e(TAG, "   Código HTTP: ${result.code}")
                 // Parsear error del backend para mensaje amigable
                 val friendlyMessage = parseBackendError(result.message, result.code)
@@ -79,7 +79,7 @@ class UserRemoteRepository {
         email: String,
         password: String
     ): ApiResult<LoginResponseRemoteDTO> {
-        Log.d(TAG, "🔐 Intentando login para: $email")
+        Log.d(TAG, "Intentando login para: $email")
 
         val loginDTO = LoginRemoteDTO(
             email = email,
@@ -89,7 +89,7 @@ class UserRemoteRepository {
         return when (val result = safeApiCall { api.login(loginDTO) }) {
             is ApiResult.Success -> {
                 val usuario = result.data.usuario
-                Log.d(TAG, "✅ Login exitoso")
+                Log.d(TAG, "Login exitoso")
                 Log.d(TAG, "   Usuario ID: ${usuario.id}")
                 Log.d(TAG, "   Rol: ${usuario.rol?.nombre ?: usuario.rolId}")
                 Log.d(TAG, "   Estado: ${usuario.estado?.nombre ?: usuario.estadoId}")
@@ -97,7 +97,7 @@ class UserRemoteRepository {
                 result
             }
             is ApiResult.Error -> {
-                Log.e(TAG, "❌ Error en login: ${result.message}")
+                Log.e(TAG, "Error en login: ${result.message}")
                 val friendlyMessage = parseBackendError(result.message, result.code)
                 ApiResult.Error(friendlyMessage, result.code)
             }
@@ -118,11 +118,11 @@ class UserRemoteRepository {
 
         return when (val result = safeApiCall { api.obtenerUsuarioPorId(userId, includeDetails) }) {
             is ApiResult.Success -> {
-                Log.d(TAG, "✅ Usuario obtenido: ${result.data.email}")
+                Log.d(TAG, "Usuario obtenido: ${result.data.email}")
                 result
             }
             is ApiResult.Error -> {
-                Log.e(TAG, "❌ Error al obtener usuario: ${result.message}")
+                Log.e(TAG, "Error al obtener usuario: ${result.message}")
                 result
             }
             else -> result
@@ -136,7 +136,7 @@ class UserRemoteRepository {
         email: String,
         includeDetails: Boolean = true
     ): ApiResult<UsuarioRemoteDTO> {
-        Log.d(TAG, "📥 Obteniendo usuario por email: $email")
+        Log.d(TAG, "Obteniendo usuario por email: $email")
 
         return safeApiCall {
             api.obtenerUsuarioPorEmail(email, includeDetails)
@@ -149,15 +149,15 @@ class UserRemoteRepository {
     suspend fun obtenerTodosUsuarios(
         includeDetails: Boolean = false
     ): ApiResult<List<UsuarioRemoteDTO>> {
-        Log.d(TAG, "📥 Obteniendo todos los usuarios")
+        Log.d(TAG, "Obteniendo todos los usuarios")
 
         return when (val result = safeApiCall { api.obtenerTodosUsuarios(includeDetails) }) {
             is ApiResult.Success -> {
-                Log.d(TAG, "✅ ${result.data.size} usuarios obtenidos")
+                Log.d(TAG, "${result.data.size} usuarios obtenidos")
                 result
             }
             is ApiResult.Error -> {
-                Log.e(TAG, "❌ Error al obtener usuarios: ${result.message}")
+                Log.e(TAG, "Error al obtener usuarios: ${result.message}")
                 result
             }
             else -> result
@@ -171,7 +171,7 @@ class UserRemoteRepository {
         rolId: Long,
         includeDetails: Boolean = false
     ): ApiResult<List<UsuarioRemoteDTO>> {
-        Log.d(TAG, "📥 Obteniendo usuarios con rol: $rolId")
+        Log.d(TAG, "Obteniendo usuarios con rol: $rolId")
 
         return safeApiCall {
             api.obtenerUsuariosPorRol(rolId, includeDetails)
@@ -182,7 +182,7 @@ class UserRemoteRepository {
      * Verifica si un usuario existe
      */
     suspend fun existeUsuario(userId: Long): ApiResult<Boolean> {
-        Log.d(TAG, "🔍 Verificando existencia de usuario: $userId")
+        Log.d(TAG, "Verificando existencia de usuario: $userId")
 
         return safeApiCall {
             api.existeUsuario(userId)
@@ -198,15 +198,15 @@ class UserRemoteRepository {
         userId: Long,
         usuarioDTO: UsuarioRemoteDTO
     ): ApiResult<UsuarioRemoteDTO> {
-        Log.d(TAG, "🔄 Actualizando usuario: $userId")
+        Log.d(TAG, "Actualizando usuario: $userId")
 
         return when (val result = safeApiCall { api.actualizarUsuario(userId, usuarioDTO) }) {
             is ApiResult.Success -> {
-                Log.d(TAG, "✅ Usuario actualizado exitosamente")
+                Log.d(TAG, "Usuario actualizado exitosamente")
                 result
             }
             is ApiResult.Error -> {
-                Log.e(TAG, "❌ Error al actualizar usuario: ${result.message}")
+                Log.e(TAG, "Error al actualizar usuario: ${result.message}")
                 val friendlyMessage = parseBackendError(result.message, result.code)
                 ApiResult.Error(friendlyMessage, result.code)
             }
@@ -221,15 +221,15 @@ class UserRemoteRepository {
         userId: Long,
         nuevoRolId: Long
     ): ApiResult<UsuarioRemoteDTO> {
-        Log.d(TAG, "🔄 Cambiando rol de usuario $userId a rol $nuevoRolId")
+        Log.d(TAG, "Cambiando rol de usuario $userId a rol $nuevoRolId")
 
         return when (val result = safeApiCall { api.cambiarRol(userId, nuevoRolId) }) {
             is ApiResult.Success -> {
-                Log.d(TAG, "✅ Rol cambiado exitosamente")
+                Log.d(TAG, "Rol cambiado exitosamente")
                 result
             }
             is ApiResult.Error -> {
-                Log.e(TAG, "❌ Error al cambiar rol: ${result.message}")
+                Log.e(TAG, "Error al cambiar rol: ${result.message}")
                 result
             }
             else -> result
@@ -243,15 +243,15 @@ class UserRemoteRepository {
         userId: Long,
         puntos: Int
     ): ApiResult<UsuarioRemoteDTO> {
-        Log.d(TAG, "➕ Agregando $puntos puntos al usuario $userId")
+        Log.d(TAG, "Agregando $puntos puntos al usuario $userId")
 
         return when (val result = safeApiCall { api.agregarPuntos(userId, puntos) }) {
             is ApiResult.Success -> {
-                Log.d(TAG, "✅ Puntos agregados. Total: ${result.data.puntos}")
+                Log.d(TAG, "Puntos agregados. Total: ${result.data.puntos}")
                 result
             }
             is ApiResult.Error -> {
-                Log.e(TAG, "❌ Error al agregar puntos: ${result.message}")
+                Log.e(TAG, "Error al agregar puntos: ${result.message}")
                 result
             }
             else -> result
@@ -264,7 +264,7 @@ class UserRemoteRepository {
      * ✅ NUEVO: Parsea errores del backend para mostrar mensajes amigables
      */
     private fun parseBackendError(rawMessage: String, code: Int?): String {
-        Log.d(TAG, "📝 Parseando error: code=$code")
+        Log.d(TAG, "Parseando error: code=$code")
 
         return when (code) {
             400 -> {

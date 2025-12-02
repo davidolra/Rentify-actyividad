@@ -139,7 +139,7 @@ private fun LoginScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Iniciar SesiÃ³n",
+                        text = "Iniciar Sesion",
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -168,7 +168,7 @@ private fun LoginScreen(
                     OutlinedTextField(
                         value = pass,
                         onValueChange = onPassChange,
-                        label = { Text("ContraseÃ±a") },
+                        label = { Text("Contraseña") },
                         singleLine = true,
                         visualTransformation = if (showPass) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
@@ -207,7 +207,7 @@ private fun LoginScreen(
                             Spacer(Modifier.width(8.dp))
                             Text("Validando...")
                         } else {
-                            Text("Iniciar SesiÃ³n")
+                            Text("Iniciar Sesion")
                         }
                     }
 
@@ -228,7 +228,7 @@ private fun LoginScreen(
                 onClick = onGoRegister,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Â¿No tienes cuenta? RegÃ­strate")
+                Text("¿No tienes cuenta? Registrate")
             }
 
             Spacer(Modifier.height(24.dp))
@@ -241,7 +241,7 @@ private fun LoginScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "ðŸ’¡ Usuarios @duoc.cl obtienen 20% descuento en comisiÃ³n de servicio",
+                        "¡ Usuarios @duocuc.cl obtienen 20% descuento en comision de servicio",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
