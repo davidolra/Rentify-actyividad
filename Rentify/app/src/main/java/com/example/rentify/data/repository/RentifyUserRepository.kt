@@ -166,7 +166,7 @@ class RentifyUserRepository(
                 direccion = usuarioExistente?.direccion, // Mantener dirección local si existe
                 comuna = usuarioExistente?.comuna, // Mantener comuna local si existe
                 fotoPerfil = usuarioExistente?.fotoPerfil, // Mantener foto local si existe
-                clave = usuarioRemoto.clave,
+                clave = usuarioRemoto.clave ?: usuarioExistente?.clave ?: "",
                 duoc_vip = usuarioRemoto.duocVip ?: false,
                 puntos = usuarioRemoto.puntos ?: 0,
                 codigo_ref = usuarioRemoto.codigoRef ?: generarCodigoReferido(),

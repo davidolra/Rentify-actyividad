@@ -10,7 +10,9 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.rentify.data.local.RentifyDatabase
+import com.example.rentify.data.remote.api.DocumentServiceApi
 import com.example.rentify.data.repository.ApplicationRemoteRepository
+import com.example.rentify.data.repository.DocumentRepository
 import com.example.rentify.data.repository.PropertyRemoteRepository
 import com.example.rentify.data.repository.ReviewRemoteRepository
 import com.example.rentify.data.repository.UserRemoteRepository
@@ -18,6 +20,8 @@ import com.example.rentify.data.repository.RentifyUserRepository
 import com.example.rentify.navigation.AppNavGraph
 import com.example.rentify.ui.theme.RentifyTheme
 import com.example.rentify.ui.viewmodel.*
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,32 +35,30 @@ class MainActivity : ComponentActivity() {
                     val navController = rememberNavController()
                     val db = RentifyDatabase.getInstance(applicationContext)
 
-                    // ==================== REPOSITORIOS ====================
+                    val documentServiceApi = Retrofit.Builder()
+                        .baseUrl("http://10.0.2.2:8083/")
+                        .addConverterFactory(GsonConverterFactory.create())
+                        .build()
+                        .create(DocumentServiceApi::class.java)
 
-                    // ✅ NUEVO: Repositorio local de usuarios (para sincronización)
                     val rentifyUserRepository = RentifyUserRepository(
                         usuarioDao = db.usuarioDao(),
                         catalogDao = db.catalogDao()
                     )
 
-                    // User Remote Repository (para autenticación)
                     val userRemoteRepository = UserRemoteRepository()
 
-                    // Application Remote Repository
                     val applicationRemoteRepository = ApplicationRemoteRepository(
                         solicitudDao = db.solicitudDao(),
                         catalogDao = db.catalogDao()
                     )
 
-                    // Property Remote Repository
                     val propertyRemoteRepository = PropertyRemoteRepository()
 
-                    // ✅ NUEVO: Review Remote Repository
                     val reviewRemoteRepository = ReviewRemoteRepository()
 
-                    // ==================== VIEWMODELS ====================
+                    val documentRepository = DocumentRepository(documentServiceApi)
 
-                    // Auth ViewModel - ✅ ACTUALIZADO: ahora recibe ambos repositorios
                     val authViewModel: RentifyAuthViewModel = viewModel(
                         factory = RentifyAuthViewModelFactory(
                             userRemoteRepository = userRemoteRepository,
@@ -64,7 +66,6 @@ class MainActivity : ComponentActivity() {
                         )
                     )
 
-                    // Propiedad ViewModel
                     val propiedadViewModel: PropiedadViewModel = viewModel(
                         factory = PropiedadViewModelFactory(
                             db.propiedadDao(),
@@ -73,7 +74,6 @@ class MainActivity : ComponentActivity() {
                         )
                     )
 
-                    // Propiedad Detalle ViewModel
                     val propiedadDetalleViewModel: PropiedadDetalleViewModel = viewModel(
                         factory = PropiedadDetalleViewModelFactory(
                             db.propiedadDao(),
@@ -81,7 +81,6 @@ class MainActivity : ComponentActivity() {
                         )
                     )
 
-                    // Solicitudes ViewModel
                     val solicitudesViewModel: SolicitudesViewModel = viewModel(
                         factory = SolicitudesViewModelFactory(
                             db.solicitudDao(),
@@ -91,21 +90,23 @@ class MainActivity : ComponentActivity() {
                         )
                     )
 
-                    // Perfil ViewModel
                     val perfilViewModel: PerfilUsuarioViewModel = viewModel(
                         factory = PerfilUsuarioViewModelFactory(
                             db.usuarioDao(),
                             db.catalogDao(),
-                            db.solicitudDao()
+                            db.solicitudDao(),
+                            documentRepository,
+                            userRemoteRepository
                         )
                     )
 
-                    // ✅ NUEVO: Review ViewModel
                     val reviewViewModel: ReviewViewModel = viewModel(
                         factory = ReviewViewModelFactory(reviewRemoteRepository)
                     )
 
-                    // ==================== NAVEGACIÓN ====================
+                    val gestionUsuariosViewModel: GestionUsuariosViewModel = viewModel(
+                        factory = GestionUsuariosViewModelFactory(userRemoteRepository)
+                    )
 
                     AppNavGraph(
                         navController = navController,
@@ -114,7 +115,8 @@ class MainActivity : ComponentActivity() {
                         propiedadDetalleViewModel = propiedadDetalleViewModel,
                         solicitudesViewModel = solicitudesViewModel,
                         perfilViewModel = perfilViewModel,
-                        reviewViewModel = reviewViewModel  // ✅ NUEVO PARÁMETRO
+                        reviewViewModel = reviewViewModel,
+                        gestionUsuariosViewModel = gestionUsuariosViewModel
                     )
                 }
             }

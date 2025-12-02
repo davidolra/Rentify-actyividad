@@ -1,23 +1,30 @@
 package com.example.rentify.ui.viewmodel
 
-
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.rentify.data.local.dao.UsuarioDao
 import com.example.rentify.data.local.dao.CatalogDao
 import com.example.rentify.data.local.dao.SolicitudDao
+import com.example.rentify.data.local.dao.UsuarioDao
 import com.example.rentify.data.local.entities.UsuarioEntity
+import com.example.rentify.data.remote.ApiResult
+import com.example.rentify.data.remote.dto.DocumentoRemoteDTO
+import com.example.rentify.data.remote.dto.TipoDocumentoRemoteDTO
+import com.example.rentify.data.repository.DocumentRepository
+import com.example.rentify.data.repository.UserRemoteRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
-/**
- * ViewModel para el perfil del usuario
- */
 class PerfilUsuarioViewModel(
     private val usuarioDao: UsuarioDao,
     private val catalogDao: CatalogDao,
-    private val solicitudDao: SolicitudDao
+    private val solicitudDao: SolicitudDao,
+    private val documentRepository: DocumentRepository,
+    private val userRemoteRepository: UserRemoteRepository
 ) : ViewModel() {
 
     private val _usuario = MutableStateFlow<UsuarioEntity?>(null)
@@ -32,74 +39,109 @@ class PerfilUsuarioViewModel(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
-    /**
-     * Carga los datos completos del usuario
-     */
+    private val _isDocsLoading = MutableStateFlow(false)
+    val isDocsLoading: StateFlow<Boolean> = _isDocsLoading.asStateFlow()
+
+    private val _documentTypes = MutableStateFlow<List<TipoDocumentoRemoteDTO>>(emptyList())
+    val documentTypes: StateFlow<List<TipoDocumentoRemoteDTO>> = _documentTypes.asStateFlow()
+
+    private val _userDocuments = MutableStateFlow<List<DocumentoRemoteDTO>>(emptyList())
+    val userDocuments: StateFlow<List<DocumentoRemoteDTO>> = _userDocuments.asStateFlow()
+
+    private fun formatLongToDateString(timestamp: Long): String {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        return sdf.format(Date(timestamp))
+    }
+
     fun cargarDatosUsuario(usuarioId: Long) {
         viewModelScope.launch {
             _isLoading.value = true
-
+            _isDocsLoading.value = true
             try {
-                // Cargar usuario
                 val user = usuarioDao.getById(usuarioId)
                 _usuario.value = user
 
-                // Cargar nombre del rol
-                user?.rol_id?.let { rolId ->
-                    val rol = catalogDao.getRolById(rolId)
+                user?.rol_id?.let {
+                    val rol = catalogDao.getRolById(it)
                     _nombreRol.value = rol?.nombre
                 }
 
-                // Contar solicitudes activas
                 val estadoPendiente = catalogDao.getEstadoByNombre("Pendiente")
                 if (estadoPendiente != null) {
                     val count = solicitudDao.countSolicitudesActivas(usuarioId, estadoPendiente.id)
                     _cantidadSolicitudes.value = count
                 }
+                _isLoading.value = false
+
+                _documentTypes.value = documentRepository.getDocumentTypes()
+                _userDocuments.value = documentRepository.getDocumentsByUserId(usuarioId)
+
             } catch (e: Exception) {
-                // Log error
+                Log.e("PerfilUsuarioVM", "Error al cargar datos", e)
             } finally {
                 _isLoading.value = false
+                _isDocsLoading.value = false
             }
         }
     }
 
-    /**
-     * Actualiza los datos del perfil del usuario
-     */
-    fun actualizarPerfil(
+    fun uploadDocument(usuarioId: Long, tipoDocId: Long, fileName: String) {
+        viewModelScope.launch {
+            _isDocsLoading.value = true
+            val document = DocumentoRemoteDTO(
+                nombre = fileName,
+                usuarioId = usuarioId,
+                tipoDocId = tipoDocId,
+                estadoId = 1L, // 1: Subido
+                fechaSubido = Date()
+            )
+            val uploadedDocument = documentRepository.uploadDocument(document)
+            if (uploadedDocument != null) {
+                _userDocuments.value = documentRepository.getDocumentsByUserId(usuarioId)
+            } else {
+                Log.e("PerfilUsuarioVM", "Error al subir documento")
+            }
+            _isDocsLoading.value = false
+        }
+    }
+
+    suspend fun actualizarPerfil(
         nombre: String,
         telefono: String,
-        direccion: String,
-        comuna: String,
         fotoUri: String? = null
-    ) {
-        viewModelScope.launch {
-            _usuario.value?.let { user ->
-                // Separar nombre completo en partes
-                val nombres = nombre.split(" ")
-                val pnombre = nombres.getOrNull(0) ?: ""
-                val snombre = nombres.getOrNull(1) ?: ""
-                val papellido = nombres.getOrNull(2) ?: ""
+    ): Pair<Boolean, String?> {
+        val user = _usuario.value ?: return false to "Usuario no cargado"
 
-                // Crear usuario actualizado
-                val updatedUser = user.copy(
-                    pnombre = pnombre,
-                    snombre = snombre,
-                    papellido = papellido,
-                    ntelefono = telefono,
-                    direccion = direccion,
-                    comuna = comuna,
-                    fotoPerfil = fotoUri
-                )
+        val nombres = nombre.split(" ")
+        val pnombre = nombres.getOrNull(0) ?: ""
+        val snombre = nombres.getOrNull(1) ?: ""
+        val papellido = nombres.getOrNull(2) ?: ""
 
-                // Guardar en la base de datos
-                usuarioDao.update(updatedUser)
+        val updateData = mapOf(
+            "pnombre" to pnombre,
+            "snombre" to snombre,
+            "papellido" to papellido,
+            "ntelefono" to telefono
+        )
 
-                // Actualizar el StateFlow
-                _usuario.value = updatedUser
-            }
+        val result = userRemoteRepository.actualizarUsuario(user.id, updateData)
+
+        return if (result is ApiResult.Success) {
+            Log.d("PerfilUsuarioVM", "Perfil actualizado en servidor")
+            val updatedUser = user.copy(
+                pnombre = pnombre,
+                snombre = snombre,
+                papellido = papellido,
+                ntelefono = telefono,
+                fotoPerfil = fotoUri
+            )
+            usuarioDao.update(updatedUser)
+            _usuario.value = updatedUser
+            true to "Perfil actualizado con éxito"
+        } else {
+            val errorMsg = (result as? ApiResult.Error)?.message ?: "Error desconocido"
+            Log.e("PerfilUsuarioVM", "Error al actualizar perfil: $errorMsg")
+            false to errorMsg
         }
     }
-
 }

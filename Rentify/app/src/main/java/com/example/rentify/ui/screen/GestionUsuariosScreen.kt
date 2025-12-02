@@ -10,78 +10,65 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewModelScope
-import com.example.rentify.data.local.RentifyDatabase
-import com.example.rentify.data.local.entities.UsuarioEntity
-import kotlinx.coroutines.launch
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.rentify.data.remote.dto.UsuarioRemoteDTO
+import com.example.rentify.ui.viewmodel.GestionUsuariosViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserManagementScreen(
-    currentUserRol: Long?, // Rol del usuario logueado
+    vm: GestionUsuariosViewModel,
+    currentUserRol: Long?,
     onBack: () -> Unit
 ) {
-    val context = LocalContext.current
-    val db = RentifyDatabase.getInstance(context)
-    val scope = rememberCoroutineScope()
+    val users by vm.users.collectAsStateWithLifecycle()
+    val isLoading by vm.isLoading.collectAsStateWithLifecycle()
 
-    var usuarios by remember { mutableStateOf<List<UsuarioEntity>>(emptyList()) }
-    var editarUsuario by remember { mutableStateOf<UsuarioEntity?>(null) }
-    var nuevoNombre by remember { mutableStateOf("") }
-    var nuevoEmail by remember { mutableStateOf("") }
-
-    fun cargarUsuarios() {
-        scope.launch {
-            usuarios = db.usuarioDao().getAll()
-        }
-    }
+    var editingUser by remember { mutableStateOf<UsuarioRemoteDTO?>(null) }
+    var userName by remember { mutableStateOf("") }
+    var userEmail by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
-        cargarUsuarios()
+        vm.loadUsers()
     }
 
-    if (editarUsuario != null) {
+    if (editingUser != null) {
         AlertDialog(
-            onDismissRequest = { editarUsuario = null },
+            onDismissRequest = { editingUser = null },
             title = { Text("Editar Usuario") },
             text = {
                 Column {
                     OutlinedTextField(
-                        value = nuevoNombre,
-                        onValueChange = { nuevoNombre = it },
+                        value = userName,
+                        onValueChange = { userName = it },
                         label = { Text("Nombre completo") }
                     )
                     OutlinedTextField(
-                        value = nuevoEmail,
-                        onValueChange = { nuevoEmail = it },
+                        value = userEmail,
+                        onValueChange = { userEmail = it },
                         label = { Text("Email") }
                     )
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    scope.launch {
-                        editarUsuario?.let {
-                            db.usuarioDao().update(
-                                it.copy(
-                                    pnombre = nuevoNombre.split(" ").firstOrNull() ?: it.pnombre,
-                                    snombre = nuevoNombre.split(" ").getOrNull(1) ?: it.snombre,
-                                    papellido = nuevoNombre.split(" ").getOrNull(2) ?: it.papellido,
-                                    email = nuevoEmail
-                                )
-                            )
-                        }
-                        editarUsuario = null
-                        cargarUsuarios() // Refresca lista
+                    editingUser?.let {
+                        val updatedUser = it.copy(
+                            pnombre = userName.split(" ").getOrElse(0) { "" },
+                            snombre = userName.split(" ").getOrElse(1) { "" },
+                            papellido = userName.split(" ").getOrElse(2) { "" },
+                            email = userEmail
+                        )
+                        vm.updateUser(it.id!!, updatedUser)
                     }
+                    editingUser = null
                 }) {
                     Text("Guardar")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { editarUsuario = null }) {
+                TextButton(onClick = { editingUser = null }) {
                     Text("Cancelar")
                 }
             }
@@ -105,7 +92,9 @@ fun UserManagementScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (usuarios.isEmpty()) {
+            if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (users.isEmpty()) {
                 Text(
                     text = "No hay usuarios registrados.",
                     modifier = Modifier.align(Alignment.Center)
@@ -116,7 +105,7 @@ fun UserManagementScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(usuarios) { usuario ->
+                    items(users) { user ->
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -124,33 +113,27 @@ fun UserManagementScreen(
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
-                                    text = "${usuario.pnombre} ${usuario.snombre} ${usuario.papellido}",
+                                    text = "${user.pnombre} ${user.snombre} ${user.papellido}",
                                     style = MaterialTheme.typography.titleMedium
                                 )
                                 Text(
-                                    text = "Email: ${usuario.email}",
+                                    text = "Email: ${user.email}",
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                                 Spacer(Modifier.height(8.dp))
 
-                                // Solo admin puede editar/eliminar
                                 if (currentUserRol == 1L) {
                                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                         OutlinedButton(onClick = {
-                                            editarUsuario = usuario
-                                            nuevoNombre = "${usuario.pnombre} ${usuario.snombre} ${usuario.papellido}"
-                                            nuevoEmail = usuario.email
+                                            editingUser = user
+                                            userName = "${user.pnombre} ${user.snombre} ${user.papellido}"
+                                            userEmail = user.email
                                         }) {
                                             Icon(Icons.Filled.Edit, contentDescription = "Editar")
                                             Spacer(Modifier.width(4.dp))
                                             Text("Editar")
                                         }
-                                        OutlinedButton(onClick = {
-                                            scope.launch {
-                                                db.usuarioDao().delete(usuario)
-                                                cargarUsuarios() // Refresca lista
-                                            }
-                                        }) {
+                                        OutlinedButton(onClick = { vm.deleteUser(user.id!!) }) {
                                             Icon(Icons.Filled.Delete, contentDescription = "Eliminar")
                                             Spacer(Modifier.width(4.dp))
                                             Text("Eliminar")
