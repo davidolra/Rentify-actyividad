@@ -7,7 +7,10 @@ import java.util.Date
 
 /**
  * DTO para Documento
- * ✅ Compatible 100% con DocumentoDTO.java del backend
+ * Compatible con DocumentoDTO.java del backend
+ *
+ * NOTA: El campo 'observaciones' requiere actualización del backend.
+ * Ver PROPUESTA_BACKEND_OBSERVACIONES.md
  */
 data class DocumentoRemoteDTO(
     val id: Long? = null,
@@ -33,7 +36,20 @@ data class DocumentoRemoteDTO(
     @SerializedName("tipoDocNombre")
     val tipoDocNombre: String? = null,
 
-    val usuario: UsuarioDocDTO? = null
+    val usuario: UsuarioDocDTO? = null,
+
+    // ✅ NUEVO: Campo para observaciones/motivo de rechazo
+    // Requiere actualización del backend (ver documentación)
+    @SerializedName("observaciones")
+    val observaciones: String? = null,
+
+    // ✅ NUEVO: Fecha de última actualización de estado
+    @SerializedName("fechaActualizacion")
+    val fechaActualizacion: Date? = null,
+
+    // ✅ NUEVO: ID del admin que revisó el documento
+    @SerializedName("revisadoPor")
+    val revisadoPor: Long? = null
 )
 
 /**
@@ -72,6 +88,21 @@ data class EstadoDocumentoDTO(
 data class TipoDocumentoRemoteDTO(
     val id: Long? = null,
     val nombre: String
+)
+
+/**
+ * DTO para actualizar estado de documento CON motivo.
+ * Usar con PATCH /api/documentos/{id}/estado
+ */
+data class ActualizarEstadoDocumentoRequest(
+    @SerializedName("estadoId")
+    val estadoId: Long,
+
+    @SerializedName("observaciones")
+    val observaciones: String? = null,
+
+    @SerializedName("revisadoPor")
+    val revisadoPor: Long? = null
 )
 
 /**

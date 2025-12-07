@@ -3,36 +3,66 @@ package com.example.rentify.data.model
 import android.net.Uri
 
 /**
- * Tipos de documentos que un usuario puede subir durante el registro
+ * Enum con los tipos de documentos disponibles para registro.
+ * Los IDs coinciden exactamente con los del backend DocumentService.
  */
 enum class TipoDocumentoRegistro(
     val id: Long,
     val displayName: String,
     val descripcion: String,
-    val esObligatorio: Boolean = false
+    val esObligatorio: Boolean
 ) {
-    DNI(1, "Cédula de Identidad", "Foto de tu carnet de identidad (ambos lados)", true),
-    PASAPORTE(2, "Pasaporte", "Foto de la página principal de tu pasaporte", false),
-    LIQUIDACION_SUELDO(3, "Liquidación de Sueldo", "Última liquidación de sueldo", false),
-    CERTIFICADO_ANTECEDENTE(4, "Certificado de Antecedentes", "Certificado de antecedentes vigente", false),
-    CERTIFICADO_AFP(5, "Certificado AFP", "Certificado de cotizaciones AFP", false),
-    CONTRATO_TRABAJO(6, "Contrato de Trabajo", "Copia de tu contrato de trabajo vigente", false);
+    DNI(
+        id = 1L,
+        displayName = "Cédula de Identidad",
+        descripcion = "Foto de tu carnet de identidad (ambos lados)",
+        esObligatorio = true
+    ),
+    PASAPORTE(
+        id = 2L,
+        displayName = "Pasaporte",
+        descripcion = "Foto de la página principal de tu pasaporte",
+        esObligatorio = false
+    ),
+    LIQUIDACION_SUELDO(
+        id = 3L,
+        displayName = "Liquidación de Sueldo",
+        descripcion = "Última liquidación de sueldo",
+        esObligatorio = false
+    ),
+    CERTIFICADO_ANTECEDENTES(
+        id = 4L,
+        displayName = "Certificado de Antecedentes",
+        descripcion = "Certificado de antecedentes vigente",
+        esObligatorio = false
+    ),
+    CERTIFICADO_AFP(
+        id = 5L,
+        displayName = "Certificado AFP",
+        descripcion = "Certificado de cotizaciones AFP",
+        esObligatorio = false
+    ),
+    CONTRATO_TRABAJO(
+        id = 6L,
+        displayName = "Contrato de Trabajo",
+        descripcion = "Copia de tu contrato de trabajo vigente",
+        esObligatorio = false
+    );
 
     companion object {
         fun fromId(id: Long): TipoDocumentoRegistro? = entries.find { it.id == id }
-        fun fromName(name: String): TipoDocumentoRegistro? = entries.find { it.name == name }
 
-        // Documentos obligatorios
-        fun obligatorios(): List<TipoDocumentoRegistro> = entries.filter { it.esObligatorio }
+        val obligatorios: List<TipoDocumentoRegistro>
+            get() = entries.filter { it.esObligatorio }
 
-        // Documentos opcionales
-        fun opcionales(): List<TipoDocumentoRegistro> = entries.filter { !it.esObligatorio }
+        val opcionales: List<TipoDocumentoRegistro>
+            get() = entries.filter { !it.esObligatorio }
     }
 }
 
 /**
- * Representa un documento seleccionado por el usuario durante el registro
- * (almacenado localmente hasta que se integre con el microservicio)
+ * Representa un documento seleccionado por el usuario durante el registro.
+ * Almacena la URI local del archivo antes de subirlo al servidor.
  */
 data class DocumentoRegistro(
     val tipo: TipoDocumentoRegistro,
@@ -40,68 +70,63 @@ data class DocumentoRegistro(
     val nombreArchivo: String,
     val mimeType: String? = null,
     val tamanoBytes: Long? = null
-) {
-    /**
-     * Verifica si es una imagen
-     */
-    val esImagen: Boolean
-        get() = mimeType?.startsWith("image/") == true
-
-    /**
-     * Verifica si es un PDF
-     */
-    val esPdf: Boolean
-        get() = mimeType == "application/pdf"
-
-    /**
-     * Tamaño formateado para mostrar
-     */
-    val tamanoFormateado: String
-        get() = when {
-            tamanoBytes == null -> "Tamaño desconocido"
-            tamanoBytes < 1024 -> "$tamanoBytes B"
-            tamanoBytes < 1024 * 1024 -> "${tamanoBytes / 1024} KB"
-            else -> String.format("%.1f MB", tamanoBytes / (1024.0 * 1024.0))
-        }
-}
+)
 
 /**
- * Estado de los documentos durante el registro
+ * Estado de los documentos durante el proceso de registro.
  */
 data class DocumentosRegistroState(
     val documentos: Map<TipoDocumentoRegistro, DocumentoRegistro> = emptyMap(),
     val documentoEnEdicion: TipoDocumentoRegistro? = null,
+    val isUploading: Boolean = false,
+    val uploadProgress: Float = 0f,
     val error: String? = null
 ) {
     /**
-     * Verifica si todos los documentos obligatorios están cargados
+     * Verifica si todos los documentos obligatorios están cargados.
      */
     val todosObligatoriosCargados: Boolean
-        get() = TipoDocumentoRegistro.obligatorios().all { tipo ->
+        get() = TipoDocumentoRegistro.obligatorios.all { tipo ->
             documentos.containsKey(tipo)
         }
 
     /**
-     * Lista de documentos obligatorios faltantes
+     * Lista de documentos obligatorios que faltan por cargar.
      */
     val obligatoriosFaltantes: List<TipoDocumentoRegistro>
-        get() = TipoDocumentoRegistro.obligatorios().filter { tipo ->
+        get() = TipoDocumentoRegistro.obligatorios.filter { tipo ->
             !documentos.containsKey(tipo)
         }
 
     /**
-     * Cantidad de documentos cargados
+     * Cantidad total de documentos cargados.
      */
     val cantidadCargados: Int
         get() = documentos.size
 
     /**
-     * Verifica si un tipo de documento ya fue cargado
+     * Verifica si un tipo específico de documento está cargado.
      */
-    fun estaCargado(tipo: TipoDocumentoRegistro): Boolean = documentos.containsKey(tipo)
+    fun estaDocumentoCargado(tipo: TipoDocumentoRegistro): Boolean = documentos.containsKey(tipo)
 
     /**
-     * Obtiene el documento de un tipo específico
+     * Obtiene el documento de un tipo específico si existe.
      */
-    fun obtener(tipo: TipoDocumentoRegistro): DocumentoRegistro? = documentos[tipo]
+    fun obtenerDocumento(tipo: TipoDocumentoRegistro): DocumentoRegistro? = documentos[tipo]
+}
+
+/**
+ * Estados posibles de un documento en el backend.
+ * Coincide con los estados del DocumentService.
+ */
+enum class EstadoDocumento(val id: Long, val nombre: String) {
+    PENDIENTE(1L, "PENDIENTE"),
+    ACEPTADO(2L, "ACEPTADO"),
+    RECHAZADO(3L, "RECHAZADO"),
+    EN_REVISION(4L, "EN_REVISION");
+
+    companion object {
+        fun fromId(id: Long): EstadoDocumento? = entries.find { it.id == id }
+        fun fromNombre(nombre: String): EstadoDocumento? = entries.find { it.nombre == nombre }
+    }
 }

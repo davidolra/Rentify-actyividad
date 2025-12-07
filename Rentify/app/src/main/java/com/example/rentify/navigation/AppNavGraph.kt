@@ -2,7 +2,6 @@ package com.example.rentify.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.*
@@ -22,6 +21,7 @@ import com.example.rentify.data.local.storage.UserPreferences
 import com.example.rentify.data.remote.RetrofitClient
 import com.example.rentify.data.remote.dto.*
 import com.example.rentify.data.repository.ApplicationRemoteRepository
+import com.example.rentify.data.repository.DocumentRemoteRepository
 import com.example.rentify.data.repository.UserRepository
 import com.example.rentify.ui.components.*
 import com.example.rentify.ui.screen.*
@@ -29,7 +29,7 @@ import com.example.rentify.ui.viewmodel.*
 import kotlinx.coroutines.launch
 
 /**
- * Grafo de navegacion
+ * Grafo de navegación con gestión de documentos para admin.
  */
 @Composable
 fun AppNavGraph(
@@ -39,20 +39,19 @@ fun AppNavGraph(
     propiedadDetalleViewModel: PropiedadDetalleViewModel,
     solicitudesViewModel: SolicitudesViewModel,
     perfilViewModel: PerfilUsuarioViewModel,
-    reviewViewModel: ReviewViewModel,
-    userRepository: UserRepository
+    reviewViewModel: ReviewViewModel
 ) {
     val context = LocalContext.current
     val userPrefs = remember { UserPreferences(context) }
     val scope = rememberCoroutineScope()
 
-    // Observar estado de autenticacion Y ROL
+    // Observar estado de autenticación Y ROL
     val isLoggedIn by userPrefs.isLoggedIn.collectAsStateWithLifecycle(initialValue = false)
     val userRole by userPrefs.userRole.collectAsStateWithLifecycle(initialValue = null)
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
-    // ========== FUNCIONES DE NAVEGACION ==========
+    // ========== FUNCIONES DE NAVEGACIÓN ==========
 
     val goWelcome: () -> Unit = {
         navController.navigate(Route.Welcome.path) {
@@ -99,7 +98,7 @@ fun AppNavGraph(
         }
     }
 
-    // ================== MAPEO NOMBRE -> ID ==================
+    // ================== MAPEO NOMBRE → ID ==================
     fun mapRoleNameToId(roleName: String?): Long? {
         return when (roleName?.uppercase()) {
             "ADMINISTRADOR" -> 1L
@@ -110,7 +109,7 @@ fun AppNavGraph(
     }
 
 
-    // ========== MENU DRAWER CONTEXTUAL POR ROL ==========
+    // ========== MENÚ DRAWER CONTEXTUAL POR ROL ==========
     val drawerItems = if (isLoggedIn) {
         buildList {
             add(DrawerItem("Inicio", Icons.Filled.Home) {
@@ -126,17 +125,23 @@ fun AppNavGraph(
                 goPerfil()
             })
 
-            // Opciones segun rol
+            // Opciones según rol
             when (userRole?.uppercase()) {
                 "ADMINISTRADOR" -> {
-                    add(DrawerItem("Gestion Usuarios", Icons.Filled.People) {
+                    add(DrawerItem("Gestión Usuarios", Icons.Filled.People) {
                         scope.launch { drawerState.close() }
                         navController.navigate(Route.GestionUsuarios.path)
                     })
 
-                    add(DrawerItem("Gestion Propiedades", Icons.Filled.Business) {
+                    add(DrawerItem("Gestión Propiedades", Icons.Filled.Business) {
                         scope.launch { drawerState.close() }
                         navController.navigate(Route.GestionPropiedades.path)
+                    })
+
+                    // ✅ NUEVO: Gestión de Documentos para Admin
+                    add(DrawerItem("Gestión Documentos", Icons.Filled.Description) {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Route.GestionDocumentos.path)
                     })
                 }
 
@@ -163,7 +168,7 @@ fun AppNavGraph(
                 scope.launch { drawerState.close() }
                 goHome()
             },
-            DrawerItem("Iniciar Sesion", Icons.AutoMirrored.Filled.Login) {
+            DrawerItem("Iniciar Sesión", Icons.AutoMirrored.Filled.Login) {
                 scope.launch { drawerState.close() }
                 goLogin()
             },
@@ -240,7 +245,7 @@ fun AppNavGraph(
                     )
                 }
 
-                // ========== CATALOGO PROPIEDADES ==========
+                // ========== CATÁLOGO PROPIEDADES ==========
                 composable(Route.Propiedades.path) {
                     CatalogoPropiedadesScreen(
                         vm = propiedadViewModel,
@@ -316,8 +321,9 @@ fun AppNavGraph(
                     )
                 }
 
-                // ======== ADMIN: GESTION DE USUARIOS ========
+                // ======== ADMIN: GESTIÓN DE USUARIOS ========
                 composable(Route.GestionUsuarios.path) {
+                    val userRepository = UserRepository(RetrofitClient.userServiceApi)
                     val userManagementViewModel: UserManagementViewModel = viewModel(
                         factory = UserManagementViewModelFactory(userRepository)
                     )
@@ -337,10 +343,23 @@ fun AppNavGraph(
                     )
                 }
 
-                // ======== ADMIN: GESTION DE PROPIEDADES ========
+                // ======== ADMIN: GESTIÓN DE PROPIEDADES ========
                 composable(Route.GestionPropiedades.path) {
                     GestionPropiedadesScreen(
                         onBack = { navController.popBackStack() }
+                    )
+                }
+
+                // ======== ADMIN: GESTIÓN DE DOCUMENTOS ========
+                composable(Route.GestionDocumentos.path) {
+                    val documentRepository = DocumentRemoteRepository()
+                    val gestionDocumentosViewModel: GestionDocumentosViewModel = viewModel(
+                        factory = GestionDocumentosViewModelFactory(documentRepository)
+                    )
+
+                    GestionDocumentosScreen(
+                        viewModel = gestionDocumentosViewModel,
+                        onNavigateBack = { navController.popBackStack() }
                     )
                 }
 

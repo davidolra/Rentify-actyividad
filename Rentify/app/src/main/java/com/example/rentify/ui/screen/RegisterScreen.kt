@@ -3,9 +3,8 @@ package com.example.rentify.ui.screen
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,9 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.TextAlign
@@ -32,7 +29,7 @@ import com.example.rentify.data.model.TipoDocumentoRegistro
 import com.example.rentify.ui.viewmodel.RentifyAuthViewModel
 
 /**
- * Pantalla de registro con documentos y segundo nombre opcional
+ * Pantalla de registro con documentos y segundo nombre opcional.
  */
 @Composable
 fun RegisterScreenVm(
@@ -76,8 +73,13 @@ fun RegisterScreenVm(
         errorMsg = state.errorMsg,
         isDuocDetected = state.isDuocDetected,
 
-        rolSeleccionado = state.rolSeleccionado ?: "usuario",
+        rolSeleccionado = state.rolSeleccionado ?: "",
         onRolChange = vm::onRolChange,
+
+        // Documentos
+        documentosState = documentosState,
+        onDocumentoSeleccionado = vm::onDocumentoSeleccionado,
+        onDocumentoEliminado = vm::onDocumentoEliminado,
 
         onPnombreChange = vm::onPnombreChange,
         onSnombreChange = vm::onSnombreChange,
@@ -89,11 +91,6 @@ fun RegisterScreenVm(
         onPassChange = vm::onRegisterPassChange,
         onConfirmChange = vm::onConfirmChange,
         onCodigoReferidoChange = vm::onCodigoReferidoChange,
-
-        // Documentos
-        documentosState = documentosState,
-        onDocumentoSeleccionado = vm::onDocumentoSeleccionado,
-        onDocumentoEliminado = vm::onDocumentoEliminado,
 
         onSubmit = vm::submitRegister,
         onGoLogin = onGoLogin
@@ -132,6 +129,11 @@ private fun RegisterScreen(
     rolSeleccionado: String,
     onRolChange: (String) -> Unit,
 
+    // Documentos
+    documentosState: DocumentosRegistroState,
+    onDocumentoSeleccionado: (TipoDocumentoRegistro, Uri, String) -> Unit,
+    onDocumentoEliminado: (TipoDocumentoRegistro) -> Unit,
+
     onPnombreChange: (String) -> Unit,
     onSnombreChange: (String) -> Unit,
     onPapellidoChange: (String) -> Unit,
@@ -143,11 +145,6 @@ private fun RegisterScreen(
     onConfirmChange: (String) -> Unit,
     onCodigoReferidoChange: (String) -> Unit,
 
-    // Documentos
-    documentosState: DocumentosRegistroState,
-    onDocumentoSeleccionado: (TipoDocumentoRegistro, Uri, String) -> Unit,
-    onDocumentoEliminado: (TipoDocumentoRegistro) -> Unit,
-
     onSubmit: () -> Unit,
     onGoLogin: () -> Unit
 ) {
@@ -155,9 +152,8 @@ private fun RegisterScreen(
     var showPass by remember { mutableStateOf(false) }
     var showConfirm by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
-    val context = LocalContext.current
 
-    // Estado para manejar qué tipo de documento se está seleccionando
+    // Estado para el picker de documentos
     var tipoDocumentoActual by remember { mutableStateOf<TipoDocumentoRegistro?>(null) }
 
     // Launcher para seleccionar archivos
@@ -166,15 +162,7 @@ private fun RegisterScreen(
     ) { uri: Uri? ->
         uri?.let { selectedUri ->
             tipoDocumentoActual?.let { tipo ->
-                // Obtener nombre del archivo
-                val cursor = context.contentResolver.query(selectedUri, null, null, null, null)
-                val nombreArchivo = cursor?.use {
-                    if (it.moveToFirst()) {
-                        val nameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                        if (nameIndex >= 0) it.getString(nameIndex) else "documento"
-                    } else "documento"
-                } ?: "documento"
-
+                val nombreArchivo = "${tipo.name}_${System.currentTimeMillis()}"
                 onDocumentoSeleccionado(tipo, selectedUri, nombreArchivo)
             }
         }
@@ -211,9 +199,7 @@ private fun RegisterScreen(
             // ========== SECCIÓN: DATOS PERSONALES ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
@@ -236,7 +222,7 @@ private fun RegisterScreen(
                     }
                     Spacer(Modifier.height(8.dp))
 
-                    // Segundo nombre OPCIONAL
+                    // ✅ SEGUNDO NOMBRE AHORA ES OPCIONAL
                     OutlinedTextField(
                         value = snombre,
                         onValueChange = onSnombreChange,
@@ -266,92 +252,92 @@ private fun RegisterScreen(
                     OutlinedTextField(
                         value = fechaNacimiento,
                         onValueChange = onFechaNacimientoChange,
-                        label = { Text("Fecha Nacimiento (DD/MM/YYYY) *") },
+                        label = { Text("Fecha de Nacimiento *") },
                         singleLine = true,
                         isError = fechaNacimientoError != null,
-                        placeholder = { Text("31/12/2000") },
+                        placeholder = { Text("DD/MM/AAAA") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth()
                     )
                     if (fechaNacimientoError != null) {
                         Text(fechaNacimientoError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
                     }
-
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "Debes ser mayor de 18 años",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
 
             Spacer(Modifier.height(16.dp))
 
-            // ========== SECCIÓN: SELECCIÓN DE ROL ==========
+            // ========== SECCIÓN: TIPO DE USUARIO ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "¿Cómo usarás Rentify?",
+                        "¿Cómo usarás Rentify? *",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Spacer(Modifier.height(12.dp))
 
-                    // Arrendatario
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        RadioButton(
-                            selected = rolSeleccionado == "Arrendatario",
-                            onClick = { onRolChange("Arrendatario") }
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Column {
-                            Text(
-                                "Busco arrendar",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = if (rolSeleccionado == "Arrendatario") FontWeight.Bold else FontWeight.Normal
+                        // Botón Arrendatario
+                        OutlinedButton(
+                            onClick = { onRolChange("Arrendatario") },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = if (rolSeleccionado == "Arrendatario")
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else Color.Transparent
+                            ),
+                            border = BorderStroke(
+                                1.dp,
+                                if (rolSeleccionado == "Arrendatario")
+                                    MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.outline
                             )
-                            Text(
-                                "Quiero encontrar una propiedad para arrendar",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.Search, contentDescription = null)
+                                Text("Arrendatario", style = MaterialTheme.typography.labelMedium)
+                                Text("Busco arriendo", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+
+                        // Botón Propietario
+                        OutlinedButton(
+                            onClick = { onRolChange("Propietario") },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = if (rolSeleccionado == "Propietario")
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else Color.Transparent
+                            ),
+                            border = BorderStroke(
+                                1.dp,
+                                if (rolSeleccionado == "Propietario")
+                                    MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.outline
                             )
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.Home, contentDescription = null)
+                                Text("Propietario", style = MaterialTheme.typography.labelMedium)
+                                Text("Publico propiedades", style = MaterialTheme.typography.labelSmall)
+                            }
                         }
                     }
 
-                    Spacer(Modifier.height(8.dp))
-
-                    // Propietario
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        RadioButton(
-                            selected = rolSeleccionado == "Propietario",
-                            onClick = { onRolChange("Propietario") }
+                    if (rolSeleccionado.isBlank()) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Selecciona un tipo de usuario",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.labelSmall
                         )
-                        Spacer(Modifier.width(8.dp))
-                        Column {
-                            Text(
-                                "Publicar propiedades",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = if (rolSeleccionado == "Propietario") FontWeight.Bold else FontWeight.Normal
-                            )
-                            Text(
-                                "Quiero publicar mis propiedades en arriendo",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
                     }
                 }
             }
@@ -361,13 +347,11 @@ private fun RegisterScreen(
             // ========== SECCIÓN: CONTACTO ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Contacto",
+                        "Información de Contacto",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -440,19 +424,15 @@ private fun RegisterScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // ========== SECCIÓN: DOCUMENTOS ==========
+            // ========== SECCIÓN: DOCUMENTACIÓN ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Filled.Description,
+                            Icons.Default.Description,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary
                         )
@@ -463,17 +443,15 @@ private fun RegisterScreen(
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
-
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
-                        "Sube tus documentos para verificar tu identidad. Los documentos marcados con (*) son obligatorios.",
+                        "Sube los documentos requeridos para verificar tu identidad. Los documentos serán revisados por nuestro equipo.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-
                     Spacer(Modifier.height(16.dp))
 
-                    // Documentos obligatorios
+                    // Documentos Obligatorios
                     Text(
                         "Documentos Obligatorios",
                         style = MaterialTheme.typography.labelLarge,
@@ -482,10 +460,10 @@ private fun RegisterScreen(
                     )
                     Spacer(Modifier.height(8.dp))
 
-                    TipoDocumentoRegistro.obligatorios().forEach { tipo ->
+                    TipoDocumentoRegistro.obligatorios.forEach { tipo ->
                         DocumentoItem(
                             tipo = tipo,
-                            documento = documentosState.obtener(tipo),
+                            documento = documentosState.obtenerDocumento(tipo),
                             onSeleccionar = {
                                 tipoDocumentoActual = tipo
                                 filePickerLauncher.launch("image/*")
@@ -497,7 +475,7 @@ private fun RegisterScreen(
 
                     Spacer(Modifier.height(16.dp))
 
-                    // Documentos opcionales
+                    // Documentos Opcionales
                     Text(
                         "Documentos Opcionales",
                         style = MaterialTheme.typography.labelLarge,
@@ -505,19 +483,18 @@ private fun RegisterScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        "Estos documentos ayudan a acelerar el proceso de arriendo",
-                        style = MaterialTheme.typography.bodySmall,
+                        "Acelera la aprobación de tus solicitudes",
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(8.dp))
 
-                    TipoDocumentoRegistro.opcionales().forEach { tipo ->
+                    TipoDocumentoRegistro.opcionales.forEach { tipo ->
                         DocumentoItem(
                             tipo = tipo,
-                            documento = documentosState.obtener(tipo),
+                            documento = documentosState.obtenerDocumento(tipo),
                             onSeleccionar = {
                                 tipoDocumentoActual = tipo
-                                // Para documentos, permitir imágenes y PDFs
                                 filePickerLauncher.launch("*/*")
                             },
                             onEliminar = { onDocumentoEliminado(tipo) }
@@ -526,57 +503,36 @@ private fun RegisterScreen(
                     }
 
                     // Resumen de documentos
-                    if (documentosState.cantidadCargados > 0) {
-                        Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
                         Card(
                             colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer
-                            )
+                                containerColor = if (documentosState.todosObligatoriosCargados)
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else MaterialTheme.colorScheme.errorContainer
+                            ),
+                            modifier = Modifier.weight(1f)
                         ) {
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
+                                modifier = Modifier.padding(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Filled.CheckCircle,
+                                    if (documentosState.todosObligatoriosCargados)
+                                        Icons.Default.CheckCircle
+                                    else Icons.Default.Warning,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
+                                    modifier = Modifier.size(16.dp)
                                 )
-                                Spacer(Modifier.width(8.dp))
+                                Spacer(Modifier.width(4.dp))
                                 Text(
-                                    "${documentosState.cantidadCargados} documento(s) cargado(s)",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        }
-                    }
-
-                    // Advertencia si faltan obligatorios
-                    if (documentosState.obligatoriosFaltantes.isNotEmpty()) {
-                        Spacer(Modifier.height(8.dp))
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Warning,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    "Falta: ${documentosState.obligatoriosFaltantes.joinToString { it.displayName }}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                    if (documentosState.todosObligatoriosCargados)
+                                        "${documentosState.cantidadCargados} documento(s)"
+                                    else "Falta DNI obligatorio",
+                                    style = MaterialTheme.typography.labelSmall
                                 )
                             }
                         }
@@ -589,9 +545,7 @@ private fun RegisterScreen(
             // ========== SECCIÓN: SEGURIDAD ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
@@ -651,9 +605,7 @@ private fun RegisterScreen(
             // ========== SECCIÓN: CÓDIGO REFERIDO (OPCIONAL) ==========
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
@@ -718,7 +670,7 @@ private fun RegisterScreen(
 }
 
 /**
- * Componente para mostrar un item de documento
+ * Componente para mostrar un item de documento.
  */
 @Composable
 private fun DocumentoItem(
@@ -727,31 +679,17 @@ private fun DocumentoItem(
     onSeleccionar: () -> Unit,
     onEliminar: () -> Unit
 ) {
-    val borderColor = if (documento != null) {
-        MaterialTheme.colorScheme.primary
-    } else if (tipo.esObligatorio) {
-        MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
-    } else {
-        MaterialTheme.colorScheme.outline
+    val estaCargado = documento != null
+    val borderColor = when {
+        estaCargado -> MaterialTheme.colorScheme.primary
+        tipo.esObligatorio -> MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
+        else -> MaterialTheme.colorScheme.outline
     }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = borderColor,
-                shape = RoundedCornerShape(12.dp)
-            )
-            .clip(RoundedCornerShape(12.dp))
-            .clickable { if (documento == null) onSeleccionar() },
-        colors = CardDefaults.cardColors(
-            containerColor = if (documento != null) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-            } else {
-                MaterialTheme.colorScheme.surface
-            }
-        )
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        border = BorderStroke(1.dp, borderColor),
+        shape = RoundedCornerShape(8.dp)
     ) {
         Row(
             modifier = Modifier
@@ -764,29 +702,25 @@ private fun DocumentoItem(
                 modifier = Modifier
                     .size(48.dp)
                     .background(
-                        color = if (documento != null) {
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        },
+                        color = if (estaCargado)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(8.dp)
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = if (documento != null) Icons.Filled.CheckCircle else Icons.Filled.Upload,
+                    imageVector = if (estaCargado) Icons.Default.CheckCircle else Icons.Default.Upload,
                     contentDescription = null,
-                    tint = if (documento != null) {
+                    tint = if (estaCargado)
                         MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    }
+                    else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
             Spacer(Modifier.width(12.dp))
 
-            // Información
+            // Info del documento
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -803,9 +737,9 @@ private fun DocumentoItem(
                     }
                 }
 
-                if (documento != null) {
+                if (estaCargado) {
                     Text(
-                        text = documento.nombreArchivo,
+                        text = documento!!.nombreArchivo,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
@@ -821,10 +755,10 @@ private fun DocumentoItem(
             }
 
             // Botón de acción
-            if (documento != null) {
+            if (estaCargado) {
                 IconButton(onClick = onEliminar) {
                     Icon(
-                        imageVector = Icons.Filled.Close,
+                        Icons.Default.Close,
                         contentDescription = "Eliminar",
                         tint = MaterialTheme.colorScheme.error
                     )
@@ -832,7 +766,7 @@ private fun DocumentoItem(
             } else {
                 IconButton(onClick = onSeleccionar) {
                     Icon(
-                        imageVector = Icons.Filled.Add,
+                        Icons.Default.Add,
                         contentDescription = "Agregar",
                         tint = MaterialTheme.colorScheme.primary
                     )

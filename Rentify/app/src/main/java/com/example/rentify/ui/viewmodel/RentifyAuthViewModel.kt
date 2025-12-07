@@ -10,6 +10,7 @@ import com.example.rentify.data.model.DocumentosRegistroState
 import com.example.rentify.data.model.TipoDocumentoRegistro
 import com.example.rentify.data.remote.ApiResult
 import com.example.rentify.data.remote.dto.UsuarioRemoteDTO
+import com.example.rentify.data.repository.DocumentRemoteRepository
 import com.example.rentify.data.repository.UserRemoteRepository
 import com.example.rentify.data.repository.RentifyUserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,7 +35,7 @@ data class LoginUiState(
 
 data class RegisterUiState(
     val pnombre: String = "",
-    val snombre: String = "",  // Ahora es OPCIONAL
+    val snombre: String = "",  // Ahora opcional
     val papellido: String = "",
     val fechaNacimiento: TextFieldValue = TextFieldValue(""),
     val email: String = "",
@@ -46,7 +47,7 @@ data class RegisterUiState(
     val rolSeleccionado: String? = null,
     // Errores
     val pnombreError: String? = null,
-    val snombreError: String? = null,  // Solo se valida si tiene contenido
+    val snombreError: String? = null,
     val papellidoError: String? = null,
     val fechaNacimientoError: String? = null,
     val emailError: String? = null,
@@ -67,7 +68,8 @@ data class RegisterUiState(
 
 class RentifyAuthViewModel(
     private val remoteRepository: UserRemoteRepository,
-    private val localRepository: RentifyUserRepository
+    private val localRepository: RentifyUserRepository,
+    private val documentRepository: DocumentRemoteRepository = DocumentRemoteRepository()
 ) : ViewModel() {
 
     companion object {
@@ -80,7 +82,7 @@ class RentifyAuthViewModel(
     private val _register = MutableStateFlow(RegisterUiState())
     val register: StateFlow<RegisterUiState> = _register
 
-    // Estado de documentos para el registro
+    // Estado para documentos durante el registro
     private val _documentosRegistro = MutableStateFlow(DocumentosRegistroState())
     val documentosRegistro: StateFlow<DocumentosRegistroState> = _documentosRegistro
 
@@ -155,9 +157,7 @@ class RentifyAuthViewModel(
         recomputeRegisterCanSubmit()
     }
 
-    /**
-     * Segundo nombre es OPCIONAL - solo se valida formato si tiene contenido
-     */
+    // Segundo nombre ahora es opcional
     fun onSnombreChange(value: String) {
         val filtered = value.filter { it.isLetter() || it.isWhitespace() }
         // Solo validar si tiene contenido
@@ -263,7 +263,7 @@ class RentifyAuthViewModel(
     // ==================== DOCUMENTOS ====================
 
     /**
-     * Agrega o reemplaza un documento seleccionado
+     * Maneja la selección de un documento desde el file picker.
      */
     fun onDocumentoSeleccionado(tipo: TipoDocumentoRegistro, uri: Uri, nombreArchivo: String) {
         Log.d(TAG, "Documento seleccionado: ${tipo.name} - $nombreArchivo")
@@ -271,9 +271,7 @@ class RentifyAuthViewModel(
         val documento = DocumentoRegistro(
             tipo = tipo,
             uri = uri,
-            nombreArchivo = nombreArchivo,
-            mimeType = null, // Se puede obtener del ContentResolver si es necesario
-            tamanoBytes = null
+            nombreArchivo = nombreArchivo
         )
 
         _documentosRegistro.update { state ->
@@ -282,12 +280,11 @@ class RentifyAuthViewModel(
                 error = null
             )
         }
-
         recomputeRegisterCanSubmit()
     }
 
     /**
-     * Elimina un documento seleccionado
+     * Elimina un documento seleccionado.
      */
     fun onDocumentoEliminado(tipo: TipoDocumentoRegistro) {
         Log.d(TAG, "Documento eliminado: ${tipo.name}")
@@ -297,58 +294,47 @@ class RentifyAuthViewModel(
                 documentos = state.documentos - tipo
             )
         }
-
         recomputeRegisterCanSubmit()
     }
 
     /**
-     * Obtiene los documentos seleccionados para enviar al backend
+     * Obtiene la lista de documentos seleccionados.
      */
     fun getDocumentosSeleccionados(): List<DocumentoRegistro> {
         return _documentosRegistro.value.documentos.values.toList()
     }
 
     /**
-     * Limpia todos los documentos
+     * Limpia todos los documentos.
      */
     fun clearDocumentos() {
-        _documentosRegistro.value = DocumentosRegistroState()
+        _documentosRegistro.update { DocumentosRegistroState() }
     }
 
     // ==================== VALIDACIÓN Y SUBMIT ====================
 
+    // Incluye validación de documentos
     private fun recomputeRegisterCanSubmit() {
         val s = _register.value
         val docState = _documentosRegistro.value
 
         val errors = listOf(
-            s.pnombreError,
-            s.snombreError,  // Puede ser null si está vacío (es opcional)
-            s.papellidoError,
-            s.fechaNacimientoError,
-            s.emailError,
-            s.rutError,
-            s.telefonoError,
-            s.passError,
-            s.confirmError,
-            s.codigoReferidoError
+            s.pnombreError, s.snombreError, s.papellidoError,
+            s.fechaNacimientoError, s.emailError, s.rutError,
+            s.telefonoError, s.passError, s.confirmError, s.codigoReferidoError
         )
         val noErrors = errors.all { it == null }
 
-        // Campos obligatorios (SIN segundo nombre)
+        // snombre ya no es requerido
         val filled = s.pnombre.isNotBlank() &&
-                s.papellido.isNotBlank() &&
-                s.fechaNacimiento.text.length == 10 &&
-                s.email.isNotBlank() &&
-                s.rut.isNotBlank() &&
-                s.telefono.isNotBlank() &&
-                s.pass.isNotBlank() &&
-                s.confirm.isNotBlank()
+                s.papellido.isNotBlank() && s.fechaNacimiento.text.length == 10 &&
+                s.email.isNotBlank() && s.rut.isNotBlank() &&
+                s.telefono.isNotBlank() && s.pass.isNotBlank() && s.confirm.isNotBlank()
 
         val rolValido = !s.rolSeleccionado.isNullOrBlank() &&
                 (s.rolSeleccionado == "Arrendatario" || s.rolSeleccionado == "Propietario")
 
-        // Verificar documentos obligatorios
+        // Validar documentos obligatorios
         val documentosOk = docState.todosObligatoriosCargados
 
         _register.update { it.copy(canSubmit = noErrors && filled && rolValido && documentosOk) }
@@ -363,10 +349,10 @@ class RentifyAuthViewModel(
             return
         }
 
+        // Validar documentos antes de enviar
         if (!docState.todosObligatoriosCargados) {
-            _register.update {
-                it.copy(errorMsg = "Debes subir los documentos obligatorios: ${docState.obligatoriosFaltantes.joinToString { t -> t.displayName }}")
-            }
+            val faltantes = docState.obligatoriosFaltantes.map { it.displayName }
+            _register.update { it.copy(errorMsg = "Faltan documentos obligatorios: ${faltantes.joinToString(", ")}") }
             return
         }
 
@@ -389,16 +375,12 @@ class RentifyAuthViewModel(
                 else -> 3L
             }
 
-            // El segundo nombre se envía vacío si no se llenó
-            val segundoNombre = s.snombre.trim().ifBlank { "" }
-
-            Log.d(TAG, "Registrando usuario: ${s.email}")
-            Log.d(TAG, "  Segundo nombre: '${segundoNombre}' (${if (segundoNombre.isEmpty()) "vacío" else "con valor"})")
-            Log.d(TAG, "  Documentos cargados: ${docState.cantidadCargados}")
+            // snombre puede ser vacío
+            val snombreValue = s.snombre.trim().ifBlank { "" }
 
             when (val result = remoteRepository.registrarUsuario(
                 pnombre = s.pnombre.trim(),
-                snombre = segundoNombre,
+                snombre = snombreValue,  // Puede ser vacío
                 papellido = s.papellido.trim(),
                 fnacimiento = fechaISO,
                 email = s.email.trim(),
@@ -408,12 +390,12 @@ class RentifyAuthViewModel(
                 rolId = rolId
             )) {
                 is ApiResult.Success -> {
-                    Log.d(TAG, "Usuario registrado exitosamente: ID=${result.data.id}")
+                    val usuarioId = result.data.id
+                    Log.d(TAG, "Usuario registrado exitosamente con ID: $usuarioId")
 
-                    // TODO: Aquí se integraría con DocumentService para subir los documentos
-                    // Por ahora solo logueamos los documentos seleccionados
-                    docState.documentos.forEach { (tipo, doc) ->
-                        Log.d(TAG, "  Documento pendiente de subir: ${tipo.name} - ${doc.nombreArchivo}")
+                    // Subir documentos al servidor
+                    if (usuarioId != null) {
+                        subirDocumentosAlServidor(usuarioId, s.pnombre)
                     }
 
                     _register.update {
@@ -424,11 +406,10 @@ class RentifyAuthViewModel(
                         )
                     }
 
-                    // Limpiar documentos después de registro exitoso
+                    // Limpiar documentos después del registro exitoso
                     clearDocumentos()
                 }
                 is ApiResult.Error -> {
-                    Log.e(TAG, "Error al registrar: ${result.message}")
                     _register.update {
                         it.copy(
                             isSubmitting = false,
@@ -442,6 +423,50 @@ class RentifyAuthViewModel(
         }
     }
 
+    /**
+     * Sube los documentos seleccionados al servidor después del registro.
+     */
+    private suspend fun subirDocumentosAlServidor(usuarioId: Long, nombreUsuario: String) {
+        val documentos = _documentosRegistro.value.documentos
+
+        if (documentos.isEmpty()) {
+            Log.d(TAG, "No hay documentos para subir")
+            return
+        }
+
+        Log.d(TAG, "Subiendo ${documentos.size} documento(s) para usuario $usuarioId")
+
+        documentos.forEach { (tipo, documento) ->
+            try {
+                // Generar nombre estandarizado
+                val nombreDocumento = documentRepository.generarNombreDocumento(
+                    tipoDocId = tipo.id,
+                    nombreUsuario = nombreUsuario,
+                    extension = "jpg"  // Por defecto para imágenes
+                )
+
+                val result = documentRepository.crearDocumento(
+                    nombre = nombreDocumento,
+                    usuarioId = usuarioId,
+                    tipoDocId = tipo.id,
+                    estadoId = DocumentRemoteRepository.ESTADO_PENDIENTE
+                )
+
+                when (result) {
+                    is ApiResult.Success -> {
+                        Log.d(TAG, "Documento ${tipo.name} subido exitosamente: ${result.data.id}")
+                    }
+                    is ApiResult.Error -> {
+                        Log.e(TAG, "Error al subir documento ${tipo.name}: ${result.message}")
+                    }
+                    is ApiResult.Loading -> { /* No usado */ }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Excepción al subir documento ${tipo.name}: ${e.message}")
+            }
+        }
+    }
+
     fun clearRegisterResult() {
         _register.update { it.copy(success = false, errorMsg = null) }
     }
@@ -450,7 +475,7 @@ class RentifyAuthViewModel(
         return localRepository.getRoleName(rolId)
     }
 
-    // ==================== HELPERS ====================
+    // ==================== HELPERS Y VALIDACIONES ====================
 
     private fun parseFecha(fecha: String): Long? {
         return try {
@@ -471,25 +496,25 @@ class RentifyAuthViewModel(
         }
     }
 
-    // Validación para campos obligatorios
+    private fun validateEmail(email: String) = if (email.contains("@")) null else "Email inválido"
+
+    // Validación para campos requeridos
     private fun validateNameRequired(name: String) = if (name.isNotBlank()) null else "Campo obligatorio"
 
-    // Validación para campos opcionales (solo formato)
+    // Validación para campos opcionales (solo si tiene contenido)
     private fun validateNameOptional(name: String): String? {
-        // Si tiene contenido, validar que tenga al menos 2 caracteres
         return if (name.length < 2) "Mínimo 2 caracteres" else null
     }
 
-    private fun validateEmail(email: String) = if (email.contains("@") && email.contains(".")) null else "Email inválido"
     private fun validateRut(rut: String) = if (rut.isNotBlank()) null else "RUT obligatorio"
     private fun validatePhoneChileno(phone: String) = if (phone.isNotBlank()) null else "Teléfono obligatorio"
     private fun validateStrongPassword(pass: String) = if (pass.length >= 8) null else "Mínimo 8 caracteres"
-    private fun validateConfirm(pass: String, confirm: String) = if (pass == confirm) null else "Las contraseñas no coinciden"
+    private fun validateConfirm(pass: String, confirm: String) = if (pass == confirm) null else "No coincide"
     private fun validateCodigoReferido(code: String): String? = null // Opcional
-
     private fun validateFechaNacimiento(timestamp: Long): String? {
-        val now = System.currentTimeMillis()
-        val edad = (now - timestamp) / (1000L * 60 * 60 * 24 * 365)
-        return if (edad >= 18) null else "Debes ser mayor de 18 años"
+        // Validar que sea mayor de 18 años
+        val ahora = System.currentTimeMillis()
+        val edad = (ahora - timestamp) / (1000L * 60 * 60 * 24 * 365)
+        return if (edad < 18) "Debes ser mayor de 18 años" else null
     }
 }

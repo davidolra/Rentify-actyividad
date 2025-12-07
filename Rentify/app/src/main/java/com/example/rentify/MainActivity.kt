@@ -64,8 +64,8 @@ class MainActivity : ComponentActivity() {
                     // Auth ViewModel
                     val authViewModel: RentifyAuthViewModel = viewModel(
                         factory = RentifyAuthViewModelFactory(
-                            userRemoteRepository = userRemoteRepository,
-                            rentifyUserRepository = rentifyUserRepository
+                            remoteRepository = userRemoteRepository,
+                            localRepository = rentifyUserRepository
                         )
                     )
 
@@ -115,8 +115,7 @@ class MainActivity : ComponentActivity() {
                         propiedadDetalleViewModel = propiedadDetalleViewModel,
                         solicitudesViewModel = solicitudesViewModel,
                         perfilViewModel = perfilViewModel,
-                        reviewViewModel = reviewViewModel,
-                        userRepository = userRepository
+                        reviewViewModel = reviewViewModel
                     )
                 }
             }
