@@ -7,7 +7,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,10 +21,6 @@ import com.example.rentify.data.remote.dto.DocumentoRemoteDTO
 import com.example.rentify.ui.viewmodel.GestionDocumentosViewModel
 import com.example.rentify.ui.viewmodel.FiltroEstadoDocumento
 
-/**
- * Pantalla de gestión de documentos para administradores.
- * Permite aprobar, rechazar y eliminar documentos de usuarios.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GestionDocumentosScreen(
@@ -34,13 +29,11 @@ fun GestionDocumentosScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // Diálogo de confirmación para acciones
     var showDialog by remember { mutableStateOf(false) }
     var dialogAction by remember { mutableStateOf<AccionDocumento?>(null) }
     var documentoSeleccionado by remember { mutableStateOf<DocumentoRemoteDTO?>(null) }
     var motivoTexto by remember { mutableStateOf("") }
 
-    // Cargar documentos al iniciar
     LaunchedEffect(Unit) {
         viewModel.cargarDocumentos()
     }
@@ -48,7 +41,7 @@ fun GestionDocumentosScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Gestión de Documentos") },
+                title = { Text("Gestion de Documentos") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
@@ -67,14 +60,12 @@ fun GestionDocumentosScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Filtros por estado
             FiltrosEstado(
                 filtroActual = uiState.filtroEstado,
                 contadores = uiState.contadores,
                 onFiltroChange = viewModel::cambiarFiltro
             )
 
-            // Contenido principal
             when {
                 uiState.isLoading -> {
                     Box(
@@ -136,7 +127,6 @@ fun GestionDocumentosScreen(
             }
         }
 
-        // Diálogo de confirmación
         if (showDialog && documentoSeleccionado != null && dialogAction != null) {
             AccionDocumentoDialog(
                 documento = documentoSeleccionado!!,
@@ -174,7 +164,6 @@ fun GestionDocumentosScreen(
             )
         }
 
-        // Snackbar para mensajes
         uiState.mensaje?.let { mensaje ->
             LaunchedEffect(mensaje) {
                 kotlinx.coroutines.delay(3000)
@@ -183,7 +172,6 @@ fun GestionDocumentosScreen(
         }
     }
 
-    // Snackbar host
     if (uiState.mensaje != null) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -203,9 +191,6 @@ fun GestionDocumentosScreen(
     }
 }
 
-/**
- * Filtros por estado de documento.
- */
 @Composable
 private fun FiltrosEstado(
     filtroActual: FiltroEstadoDocumento,
@@ -229,10 +214,10 @@ private fun FiltrosEstado(
                             Spacer(Modifier.width(4.dp))
                             Badge(
                                 containerColor = when (filtro) {
-                                    FiltroEstadoDocumento.PENDIENTE -> MaterialTheme.colorScheme.error
-                                    FiltroEstadoDocumento.EN_REVISION -> MaterialTheme.colorScheme.tertiary
-                                    FiltroEstadoDocumento.ACEPTADO -> MaterialTheme.colorScheme.primary
-                                    FiltroEstadoDocumento.RECHAZADO -> MaterialTheme.colorScheme.error
+                                    FiltroEstadoDocumento.PENDIENTE -> Color(0xFFFFA000)
+                                    FiltroEstadoDocumento.EN_REVISION -> Color(0xFF2196F3)
+                                    FiltroEstadoDocumento.ACEPTADO -> Color(0xFF4CAF50)
+                                    FiltroEstadoDocumento.RECHAZADO -> Color(0xFFF44336)
                                     FiltroEstadoDocumento.TODOS -> MaterialTheme.colorScheme.secondary
                                 }
                             ) {
@@ -246,9 +231,6 @@ private fun FiltrosEstado(
     }
 }
 
-/**
- * Tarjeta de documento para administración.
- */
 @Composable
 private fun DocumentoAdminCard(
     documento: DocumentoRemoteDTO,
@@ -257,27 +239,24 @@ private fun DocumentoAdminCard(
     onEliminar: () -> Unit,
     onMarcarEnRevision: () -> Unit
 ) {
-    val estadoColor = when (documento.estadoId) {
-        1L -> Color(0xFFFFA000) // Pendiente - Naranja
-        2L -> Color(0xFF4CAF50) // Aceptado - Verde
-        3L -> Color(0xFFF44336) // Rechazado - Rojo
-        4L -> Color(0xFF2196F3) // En revisión - Azul
-        else -> MaterialTheme.colorScheme.outline
-    }
+    val estadoInfo = getEstadoInfo(documento.estadoId)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Header con estado
+            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Icono del tipo de documento
+                // Icono y nombre
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Box(
                         modifier = Modifier
                             .size(48.dp)
@@ -294,11 +273,13 @@ private fun DocumentoAdminCard(
                         )
                     }
                     Spacer(Modifier.width(12.dp))
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = documento.tipoDocNombre ?: "Documento",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = documento.nombre ?: "Sin nombre",
@@ -310,24 +291,19 @@ private fun DocumentoAdminCard(
                     }
                 }
 
-                // Badge de estado
-                Surface(
-                    color = estadoColor.copy(alpha = 0.15f),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Text(
-                        text = documento.estadoNombre ?: "Desconocido",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                        color = estadoColor,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                Spacer(Modifier.width(8.dp))
+
+                // Badge de estado - CORREGIDO
+                EstadoBadgeAdmin(
+                    estadoNombre = estadoInfo.nombre,
+                    estadoColor = estadoInfo.color,
+                    estadoIcon = estadoInfo.icon
+                )
             }
 
             Spacer(Modifier.height(12.dp))
 
-            // Información del usuario
+            // Info usuario
             documento.usuario?.let { usuario ->
                 Card(
                     colors = CardDefaults.cardColors(
@@ -347,7 +323,7 @@ private fun DocumentoAdminCard(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.width(8.dp))
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "${usuario.pnombre ?: ""} ${usuario.papellido ?: ""}".trim(),
                                 style = MaterialTheme.typography.bodyMedium,
@@ -359,11 +335,10 @@ private fun DocumentoAdminCard(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Spacer(Modifier.weight(1f))
                         usuario.rol?.let { rol ->
                             AssistChip(
                                 onClick = {},
-                                label = { Text(rol.nombre ?: "Usuario") },
+                                label = { Text(rol.nombre ?: "Usuario", maxLines = 1) },
                                 leadingIcon = {
                                     Icon(
                                         Icons.Default.Badge,
@@ -377,7 +352,7 @@ private fun DocumentoAdminCard(
                 }
             }
 
-            // Fecha de subida
+            // Fecha
             documento.fechaSubido?.let { fecha ->
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -398,87 +373,70 @@ private fun DocumentoAdminCard(
 
             Spacer(Modifier.height(16.dp))
 
-            // Botones de acción según estado actual
+            // Botones de accion
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 when (documento.estadoId) {
-                    1L -> { // PENDIENTE
-                        // Marcar en revisión
+                    1L -> { // Pendiente
                         OutlinedButton(
                             onClick = onMarcarEnRevision,
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Visibility, null, Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
                             Text("Revisar")
                         }
-                        // Aprobar directamente
                         Button(
                             onClick = onAprobar,
                             modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF4CAF50)
-                            )
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                         ) {
-                            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Check, null, Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
                             Text("Aprobar")
+                        }
+                        IconButton(onClick = onEliminar) {
+                            Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)
                         }
                     }
-                    4L -> { // EN_REVISION
-                        // Aprobar
+                    4L -> { // En revision
                         Button(
                             onClick = onAprobar,
                             modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF4CAF50)
-                            )
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                         ) {
-                            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Check, null, Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
                             Text("Aprobar")
                         }
-                        // Rechazar
                         Button(
                             onClick = onRechazar,
                             modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFF44336)
-                            )
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF44336))
                         ) {
-                            Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Close, null, Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
                             Text("Rechazar")
                         }
+                        IconButton(onClick = onEliminar) {
+                            Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)
+                        }
                     }
-                    2L -> { // ACEPTADO
-                        Text(
-                            text = "✓ Documento aprobado",
-                            color = Color(0xFF4CAF50),
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f)
-                        )
+                    else -> { // Aceptado o Rechazado
+                        Spacer(Modifier.weight(1f))
+                        OutlinedButton(
+                            onClick = onEliminar,
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Icon(Icons.Default.Delete, null, Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Eliminar")
+                        }
                     }
-                    3L -> { // RECHAZADO
-                        Text(
-                            text = "✗ Documento rechazado",
-                            color = Color(0xFFF44336),
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-
-                // Botón eliminar siempre visible
-                IconButton(
-                    onClick = onEliminar,
-                    colors = IconButtonDefaults.iconButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Icon(Icons.Default.Delete, contentDescription = "Eliminar")
                 }
             }
         }
@@ -486,8 +444,57 @@ private fun DocumentoAdminCard(
 }
 
 /**
- * Diálogo de confirmación para acciones.
+ * Badge de estado CORREGIDO - no se corta el texto
  */
+@Composable
+private fun EstadoBadgeAdmin(
+    estadoNombre: String,
+    estadoColor: Color,
+    estadoIcon: androidx.compose.ui.graphics.vector.ImageVector
+) {
+    Surface(
+        color = estadoColor.copy(alpha = 0.15f),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                estadoIcon,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp),
+                tint = estadoColor
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+                text = estadoNombre,
+                color = estadoColor,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+private data class EstadoInfo(
+    val nombre: String,
+    val color: Color,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector
+)
+
+private fun getEstadoInfo(estadoId: Long?): EstadoInfo {
+    return when (estadoId) {
+        1L -> EstadoInfo("Pendiente", Color(0xFFFFA000), Icons.Default.Schedule)
+        2L -> EstadoInfo("Aprobado", Color(0xFF4CAF50), Icons.Default.CheckCircle)
+        3L -> EstadoInfo("Rechazado", Color(0xFFF44336), Icons.Default.Cancel)
+        4L -> EstadoInfo("En revision", Color(0xFF2196F3), Icons.Default.Visibility)
+        else -> EstadoInfo("Desconocido", Color.Gray, Icons.Default.Help)
+    }
+}
+
 @Composable
 private fun AccionDocumentoDialog(
     documento: DocumentoRemoteDTO,
@@ -513,20 +520,18 @@ private fun AccionDocumentoDialog(
                 contentDescription = null,
                 tint = when (accion) {
                     AccionDocumento.APROBAR -> Color(0xFF4CAF50)
-                    AccionDocumento.RECHAZAR -> Color(0xFFF44336)
-                    AccionDocumento.ELIMINAR -> MaterialTheme.colorScheme.error
+                    AccionDocumento.RECHAZAR, AccionDocumento.ELIMINAR -> Color(0xFFF44336)
                     AccionDocumento.EN_REVISION -> Color(0xFF2196F3)
-                },
-                modifier = Modifier.size(48.dp)
+                }
             )
         },
         title = {
             Text(
-                text = when (accion) {
+                when (accion) {
                     AccionDocumento.APROBAR -> "Aprobar Documento"
                     AccionDocumento.RECHAZAR -> "Rechazar Documento"
                     AccionDocumento.ELIMINAR -> "Eliminar Documento"
-                    AccionDocumento.EN_REVISION -> "Marcar en Revisión"
+                    AccionDocumento.EN_REVISION -> "Marcar en Revision"
                 }
             )
         },
@@ -534,16 +539,15 @@ private fun AccionDocumentoDialog(
             Column {
                 Text(
                     text = when (accion) {
-                        AccionDocumento.APROBAR -> "¿Confirmas que deseas aprobar este documento?"
-                        AccionDocumento.RECHAZAR -> "Indica el motivo del rechazo para notificar al usuario."
-                        AccionDocumento.ELIMINAR -> "Esta acción no se puede deshacer. Indica el motivo de la eliminación."
-                        AccionDocumento.EN_REVISION -> "El documento será marcado como 'En Revisión'."
+                        AccionDocumento.APROBAR -> "Confirmas que deseas aprobar este documento?"
+                        AccionDocumento.RECHAZAR -> "Indica el motivo del rechazo. El usuario vera este mensaje."
+                        AccionDocumento.ELIMINAR -> "Esta accion no se puede deshacer. Indica el motivo."
+                        AccionDocumento.EN_REVISION -> "El documento sera marcado como 'En Revision'."
                     }
                 )
 
                 Spacer(Modifier.height(8.dp))
 
-                // Info del documento
                 Card(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -569,7 +573,6 @@ private fun AccionDocumentoDialog(
                     }
                 }
 
-                // Campo de motivo si es requerido
                 if (requiereMotivo) {
                     Spacer(Modifier.height(16.dp))
                     OutlinedTextField(
@@ -581,7 +584,7 @@ private fun AccionDocumentoDialog(
                                 if (accion == AccionDocumento.RECHAZAR)
                                     "Ej: Imagen borrosa, documento vencido..."
                                 else
-                                    "Ej: Documento duplicado, fraude detectado..."
+                                    "Ej: Documento duplicado..."
                             )
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -606,7 +609,7 @@ private fun AccionDocumentoDialog(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = when (accion) {
                         AccionDocumento.APROBAR -> Color(0xFF4CAF50)
-                        AccionDocumento.RECHAZAR, AccionDocumento.ELIMINAR -> MaterialTheme.colorScheme.error
+                        AccionDocumento.RECHAZAR, AccionDocumento.ELIMINAR -> Color(0xFFF44336)
                         AccionDocumento.EN_REVISION -> Color(0xFF2196F3)
                     }
                 )
@@ -640,9 +643,6 @@ private fun AccionDocumentoDialog(
     )
 }
 
-/**
- * Mensaje de estado vacío.
- */
 @Composable
 private fun EmptyState(filtro: FiltroEstadoDocumento) {
     Box(
@@ -666,7 +666,7 @@ private fun EmptyState(filtro: FiltroEstadoDocumento) {
             Text(
                 text = when (filtro) {
                     FiltroEstadoDocumento.PENDIENTE -> "No hay documentos pendientes"
-                    FiltroEstadoDocumento.EN_REVISION -> "No hay documentos en revisión"
+                    FiltroEstadoDocumento.EN_REVISION -> "No hay documentos en revision"
                     FiltroEstadoDocumento.ACEPTADO -> "No hay documentos aprobados"
                     FiltroEstadoDocumento.RECHAZADO -> "No hay documentos rechazados"
                     FiltroEstadoDocumento.TODOS -> "No hay documentos"
@@ -678,9 +678,6 @@ private fun EmptyState(filtro: FiltroEstadoDocumento) {
     }
 }
 
-/**
- * Mensaje de error.
- */
 @Composable
 private fun ErrorMessage(
     message: String,
@@ -713,21 +710,19 @@ private fun ErrorMessage(
     }
 }
 
-// ==================== HELPERS ====================
-
 enum class AccionDocumento {
     APROBAR, RECHAZAR, ELIMINAR, EN_REVISION
 }
 
 private fun getIconForTipoDoc(tipoDocId: Long?): androidx.compose.ui.graphics.vector.ImageVector {
     return when (tipoDocId) {
-        1L -> Icons.Default.Badge          // DNI
-        2L -> Icons.Default.Flight         // Pasaporte
-        3L -> Icons.Default.Payments       // Liquidación
-        4L -> Icons.Default.Security       // Antecedentes
-        5L -> Icons.Default.AccountBalance // AFP
-        6L -> Icons.Default.Description    // Contrato
-        else -> Icons.AutoMirrored.Filled.InsertDriveFile
+        1L -> Icons.Default.Badge
+        2L -> Icons.Default.Flight
+        3L -> Icons.Default.Payments
+        4L -> Icons.Default.Security
+        5L -> Icons.Default.AccountBalance
+        6L -> Icons.Default.Description
+        else -> Icons.Default.Description
     }
 }
 

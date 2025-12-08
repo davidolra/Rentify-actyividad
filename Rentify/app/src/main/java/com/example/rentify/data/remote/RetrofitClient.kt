@@ -3,30 +3,31 @@ package com.example.rentify.data.remote
 import com.example.rentify.data.remote.api.*
 import com.example.rentify.data.remote.dto.UserServiceErrorResponse
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonDeserializationContext
+import com.google.gson.JsonDeserializer
+import com.google.gson.JsonElement
+import com.google.gson.JsonPrimitive
+import com.google.gson.JsonSerializationContext
+import com.google.gson.JsonSerializer
 import com.google.gson.JsonSyntaxException
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.lang.reflect.Type
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 
 /**
- * ✅ MEJORADO: Cliente Retrofit optimizado para comunicación con microservicios de Rentify
- *
- * Mejoras:
- * - ✅ Manejo simplificado de fechas LocalDate (yyyy-MM-dd)
- * - ✅ Parseo estructurado de ErrorResponse del backend
- * - ✅ Logging mejorado con información de contexto
- * - ✅ Configuración optimizada de timeouts
+ * Cliente Retrofit para comunicacion con microservicios de Rentify
  */
 object RetrofitClient {
 
-    // ==================== CONFIGURACIÓN DE URLs ====================
-    // ⚠️ IMPORTANTE: Cambiar estas URLs según tu entorno
-    // Para emulador Android: usar 10.0.2.2 en lugar de localhost
-    // Para dispositivo físico: usar la IP de tu PC en la red local
-
+    // ==================== CONFIGURACION DE URLs ====================
     private const val PC_IP = "192.168.100.7"
     private const val emu_IP = "10.0.2.2"
 
@@ -37,7 +38,7 @@ object RetrofitClient {
     private const val BASE_URL_CONTACT_SERVICE = "http://$PC_IP:8085/"
     private const val BASE_URL_REVIEW_SERVICE = "http://$PC_IP:8086/"
 
-    // ==================== CONFIGURACIÓN DE OKHTTP ====================
+    // ==================== CONFIGURACION DE OKHTTP ====================
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
@@ -50,17 +51,72 @@ object RetrofitClient {
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    // ==================== CONFIGURACIÓN DE GSON SIMPLIFICADA ====================
-    // ✅ MEJORADO: Configuración simple y eficiente para fechas LocalDate
+    // ==================== DESERIALIZADOR DE FECHAS ====================
+
+    /**
+     * Deserializador personalizado para manejar multiples formatos de fecha
+     * Soporta: ISO 8601 con T, ISO 8601 con espacio, solo fecha
+     */
+    private class DateDeserializer : JsonDeserializer<Date>, JsonSerializer<Date> {
+
+        private val dateFormats = listOf(
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.getDefault()),
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.getDefault()),
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()),
+            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()),
+            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        ).onEach {
+            it.isLenient = true
+            it.timeZone = TimeZone.getDefault()
+        }
+
+        override fun deserialize(
+            json: JsonElement?,
+            typeOfT: Type?,
+            context: JsonDeserializationContext?
+        ): Date? {
+            if (json == null || json.isJsonNull) return null
+
+            val dateString = json.asString
+            if (dateString.isNullOrBlank()) return null
+
+            for (format in dateFormats) {
+                try {
+                    return format.parse(dateString)
+                } catch (e: Exception) {
+                    // Intentar siguiente formato
+                }
+            }
+
+            // Si ninguno funciona, intentar parsear como timestamp
+            try {
+                return Date(dateString.toLong())
+            } catch (e: Exception) {
+                android.util.Log.w("DateDeserializer", "No se pudo parsear fecha: $dateString")
+                return null
+            }
+        }
+
+        override fun serialize(
+            src: Date?,
+            typeOfSrc: Type?,
+            context: JsonSerializationContext?
+        ): JsonElement {
+            if (src == null) return JsonPrimitive("")
+            val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            return JsonPrimitive(format.format(src))
+        }
+    }
+
+    // ==================== CONFIGURACION DE GSON ====================
 
     private val gson = GsonBuilder()
         .setLenient()
-        // ✅ No necesitamos deserializadores complejos para LocalDate
-        // El backend envía fechas como String "yyyy-MM-dd"
-        // Gson los maneja automáticamente
+        .registerTypeAdapter(Date::class.java, DateDeserializer())
+        .setDateFormat("yyyy-MM-dd'T'HH:mm:ss")
         .create()
 
-    // ==================== FUNCIÓN HELPER PARA CREAR RETROFIT ====================
+    // ==================== FUNCION HELPER PARA CREAR RETROFIT ====================
 
     private fun createRetrofit(baseUrl: String): Retrofit {
         return Retrofit.Builder()
@@ -72,50 +128,26 @@ object RetrofitClient {
 
     // ==================== INSTANCIAS DE APIS ====================
 
-    /**
-     * User Service API (Puerto 8081)
-     * Gestión de usuarios, roles y estados
-     */
     val userServiceApi: UserServiceApi by lazy {
         createRetrofit(BASE_URL_USER_SERVICE).create(UserServiceApi::class.java)
     }
 
-    /**
-     * Property Service API (Puerto 8082)
-     * Gestión de propiedades, fotos, comunas y regiones
-     */
     val propertyServiceApi: PropertyServiceApi by lazy {
         createRetrofit(BASE_URL_PROPERTY_SERVICE).create(PropertyServiceApi::class.java)
     }
 
-    /**
-     * Document Service API (Puerto 8083)
-     * Gestión de documentos de usuarios
-     */
     val documentServiceApi: DocumentServiceApi by lazy {
         createRetrofit(BASE_URL_DOCUMENT_SERVICE).create(DocumentServiceApi::class.java)
     }
 
-    /**
-     * Application Service API (Puerto 8084)
-     * Gestión de solicitudes y registros de arriendo
-     */
     val applicationServiceApi: ApplicationServiceApi by lazy {
         createRetrofit(BASE_URL_APPLICATION_SERVICE).create(ApplicationServiceApi::class.java)
     }
 
-    /**
-     * Contact Service API (Puerto 8085)
-     * Gestión de mensajes de contacto
-     */
     val contactServiceApi: ContactServiceApi by lazy {
         createRetrofit(BASE_URL_CONTACT_SERVICE).create(ContactServiceApi::class.java)
     }
 
-    /**
-     * Review Service API (Puerto 8086)
-     * Gestión de reseñas y valoraciones
-     */
     val reviewServiceApi: ReviewServiceApi by lazy {
         createRetrofit(BASE_URL_REVIEW_SERVICE).create(ReviewServiceApi::class.java)
     }
@@ -129,18 +161,13 @@ sealed class ApiResult<out T> {
     data class Error(
         val message: String,
         val code: Int? = null,
-        val errorResponse: UserServiceErrorResponse? = null  // ✅ NUEVO: Error estructurado
+        val errorResponse: UserServiceErrorResponse? = null
     ) : ApiResult<Nothing>()
     object Loading : ApiResult<Nothing>()
 }
 
 /**
- * ✅ MEJORADO: Extensión para simplificar el manejo de respuestas de Retrofit
- *
- * Mejoras:
- * - Parsea ErrorResponse estructurado del backend
- * - Proporciona mensajes de error más informativos
- * - Maneja casos especiales (401, 404, 500)
+ * Extension para simplificar el manejo de respuestas de Retrofit
  */
 suspend fun <T> safeApiCall(apiCall: suspend () -> Response<T>): ApiResult<T> {
     return try {
@@ -150,11 +177,10 @@ suspend fun <T> safeApiCall(apiCall: suspend () -> Response<T>): ApiResult<T> {
             response.body()?.let {
                 ApiResult.Success(it)
             } ?: ApiResult.Error(
-                message = "Respuesta vacía del servidor",
+                message = "Respuesta vacia del servidor",
                 code = response.code()
             )
         } else {
-            // ✅ MEJORADO: Intentar parsear ErrorResponse estructurado
             val errorBody = response.errorBody()?.string()
             val errorResponse = parseErrorResponse(errorBody)
 
@@ -175,9 +201,6 @@ suspend fun <T> safeApiCall(apiCall: suspend () -> Response<T>): ApiResult<T> {
     }
 }
 
-/**
- * ✅ NUEVO: Parsea el ErrorResponse del backend
- */
 private fun parseErrorResponse(errorBody: String?): UserServiceErrorResponse? {
     if (errorBody.isNullOrBlank()) return null
 
@@ -185,30 +208,26 @@ private fun parseErrorResponse(errorBody: String?): UserServiceErrorResponse? {
         val gson = GsonBuilder().create()
         gson.fromJson(errorBody, UserServiceErrorResponse::class.java)
     } catch (e: JsonSyntaxException) {
-        // Si no se puede parsear, retornar null
         android.util.Log.w("RetrofitClient", "No se pudo parsear ErrorResponse: ${e.message}")
         null
     }
 }
 
-/**
- * ✅ NUEVO: Obtiene un mensaje de error amigable según el tipo de excepción
- */
 private fun getExceptionMessage(e: Exception): String {
     return when {
         e is java.net.UnknownHostException ->
-            "Sin conexión a internet. Verifica tu conexión."
+            "Sin conexion a internet. Verifica tu conexion."
 
         e is java.net.SocketTimeoutException ->
             "Tiempo de espera agotado. El servidor no responde."
 
         e is java.net.ConnectException ->
-            "No se pudo conectar al servidor. Verifica que esté en ejecución."
+            "No se pudo conectar al servidor. Verifica que este en ejecucion."
 
         e is javax.net.ssl.SSLException ->
-            "Error de seguridad en la conexión."
+            "Error de seguridad en la conexion."
 
         else ->
-            e.message ?: "Error de conexión desconocido"
+            e.message ?: "Error de conexion desconocido"
     }
 }

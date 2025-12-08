@@ -10,12 +10,11 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.rentify.data.local.RentifyDatabase
-import com.example.rentify.data.remote.RetrofitClient
 import com.example.rentify.data.repository.ApplicationRemoteRepository
+import com.example.rentify.data.repository.DocumentRemoteRepository
 import com.example.rentify.data.repository.PropertyRemoteRepository
 import com.example.rentify.data.repository.ReviewRemoteRepository
 import com.example.rentify.data.repository.UserRemoteRepository
-import com.example.rentify.data.repository.UserRepository
 import com.example.rentify.data.repository.RentifyUserRepository
 import com.example.rentify.navigation.AppNavGraph
 import com.example.rentify.ui.theme.RentifyTheme
@@ -35,7 +34,7 @@ class MainActivity : ComponentActivity() {
 
                     // ==================== REPOSITORIOS ====================
 
-                    // Repositorio local de usuarios (para sincronizacion)
+                    // Repositorio local de usuarios
                     val rentifyUserRepository = RentifyUserRepository(
                         usuarioDao = db.usuarioDao(),
                         catalogDao = db.catalogDao()
@@ -44,8 +43,8 @@ class MainActivity : ComponentActivity() {
                     // User Remote Repository (para autenticacion)
                     val userRemoteRepository = UserRemoteRepository()
 
-                    // UserRepository para operaciones de perfil (usa API remota)
-                    val userRepository = UserRepository(RetrofitClient.userServiceApi)
+                    // Document Remote Repository
+                    val documentRemoteRepository = DocumentRemoteRepository()
 
                     // Application Remote Repository
                     val applicationRemoteRepository = ApplicationRemoteRepository(
@@ -65,7 +64,8 @@ class MainActivity : ComponentActivity() {
                     val authViewModel: RentifyAuthViewModel = viewModel(
                         factory = RentifyAuthViewModelFactory(
                             remoteRepository = userRemoteRepository,
-                            localRepository = rentifyUserRepository
+                            localRepository = rentifyUserRepository,
+                            documentRepository = documentRemoteRepository
                         )
                     )
 
@@ -96,9 +96,13 @@ class MainActivity : ComponentActivity() {
                         )
                     )
 
-                    // Perfil ViewModel - Usa UserRepository (API remota)
+                    // Perfil ViewModel - Usa DAOs locales
                     val perfilViewModel: PerfilUsuarioViewModel = viewModel(
-                        factory = PerfilUsuarioViewModelFactory(userRepository)
+                        factory = PerfilUsuarioViewModelFactory(
+                            usuarioDao = db.usuarioDao(),
+                            catalogDao = db.catalogDao(),
+                            solicitudDao = db.solicitudDao()
+                        )
                     )
 
                     // Review ViewModel

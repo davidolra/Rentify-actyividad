@@ -1,5 +1,6 @@
 package com.example.rentify.data.remote.api
 
+import com.example.rentify.data.remote.dto.ActualizarEstadoRequest
 import com.example.rentify.data.remote.dto.DocumentoRemoteDTO
 import com.example.rentify.data.remote.dto.EstadoDocumentoDTO
 import com.example.rentify.data.remote.dto.TipoDocumentoRemoteDTO
@@ -7,8 +8,7 @@ import retrofit2.Response
 import retrofit2.http.*
 
 /**
- * API para comunicación con Document Service (Puerto 8083)
- * Coincide exactamente con los controllers del backend
+ * API para comunicacion con Document Service (Puerto 8083)
  */
 interface DocumentServiceApi {
 
@@ -62,13 +62,23 @@ interface DocumentServiceApi {
     ): Response<Boolean>
 
     /**
-     * Actualizar estado de documento
+     * Actualizar estado de documento (sin observaciones - compatibilidad)
      * PATCH /api/documentos/{id}/estado/{estadoId}
      */
     @PATCH("api/documentos/{id}/estado/{estadoId}")
     suspend fun actualizarEstadoDocumento(
         @Path("id") id: Long,
         @Path("estadoId") estadoId: Long
+    ): Response<DocumentoRemoteDTO>
+
+    /**
+     * NUEVO: Actualizar estado de documento CON observaciones
+     * PATCH /api/documentos/{id}/estado
+     */
+    @PATCH("api/documentos/{id}/estado")
+    suspend fun actualizarEstadoConObservaciones(
+        @Path("id") id: Long,
+        @Body request: ActualizarEstadoRequest
     ): Response<DocumentoRemoteDTO>
 
     /**

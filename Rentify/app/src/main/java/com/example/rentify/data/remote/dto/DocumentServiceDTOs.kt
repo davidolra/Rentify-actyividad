@@ -8,14 +8,11 @@ import java.util.Date
 /**
  * DTO para Documento
  * Compatible con DocumentoDTO.java del backend
- *
- * NOTA: El campo 'observaciones' requiere actualización del backend.
- * Ver PROPUESTA_BACKEND_OBSERVACIONES.md
  */
 data class DocumentoRemoteDTO(
     val id: Long? = null,
 
-    val nombre: String,
+    val nombre: String? = null,
 
     @SerializedName("fechaSubido")
     val fechaSubido: Date? = null,
@@ -27,7 +24,16 @@ data class DocumentoRemoteDTO(
     val estadoId: Long,
 
     @SerializedName("tipoDocId")
-    val tipoDocId: Long,
+    val tipoDocId: Long? = null,
+
+    // Campos para observaciones/motivo de rechazo
+    val observaciones: String? = null,
+
+    @SerializedName("fechaActualizacion")
+    val fechaActualizacion: Date? = null,
+
+    @SerializedName("revisadoPor")
+    val revisadoPor: Long? = null,
 
     // Campos expandidos (cuando includeDetails=true)
     @SerializedName("estadoNombre")
@@ -36,20 +42,7 @@ data class DocumentoRemoteDTO(
     @SerializedName("tipoDocNombre")
     val tipoDocNombre: String? = null,
 
-    val usuario: UsuarioDocDTO? = null,
-
-    // ✅ NUEVO: Campo para observaciones/motivo de rechazo
-    // Requiere actualización del backend (ver documentación)
-    @SerializedName("observaciones")
-    val observaciones: String? = null,
-
-    // ✅ NUEVO: Fecha de última actualización de estado
-    @SerializedName("fechaActualizacion")
-    val fechaActualizacion: Date? = null,
-
-    // ✅ NUEVO: ID del admin que revisó el documento
-    @SerializedName("revisadoPor")
-    val revisadoPor: Long? = null
+    val usuario: UsuarioDocDTO? = null
 )
 
 /**
@@ -57,20 +50,20 @@ data class DocumentoRemoteDTO(
  */
 data class UsuarioDocDTO(
     val id: Long,
-    val pnombre: String,
-    val papellido: String,
-    val email: String,
+    val pnombre: String? = null,
+    val papellido: String? = null,
+    val email: String? = null,
     val rol: RolInfo? = null,
     val estado: EstadoInfo? = null
 ) {
     data class RolInfo(
         val id: Long,
-        val nombre: String
+        val nombre: String? = null
     )
 
     data class EstadoInfo(
         val id: Long,
-        val nombre: String
+        val nombre: String? = null
     )
 }
 
@@ -91,14 +84,12 @@ data class TipoDocumentoRemoteDTO(
 )
 
 /**
- * DTO para actualizar estado de documento CON motivo.
- * Usar con PATCH /api/documentos/{id}/estado
+ * Request para actualizar estado CON observaciones
  */
-data class ActualizarEstadoDocumentoRequest(
+data class ActualizarEstadoRequest(
     @SerializedName("estadoId")
     val estadoId: Long,
 
-    @SerializedName("observaciones")
     val observaciones: String? = null,
 
     @SerializedName("revisadoPor")
