@@ -1,12 +1,5 @@
-package com.example.rentify.ui.screen
+package com.example.rentify.ui.screens
 
-import android.Manifest
-import android.annotation.SuppressLint
-import android.content.Context
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,175 +9,105 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import com.example.rentify.data.local.RentifyDatabase
+import com.example.rentify.data.repository.PropertyRemoteRepository
+import com.example.rentify.navigation.Routes
 import com.example.rentify.ui.viewmodel.PropiedadViewModel
-import com.example.rentify.ui.viewmodel.PropiedadConDistancia
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
-import com.google.android.gms.tasks.CancellationTokenSource
-import java.text.NumberFormat
-import java.util.*
+import com.example.rentify.ui.viewmodel.PropiedadViewModelFactory
 
-/**
- * Pantalla de catálogo de propiedades con GPS
- */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CatalogoPropiedadesScreen(
-    vm: PropiedadViewModel,
-    onVerDetalle: (Long) -> Unit = {} // Se pasa la función `onVerDetalle` correctamente aquí
+    navController: NavController,
+    context: android.content.Context
 ) {
-    val context = LocalContext.current
-    val propiedades by vm.propiedades.collectAsStateWithLifecycle()
-    val isLoading by vm.isLoading.collectAsStateWithLifecycle()
-    val permisoUbicacion by vm.permisoUbicacion.collectAsStateWithLifecycle()
-    val ubicacionUsuario by vm.ubicacionUsuario.collectAsStateWithLifecycle()
+    val db = RentifyDatabase.getInstance(context)
+    val viewModel: PropiedadViewModel = viewModel(
+        factory = PropiedadViewModelFactory(
+            propiedadDao = db.propiedadDao(),
+            catalogDao = db.catalogDao(),
+            remoteRepository = PropertyRemoteRepository()
+        )
+    )
 
-    // Launcher para solicitar permisos de ubicación
-    val permisosLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permisos ->
-        val concedido = permisos[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                permisos[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+    val propiedades by viewModel.propiedades.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
 
-        vm.setPermisoUbicacion(concedido)
-
-        if (concedido) {
-            obtenerUbicacionActual(context, vm)
-        } else {
-            Toast.makeText(context, "Permiso de ubicación denegado", Toast.LENGTH_SHORT).show()
-            // Cargar propiedades sin orden por distancia
-            vm.cargarPropiedadesCercanas()
-        }
+    LaunchedEffect(Unit) {
+        viewModel.cargarPropiedadesCercanas()
     }
 
-    // Efecto para solicitar permisos al iniciar
-    LaunchedEffect(Unit) {
-        val tienePermiso = verificarPermisoUbicacion(context)
-        vm.setPermisoUbicacion(tienePermiso)
-
-        if (tienePermiso) {
-            obtenerUbicacionActual(context, vm)
-        } else {
-            // Solicitar permisos
-            permisosLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Propiedades Disponibles") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(Icons.Default.ArrowBack, "Volver")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { /* TODO: Filtros */ }) {
+                        Icon(Icons.Default.FilterList, "Filtros")
+                    }
+                }
             )
         }
-    }
-
-    val bg = MaterialTheme.colorScheme.background
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(bg)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
         ) {
-            // ========== HEADER ==========
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
+            when {
+                isLoading -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                propiedades.isEmpty() -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Home,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(32.dp)
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                "Propiedades Disponibles",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                            if (permisoUbicacion && ubicacionUsuario != null) {
-                                Text(
-                                    "Ordenadas por cercanía a tu ubicación",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            }
-                        }
-                    }
-
-                    // Botón para actualizar ubicación
-                    if (permisoUbicacion) {
-                        Spacer(Modifier.height(12.dp))
-                        OutlinedButton(
-                            onClick = { obtenerUbicacionActual(context, vm) },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.MyLocation,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text("Actualizar mi ubicación")
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // ========== LISTA DE PROPIEDADES ==========
-
-            if (isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator()
-                        Spacer(Modifier.height(16.dp))
-                        Text("Cargando propiedades...")
-                    }
-                }
-            } else if (propiedades.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Filled.SearchOff,
+                            Icons.Default.Home,
                             contentDescription = null,
                             modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(Modifier.height(16.dp))
-                        Text("No hay propiedades disponibles")
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            "No hay propiedades disponibles",
+                            style = MaterialTheme.typography.titleMedium
+                        )
                     }
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(propiedades) { item ->
-                        // Aquí se pasa correctamente la función onVerDetalle a PropiedadCard
-                        PropiedadCard(item, permisoUbicacion, onVerDetalle)
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(propiedades) { propiedadConDistancia ->
+                            PropiedadCard(
+                                propiedad = propiedadConDistancia.propiedad,
+                                distancia = propiedadConDistancia.distancia,
+                                nombreComuna = propiedadConDistancia.nombreComuna,
+                                nombreTipo = propiedadConDistancia.nombreTipo,
+                                onClick = {
+                                    navController.navigate(
+                                        "${Routes.PROPIEDAD_DETALLE}/${propiedadConDistancia.propiedad.id}"
+                                    )
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -192,206 +115,112 @@ fun CatalogoPropiedadesScreen(
     }
 }
 
-/**
- * Card individual de propiedad
- */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PropiedadCard(
-    item: PropiedadConDistancia,
-    mostrarDistancia: Boolean,
-    onVerDetalle: (Long) -> Unit // Recibe la función onVerDetalle correctamente
+    propiedad: com.example.rentify.data.local.entities.PropiedadEntity,
+    distancia: Double?,
+    nombreComuna: String?,
+    nombreTipo: String?,
+    onClick: () -> Unit
 ) {
-    val propiedad = item.propiedad
-    val numberFormat = NumberFormat.getCurrencyInstance(Locale("es", "CL"))
-
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
         ) {
-            // Título y código
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-                Text(
-                    propiedad.titulo,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = MaterialTheme.shapes.small
-                ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        propiedad.codigo,
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        text = propiedad.direccion,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = nombreComuna ?: "Comuna desconocida",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            }
 
-            Spacer(Modifier.height(8.dp))
-
-            // Ubicación y distancia
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Filled.LocationOn,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    item.nombreComuna ?: "Comuna desconocida",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-
-                if (mostrarDistancia && item.distanciaKm != null) {
-                    Spacer(Modifier.width(8.dp))
+                if (distancia != null) {
                     Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        color = MaterialTheme.colorScheme.primaryContainer,
                         shape = MaterialTheme.shapes.small
                     ) {
                         Text(
-                            "%.1f km".format(item.distanciaKm),
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            fontWeight = FontWeight.Bold
+                            text = String.format("%.1f km", distancia),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelMedium
                         )
                     }
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Características
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                CaracteristicaChip(Icons.Filled.SquareFoot, "${propiedad.m2} m²")
-                CaracteristicaChip(Icons.Filled.Bed, "${propiedad.n_habit} hab")
-                CaracteristicaChip(Icons.Filled.Bathroom, "${propiedad.n_banos} baños")
-                if (propiedad.pet_friendly) {
-                    CaracteristicaChip(Icons.Filled.Pets, "Mascotas")
+                PropertyFeature(
+                    icon = Icons.Default.Home,
+                    text = nombreTipo ?: "Tipo"
+                )
+                PropertyFeature(
+                    icon = Icons.Default.Bed,
+                    text = "${propiedad.nHabit} hab"
+                )
+                PropertyFeature(
+                    icon = Icons.Default.Bathtub,
+                    text = "${propiedad.nBanos} baños"
+                )
+                if (propiedad.petFriendly == 1) {
+                    PropertyFeature(
+                        icon = Icons.Default.Pets,
+                        text = "Pet friendly"
+                    )
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
-            Divider()
-            Spacer(Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Precio y botón
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        "Arriendo mensual",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        numberFormat.format(propiedad.precio_mensual),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-
-                Button(onClick = { onVerDetalle(item.propiedad.id) }) {  // Aquí se pasa el ID de la propiedad a la función
-                    Text("Ver más")
-                }
-            }
+            Text(
+                text = "$${String.format("%,.0f", propiedad.precioMensual)} / mes",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }
 
-/**
- * Chip para mostrar características
- */
 @Composable
-private fun CaracteristicaChip(
+private fun PropertyFeature(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     text: String
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        shape = MaterialTheme.shapes.small
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.width(4.dp))
-            Text(
-                text,
-                style = MaterialTheme.typography.labelSmall
-            )
-        }
-    }
-}
-
-/**
- * Verifica si se tiene permiso de ubicación
- */
-private fun verificarPermisoUbicacion(context: Context): Boolean {
-    return ContextCompat.checkSelfPermission(
-        context,
-        Manifest.permission.ACCESS_FINE_LOCATION
-    ) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-}
-
-/**
- * Obtiene la ubicación actual del dispositivo
- */
-@SuppressLint("MissingPermission")
-private fun obtenerUbicacionActual(context: Context, vm: PropiedadViewModel) {
-    val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-    val cancellationTokenSource = CancellationTokenSource()
-
-    fusedLocationClient.getCurrentLocation(
-        Priority.PRIORITY_HIGH_ACCURACY,
-        cancellationTokenSource.token
-    ).addOnSuccessListener { location ->
-        if (location != null) {
-            vm.actualizarUbicacion(location.latitude, location.longitude)
-            Toast.makeText(
-                context,
-                "Ubicación actualizada: ${location.latitude}, ${location.longitude}",
-                Toast.LENGTH_SHORT
-            ).show()
-        } else {
-            Toast.makeText(
-                context,
-                "No se pudo obtener la ubicación",
-                Toast.LENGTH_SHORT
-            ).show()
-            vm.cargarPropiedadesCercanas()
-        }
-    }.addOnFailureListener {
-        Toast.makeText(
-            context,
-            "Error al obtener ubicación: ${it.message}",
-            Toast.LENGTH_SHORT
-        ).show()
-        vm.cargarPropiedadesCercanas()
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

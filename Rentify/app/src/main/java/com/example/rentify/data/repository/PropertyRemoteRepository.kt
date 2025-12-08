@@ -9,18 +9,10 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
 
-/**
- * Repositorio para sincronización con Property Service (remoto)
- */
 class PropertyRemoteRepository {
 
     private val api = RetrofitClient.propertyServiceApi
 
-    // ==================== PROPIEDADES ====================
-
-    /**
-     * Crear nueva propiedad
-     */
     suspend fun crearPropiedad(
         codigo: String,
         titulo: String,
@@ -53,9 +45,6 @@ class PropertyRemoteRepository {
         }
     }
 
-    /**
-     * Listar todas las propiedades
-     */
     suspend fun listarTodasPropiedades(
         includeDetails: Boolean = false
     ): ApiResult<List<PropertyRemoteDTO>> {
@@ -64,9 +53,6 @@ class PropertyRemoteRepository {
         }
     }
 
-    /**
-     * Obtener propiedad por ID
-     */
     suspend fun obtenerPropiedadPorId(
         propiedadId: Long,
         includeDetails: Boolean = true
@@ -76,9 +62,6 @@ class PropertyRemoteRepository {
         }
     }
 
-    /**
-     * Obtener propiedad por código
-     */
     suspend fun obtenerPropiedadPorCodigo(
         codigo: String,
         includeDetails: Boolean = true
@@ -88,9 +71,6 @@ class PropertyRemoteRepository {
         }
     }
 
-    /**
-     * Actualizar propiedad
-     */
     suspend fun actualizarPropiedad(
         propiedadId: Long,
         propertyDTO: PropertyRemoteDTO
@@ -100,9 +80,6 @@ class PropertyRemoteRepository {
         }
     }
 
-    /**
-     * Eliminar propiedad
-     */
     suspend fun eliminarPropiedad(
         propiedadId: Long
     ): ApiResult<Void> {
@@ -111,12 +88,9 @@ class PropertyRemoteRepository {
         }
     }
 
-    /**
-     * Buscar propiedades con filtros
-     */
     suspend fun buscarPropiedadesConFiltros(
-        comunaId: Long? = null,
         tipoId: Long? = null,
+        comunaId: Long? = null,
         minPrecio: Double? = null,
         maxPrecio: Double? = null,
         nHabit: Int? = null,
@@ -126,26 +100,18 @@ class PropertyRemoteRepository {
     ): ApiResult<List<PropertyRemoteDTO>> {
         return safeApiCall {
             api.buscarPropiedadesConFiltros(
-                comunaId, tipoId, minPrecio, maxPrecio,
+                tipoId, comunaId, minPrecio, maxPrecio,
                 nHabit, nBanos, petFriendly, includeDetails
             )
         }
     }
 
-    /**
-     * Verificar existencia de propiedad
-     */
     suspend fun existePropiedad(propiedadId: Long): ApiResult<Boolean> {
         return safeApiCall {
             api.existePropiedad(propiedadId)
         }
     }
 
-    // ==================== FOTOS ====================
-
-    /**
-     * Subir foto a propiedad
-     */
     suspend fun subirFoto(
         propiedadId: Long,
         file: File
@@ -158,68 +124,180 @@ class PropertyRemoteRepository {
         }
     }
 
-    /**
-     * Listar fotos de propiedad
-     */
     suspend fun listarFotos(propiedadId: Long): ApiResult<List<FotoRemoteDTO>> {
         return safeApiCall {
             api.listarFotos(propiedadId)
         }
     }
 
-    /**
-     * Eliminar foto
-     */
+    suspend fun obtenerFoto(fotoId: Long): ApiResult<FotoRemoteDTO> {
+        return safeApiCall {
+            api.obtenerFoto(fotoId)
+        }
+    }
+
     suspend fun eliminarFoto(fotoId: Long): ApiResult<Void> {
         return safeApiCall {
             api.eliminarFoto(fotoId)
         }
     }
 
-    // ==================== CATÁLOGOS ====================
+    suspend fun reordenarFotos(
+        propiedadId: Long,
+        fotosIds: List<Long>
+    ): ApiResult<Void> {
+        return safeApiCall {
+            api.reordenarFotos(propiedadId, fotosIds)
+        }
+    }
 
-    /**
-     * Listar todos los tipos
-     */
+    suspend fun crearTipo(nombre: String): ApiResult<TipoRemoteDTO> {
+        val tipoDTO = TipoRemoteDTO(nombre = nombre)
+        return safeApiCall {
+            api.crearTipo(tipoDTO)
+        }
+    }
+
     suspend fun listarTipos(): ApiResult<List<TipoRemoteDTO>> {
         return safeApiCall {
             api.listarTipos()
         }
     }
 
-    /**
-     * Listar todas las comunas
-     */
+    suspend fun obtenerTipoPorId(tipoId: Long): ApiResult<TipoRemoteDTO> {
+        return safeApiCall {
+            api.obtenerTipoPorId(tipoId)
+        }
+    }
+
+    suspend fun actualizarTipo(
+        tipoId: Long,
+        nombre: String
+    ): ApiResult<TipoRemoteDTO> {
+        val tipoDTO = TipoRemoteDTO(id = tipoId, nombre = nombre)
+        return safeApiCall {
+            api.actualizarTipo(tipoId, tipoDTO)
+        }
+    }
+
+    suspend fun eliminarTipo(tipoId: Long): ApiResult<Void> {
+        return safeApiCall {
+            api.eliminarTipo(tipoId)
+        }
+    }
+
+    suspend fun crearComuna(
+        nombre: String,
+        regionId: Long
+    ): ApiResult<ComunaRemoteDTO> {
+        val comunaDTO = ComunaRemoteDTO(nombre = nombre, regionId = regionId)
+        return safeApiCall {
+            api.crearComuna(comunaDTO)
+        }
+    }
+
     suspend fun listarComunas(): ApiResult<List<ComunaRemoteDTO>> {
         return safeApiCall {
             api.listarComunas()
         }
     }
 
-    /**
-     * Obtener comunas por región
-     */
+    suspend fun obtenerComunaPorId(comunaId: Long): ApiResult<ComunaRemoteDTO> {
+        return safeApiCall {
+            api.obtenerComunaPorId(comunaId)
+        }
+    }
+
     suspend fun obtenerComunasPorRegion(regionId: Long): ApiResult<List<ComunaRemoteDTO>> {
         return safeApiCall {
             api.obtenerComunasPorRegion(regionId)
         }
     }
 
-    /**
-     * Listar todas las regiones
-     */
+    suspend fun actualizarComuna(
+        comunaId: Long,
+        nombre: String,
+        regionId: Long
+    ): ApiResult<ComunaRemoteDTO> {
+        val comunaDTO = ComunaRemoteDTO(id = comunaId, nombre = nombre, regionId = regionId)
+        return safeApiCall {
+            api.actualizarComuna(comunaId, comunaDTO)
+        }
+    }
+
+    suspend fun eliminarComuna(comunaId: Long): ApiResult<Void> {
+        return safeApiCall {
+            api.eliminarComuna(comunaId)
+        }
+    }
+
+    suspend fun crearRegion(nombre: String): ApiResult<RegionRemoteDTO> {
+        val regionDTO = RegionRemoteDTO(nombre = nombre)
+        return safeApiCall {
+            api.crearRegion(regionDTO)
+        }
+    }
+
     suspend fun listarRegiones(): ApiResult<List<RegionRemoteDTO>> {
         return safeApiCall {
             api.listarRegiones()
         }
     }
 
-    /**
-     * Listar todas las categorías
-     */
+    suspend fun obtenerRegionPorId(regionId: Long): ApiResult<RegionRemoteDTO> {
+        return safeApiCall {
+            api.obtenerRegionPorId(regionId)
+        }
+    }
+
+    suspend fun actualizarRegion(
+        regionId: Long,
+        nombre: String
+    ): ApiResult<RegionRemoteDTO> {
+        val regionDTO = RegionRemoteDTO(id = regionId, nombre = nombre)
+        return safeApiCall {
+            api.actualizarRegion(regionId, regionDTO)
+        }
+    }
+
+    suspend fun eliminarRegion(regionId: Long): ApiResult<Void> {
+        return safeApiCall {
+            api.eliminarRegion(regionId)
+        }
+    }
+
+    suspend fun crearCategoria(nombre: String): ApiResult<CategoriaRemoteDTO> {
+        val categoriaDTO = CategoriaRemoteDTO(nombre = nombre)
+        return safeApiCall {
+            api.crearCategoria(categoriaDTO)
+        }
+    }
+
     suspend fun listarCategorias(): ApiResult<List<CategoriaRemoteDTO>> {
         return safeApiCall {
             api.listarCategorias()
+        }
+    }
+
+    suspend fun obtenerCategoriaPorId(categoriaId: Long): ApiResult<CategoriaRemoteDTO> {
+        return safeApiCall {
+            api.obtenerCategoriaPorId(categoriaId)
+        }
+    }
+
+    suspend fun actualizarCategoria(
+        categoriaId: Long,
+        nombre: String
+    ): ApiResult<CategoriaRemoteDTO> {
+        val categoriaDTO = CategoriaRemoteDTO(id = categoriaId, nombre = nombre)
+        return safeApiCall {
+            api.actualizarCategoria(categoriaId, categoriaDTO)
+        }
+    }
+
+    suspend fun eliminarCategoria(categoriaId: Long): ApiResult<Void> {
+        return safeApiCall {
+            api.eliminarCategoria(categoriaId)
         }
     }
 }

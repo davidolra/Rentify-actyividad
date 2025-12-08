@@ -5,79 +5,45 @@ import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.*
 
-/**
- * API para comunicación con Property Service (Puerto 8082)
- * Coincide exactamente con los controllers del backend
- */
 interface PropertyServiceApi {
 
-    // ==================== PROPIEDADES ====================
-
-    /**
-     * Crear nueva propiedad
-     * POST /api/propiedades
-     */
     @POST("api/propiedades")
     suspend fun crearPropiedad(
         @Body propiedad: PropertyRemoteDTO
     ): Response<PropertyRemoteDTO>
 
-    /**
-     * Listar todas las propiedades
-     * GET /api/propiedades
-     */
     @GET("api/propiedades")
     suspend fun listarTodasPropiedades(
         @Query("includeDetails") includeDetails: Boolean = false
     ): Response<List<PropertyRemoteDTO>>
 
-    /**
-     * Obtener propiedad por ID
-     * GET /api/propiedades/{id}
-     */
     @GET("api/propiedades/{id}")
     suspend fun obtenerPropiedadPorId(
         @Path("id") id: Long,
         @Query("includeDetails") includeDetails: Boolean = true
     ): Response<PropertyRemoteDTO>
 
-    /**
-     * Obtener propiedad por código
-     * GET /api/propiedades/codigo/{codigo}
-     */
     @GET("api/propiedades/codigo/{codigo}")
     suspend fun obtenerPropiedadPorCodigo(
         @Path("codigo") codigo: String,
         @Query("includeDetails") includeDetails: Boolean = true
     ): Response<PropertyRemoteDTO>
 
-    /**
-     * Actualizar propiedad
-     * PUT /api/propiedades/{id}
-     */
     @PUT("api/propiedades/{id}")
     suspend fun actualizarPropiedad(
         @Path("id") id: Long,
         @Body propiedad: PropertyRemoteDTO
     ): Response<PropertyRemoteDTO>
 
-    /**
-     * Eliminar propiedad
-     * DELETE /api/propiedades/{id}
-     */
     @DELETE("api/propiedades/{id}")
     suspend fun eliminarPropiedad(
         @Path("id") id: Long
     ): Response<Void>
 
-    /**
-     * Buscar propiedades con filtros
-     * GET /api/propiedades/buscar
-     */
     @GET("api/propiedades/buscar")
     suspend fun buscarPropiedadesConFiltros(
-        @Query("comunaId") comunaId: Long? = null,
         @Query("tipoId") tipoId: Long? = null,
+        @Query("comunaId") comunaId: Long? = null,
         @Query("minPrecio") minPrecio: Double? = null,
         @Query("maxPrecio") maxPrecio: Double? = null,
         @Query("nHabit") nHabit: Int? = null,
@@ -86,143 +52,137 @@ interface PropertyServiceApi {
         @Query("includeDetails") includeDetails: Boolean = false
     ): Response<List<PropertyRemoteDTO>>
 
-    /**
-     * Verificar existencia de propiedad
-     * GET /api/propiedades/{id}/existe
-     */
     @GET("api/propiedades/{id}/existe")
     suspend fun existePropiedad(
         @Path("id") id: Long
     ): Response<Boolean>
 
-    // ==================== FOTOS ====================
-
-    /**
-     * Subir foto a propiedad
-     * POST /api/propiedades/{id}/fotos
-     */
     @Multipart
     @POST("api/propiedades/{id}/fotos")
     suspend fun subirFoto(
-        @Path("id") propiedadId: Long,
+        @Path("id") propertyId: Long,
         @Part file: MultipartBody.Part
     ): Response<FotoRemoteDTO>
 
-    /**
-     * Listar fotos de propiedad
-     * GET /api/propiedades/{id}/fotos
-     */
     @GET("api/propiedades/{id}/fotos")
     suspend fun listarFotos(
-        @Path("id") propiedadId: Long
+        @Path("id") propertyId: Long
     ): Response<List<FotoRemoteDTO>>
 
-    /**
-     * Obtener foto por ID
-     * GET /api/fotos/{fotoId}
-     */
     @GET("api/fotos/{fotoId}")
     suspend fun obtenerFoto(
         @Path("fotoId") fotoId: Long
     ): Response<FotoRemoteDTO>
 
-    /**
-     * Eliminar foto
-     * DELETE /api/fotos/{fotoId}
-     */
     @DELETE("api/fotos/{fotoId}")
     suspend fun eliminarFoto(
         @Path("fotoId") fotoId: Long
     ): Response<Void>
 
-    /**
-     * Reordenar fotos de propiedad
-     * PUT /api/propiedades/{id}/fotos/reordenar
-     */
     @PUT("api/propiedades/{id}/fotos/reordenar")
     suspend fun reordenarFotos(
-        @Path("id") propiedadId: Long,
+        @Path("id") propertyId: Long,
         @Body fotosIds: List<Long>
     ): Response<Void>
 
-    // ==================== TIPOS ====================
+    @POST("api/tipos")
+    suspend fun crearTipo(
+        @Body tipo: TipoRemoteDTO
+    ): Response<TipoRemoteDTO>
 
-    /**
-     * Listar todos los tipos
-     * GET /api/tipos
-     */
     @GET("api/tipos")
     suspend fun listarTipos(): Response<List<TipoRemoteDTO>>
 
-    /**
-     * Obtener tipo por ID
-     * GET /api/tipos/{id}
-     */
     @GET("api/tipos/{id}")
     suspend fun obtenerTipoPorId(
         @Path("id") id: Long
     ): Response<TipoRemoteDTO>
 
-    // ==================== COMUNAS ====================
+    @PUT("api/tipos/{id}")
+    suspend fun actualizarTipo(
+        @Path("id") id: Long,
+        @Body tipo: TipoRemoteDTO
+    ): Response<TipoRemoteDTO>
 
-    /**
-     * Listar todas las comunas
-     * GET /api/comunas
-     */
+    @DELETE("api/tipos/{id}")
+    suspend fun eliminarTipo(
+        @Path("id") id: Long
+    ): Response<Void>
+
+    @POST("api/comunas")
+    suspend fun crearComuna(
+        @Body comuna: ComunaRemoteDTO
+    ): Response<ComunaRemoteDTO>
+
     @GET("api/comunas")
     suspend fun listarComunas(): Response<List<ComunaRemoteDTO>>
 
-    /**
-     * Obtener comuna por ID
-     * GET /api/comunas/{id}
-     */
     @GET("api/comunas/{id}")
     suspend fun obtenerComunaPorId(
         @Path("id") id: Long
     ): Response<ComunaRemoteDTO>
 
-    /**
-     * Obtener comunas por región
-     * GET /api/comunas/region/{regionId}
-     */
     @GET("api/comunas/region/{regionId}")
     suspend fun obtenerComunasPorRegion(
         @Path("regionId") regionId: Long
     ): Response<List<ComunaRemoteDTO>>
 
-    // ==================== REGIONES ====================
+    @PUT("api/comunas/{id}")
+    suspend fun actualizarComuna(
+        @Path("id") id: Long,
+        @Body comuna: ComunaRemoteDTO
+    ): Response<ComunaRemoteDTO>
 
-    /**
-     * Listar todas las regiones
-     * GET /api/regiones
-     */
+    @DELETE("api/comunas/{id}")
+    suspend fun eliminarComuna(
+        @Path("id") id: Long
+    ): Response<Void>
+
+    @POST("api/regiones")
+    suspend fun crearRegion(
+        @Body region: RegionRemoteDTO
+    ): Response<RegionRemoteDTO>
+
     @GET("api/regiones")
     suspend fun listarRegiones(): Response<List<RegionRemoteDTO>>
 
-    /**
-     * Obtener región por ID
-     * GET /api/regiones/{id}
-     */
     @GET("api/regiones/{id}")
     suspend fun obtenerRegionPorId(
         @Path("id") id: Long
     ): Response<RegionRemoteDTO>
 
-    // ==================== CATEGORÍAS ====================
+    @PUT("api/regiones/{id}")
+    suspend fun actualizarRegion(
+        @Path("id") id: Long,
+        @Body region: RegionRemoteDTO
+    ): Response<RegionRemoteDTO>
 
-    /**
-     * Listar todas las categorías
-     * GET /api/categorias
-     */
+    @DELETE("api/regiones/{id}")
+    suspend fun eliminarRegion(
+        @Path("id") id: Long
+    ): Response<Void>
+
+    @POST("api/categorias")
+    suspend fun crearCategoria(
+        @Body categoria: CategoriaRemoteDTO
+    ): Response<CategoriaRemoteDTO>
+
     @GET("api/categorias")
     suspend fun listarCategorias(): Response<List<CategoriaRemoteDTO>>
 
-    /**
-     * Obtener categoría por ID
-     * GET /api/categorias/{id}
-     */
     @GET("api/categorias/{id}")
     suspend fun obtenerCategoriaPorId(
         @Path("id") id: Long
     ): Response<CategoriaRemoteDTO>
+
+    @PUT("api/categorias/{id}")
+    suspend fun actualizarCategoria(
+        @Path("id") id: Long,
+        @Body categoria: CategoriaRemoteDTO
+    ): Response<CategoriaRemoteDTO>
+
+    @DELETE("api/categorias/{id}")
+    suspend fun eliminarCategoria(
+        @Path("id") id: Long
+    ): Response<Void>
 }

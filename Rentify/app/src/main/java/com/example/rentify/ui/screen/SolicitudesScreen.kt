@@ -1,144 +1,108 @@
-package com.example.rentify.ui.screen  // ✅ CORREGIDO: sin 's'
+package com.example.rentify.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.rentify.data.local.storage.UserPreferences
-import com.example.rentify.ui.components.SolicitudCard
+import androidx.navigation.NavController
+import com.example.rentify.data.local.RentifyDatabase
+import com.example.rentify.data.repository.ApplicationRemoteRepository
+import com.example.rentify.navigation.Routes
 import com.example.rentify.ui.viewmodel.SolicitudesViewModel
 import com.example.rentify.ui.viewmodel.SolicitudesViewModelFactory
 
-/**
- * ✅ SCREEN MEJORADO: Lista de solicitudes con manejo de estados y errores
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SolicitudesScreen(
-    userPreferences: UserPreferences,
-    viewModelFactory: SolicitudesViewModelFactory,
-    onNavigateToDetalle: (Long) -> Unit = {},
-    modifier: Modifier = Modifier
+    navController: NavController,
+    context: android.content.Context,
+    esArrendatario: Boolean = true
 ) {
-    val viewModel: SolicitudesViewModel = viewModel(factory = viewModelFactory)
+    val db = RentifyDatabase.getInstance(context)
+    val viewModel: SolicitudesViewModel = viewModel(
+        factory = SolicitudesViewModelFactory(
+            solicitudDao = db.solicitudDao(),
+            usuarioDao = db.usuarioDao(),
+            applicationRepository = ApplicationRemoteRepository(
+                solicitudDao = db.solicitudDao(),
+                catalogDao = db.catalogDao()
+            )
+        )
+    )
 
-    // Estados
     val solicitudes by viewModel.solicitudes.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
-    val errorMsg by viewModel.errorMsg.collectAsState()
-    val solicitudCreada by viewModel.solicitudCreada.collectAsState()
+    val filtroEstado by viewModel.filtroEstado.collectAsState()
 
-    // ✅ CORREGIDO: Obtener datos del usuario usando Flow
-    val userId by userPreferences.userId.collectAsState(initial = null)
-    val userRole by userPreferences.userRole.collectAsState(initial = null)
-
-    // ✅ FIX: Crear variables locales para evitar smart cast error
-    val currentUserId = userId
-    val currentUserRole = userRole
-
-    // Cargar solicitudes al iniciar
-    LaunchedEffect(currentUserId) {
-        currentUserId?.let { id ->
-            viewModel.cargarSolicitudesUsuario(id)
-        }
-    }
-
-    // Mostrar mensaje de éxito cuando se crea solicitud
-    LaunchedEffect(solicitudCreada) {
-        if (solicitudCreada) {
-            // Aquí podrías mostrar un Snackbar de éxito
-            viewModel.clearSolicitudCreada()
+    LaunchedEffect(esArrendatario) {
+        if (esArrendatario) {
+            viewModel.cargarSolicitudesArrendatario()
+        } else {
+            viewModel.cargarSolicitudesPropietario()
         }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Mis Solicitudes") },
-                actions = {
-                    // Botón de refresh
-                    IconButton(
-                        onClick = {
-                            currentUserId?.let { id ->
-                                viewModel.cargarSolicitudesUsuario(id)
-                            }
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Actualizar"
-                        )
+                title = { Text(if (esArrendatario) "Mis Solicitudes" else "Solicitudes Recibidas") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(Icons.Default.ArrowBack, "Volver")
                     }
                 }
             )
         }
-    ) { paddingValues ->
-        Box(
-            modifier = modifier
+    ) { padding ->
+        Column(
+            modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(padding)
         ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = filtroEstado == null,
+                    onClick = { viewModel.setFiltroEstado(null) },
+                    label = { Text("Todas") }
+                )
+                FilterChip(
+                    selected = filtroEstado == 1L,
+                    onClick = { viewModel.setFiltroEstado(1L) },
+                    label = { Text("Pendientes") }
+                )
+                FilterChip(
+                    selected = filtroEstado == 2L,
+                    onClick = { viewModel.setFiltroEstado(2L) },
+                    label = { Text("Aprobadas") }
+                )
+                FilterChip(
+                    selected = filtroEstado == 3L,
+                    onClick = { viewModel.setFiltroEstado(3L) },
+                    label = { Text("Rechazadas") }
+                )
+            }
+
             when {
-                // ESTADO: Cargando
-                isLoading && solicitudes.isEmpty() -> {
-                    Column(
+                isLoading -> {
+                    Box(
                         modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                        contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator()
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Cargando solicitudes...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
-
-                // ESTADO: Error
-                errorMsg != null -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "❌",
-                            style = MaterialTheme.typography.displayMedium
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = errorMsg ?: "Error desconocido",
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = {
-                                viewModel.clearError()
-                                currentUserId?.let { id ->
-                                    viewModel.cargarSolicitudesUsuario(id)
-                                }
-                            }
-                        ) {
-                            Text("Reintentar")
-                        }
-                    }
-                }
-
-                // ESTADO: Sin solicitudes
                 solicitudes.isEmpty() -> {
                     Column(
                         modifier = Modifier
@@ -147,93 +111,35 @@ fun SolicitudesScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Text(
-                            text = "📋",
-                            style = MaterialTheme.typography.displayLarge
+                        Icon(
+                            Icons.Default.Assignment,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "No tienes solicitudes",
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Busca una propiedad y crea tu primera solicitud",
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            "No hay solicitudes",
+                            style = MaterialTheme.typography.titleMedium
                         )
                     }
                 }
-
-                // ESTADO: Lista de solicitudes
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Header con estadísticas
-                        item {
-                            SolicitudesStatsCard(solicitudes = solicitudes)
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-
-                        // Lista de solicitudes
-                        items(
-                            items = solicitudes,
-                            key = { it.solicitud.id }
-                        ) { solicitudConDatos ->
+                        items(solicitudes) { solicitudConDetalles ->
                             SolicitudCard(
-                                solicitudConDatos = solicitudConDatos,
+                                solicitud = solicitudConDetalles,
+                                esArrendatario = esArrendatario,
                                 onClick = {
-                                    onNavigateToDetalle(solicitudConDatos.solicitud.id)
-                                },
-                                onActualizarEstado = if (currentUserRole == "PROPIETARIO") {
-                                    { nuevoEstado ->
-                                        currentUserId?.let { id ->
-                                            viewModel.actualizarEstadoSolicitud(
-                                                solicitudId = solicitudConDatos.solicitud.id,
-                                                nuevoEstado = nuevoEstado,
-                                                usuarioId = id
-                                            )
-                                        }
-                                    }
-                                } else null
-                            )
-                        }
-
-                        // Espacio al final
-                        item {
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
-                    }
-
-                    // Indicador de carga superpuesto
-                    if (isLoading) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Surface(
-                                shape = MaterialTheme.shapes.medium,
-                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                                tonalElevation = 8.dp
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(24.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(32.dp)
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = "Actualizando...",
-                                        style = MaterialTheme.typography.bodySmall
+                                    navController.navigate(
+                                        "${Routes.SOLICITUD_DETALLE}/${solicitudConDetalles.solicitud.id}"
                                     )
                                 }
-                            }
+                            )
                         }
                     }
                 }
@@ -242,90 +148,93 @@ fun SolicitudesScreen(
     }
 }
 
-/**
- * ✅ COMPONENTE: Card con estadísticas de solicitudes
- */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SolicitudesStatsCard(
-    solicitudes: List<com.example.rentify.ui.viewmodel.SolicitudConDatos>
+private fun SolicitudCard(
+    solicitud: com.example.rentify.ui.viewmodel.SolicitudConDetalles,
+    esArrendatario: Boolean,
+    onClick: () -> Unit
 ) {
-    val pendientes = solicitudes.count { it.nombreEstado == "PENDIENTE" }
-    val aceptadas = solicitudes.count { it.nombreEstado == "ACEPTADA" }
-    val rechazadas = solicitudes.count { it.nombreEstado == "RECHAZADA" }
-
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Pendientes
-            StatItem(
-                label = "Pendientes",
-                value = pendientes,
-                emoji = "⏳"
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = solicitud.direccionPropiedad ?: "Propiedad",
+                    style = MaterialTheme.typography.titleMedium
+                )
 
-            Divider(
-                modifier = Modifier
-                    .width(1.dp)
-                    .height(48.dp)
-            )
+                EstadoChip(estadoNombre = solicitud.estadoNombre ?: "Pendiente")
+            }
 
-            // Aceptadas
-            StatItem(
-                label = "Aceptadas",
-                value = aceptadas,
-                emoji = "✅"
-            )
+            if (!esArrendatario) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = solicitud.nombreUsuario ?: "Usuario",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
-            Divider(
-                modifier = Modifier
-                    .width(1.dp)
-                    .height(48.dp)
-            )
-
-            // Rechazadas
-            StatItem(
-                label = "Rechazadas",
-                value = rechazadas,
-                emoji = "❌"
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    Icons.Default.CalendarToday,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = solicitud.solicitud.fechaSolicitud,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
 
-/**
- * ✅ COMPONENTE: Item de estadística
- */
 @Composable
-private fun StatItem(
-    label: String,
-    value: Int,
-    emoji: String
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+private fun EstadoChip(estadoNombre: String) {
+    val color = when (estadoNombre) {
+        "Pendiente" -> MaterialTheme.colorScheme.secondary
+        "Aprobada" -> MaterialTheme.colorScheme.primary
+        "Rechazada" -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+
+    Surface(
+        color = color,
+        shape = MaterialTheme.shapes.small
     ) {
         Text(
-            text = emoji,
-            style = MaterialTheme.typography.titleLarge
-        )
-        Text(
-            text = value.toString(),
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onPrimaryContainer
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onPrimaryContainer
+            text = estadoNombre,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onPrimary
         )
     }
 }

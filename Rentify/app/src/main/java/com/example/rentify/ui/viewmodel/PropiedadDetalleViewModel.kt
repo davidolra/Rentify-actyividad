@@ -1,67 +1,67 @@
 package com.example.rentify.ui.viewmodel
 
-
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.rentify.data.local.dao.PropiedadDao
-import com.example.rentify.data.local.dao.CatalogDao
-import com.example.rentify.data.local.entities.PropiedadEntity
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import com.example.rentify.data.local.storage.UserPreferences
+import com.example.rentify.data.remote.ApiResult
+import com.example.rentify.data.remote.dto.PropertyRemoteDTO
+import com.example.rentify.data.repository.ApplicationRemoteRepository
+import com.example.rentify.data.repository.PropertyRemoteRepository
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
-/**
- * ViewModel para la pantalla de detalle de propiedad
- */
 class PropiedadDetalleViewModel(
-    private val propiedadDao: PropiedadDao,
-    private val catalogDao: CatalogDao
+    private val propiedadId: Long,
+    private val propertyRepository: PropertyRemoteRepository,
+    private val applicationRepository: ApplicationRemoteRepository,
+    private val context: Context
 ) : ViewModel() {
 
-    private val _propiedad = MutableStateFlow<PropiedadEntity?>(null)
-    val propiedad: StateFlow<PropiedadEntity?> = _propiedad
+    private val userPrefs = UserPreferences(context)
 
-    private val _nombreComuna = MutableStateFlow<String?>(null)
-    val nombreComuna: StateFlow<String?> = _nombreComuna
-
-    private val _nombreTipo = MutableStateFlow<String?>(null)
-    val nombreTipo: StateFlow<String?> = _nombreTipo
+    private val _propiedad = MutableStateFlow<PropertyRemoteDTO?>(null)
+    val propiedad: StateFlow<PropertyRemoteDTO?> = _propiedad.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val _errorMsg = MutableStateFlow<String?>(null)
-    val errorMsg: StateFlow<String?> = _errorMsg
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
 
-    /**
-     * Carga la propiedad por ID
-     */
-    fun cargarPropiedad(propiedadId: Long) {
+    private val _solicitudCreada = MutableStateFlow(false)
+    val solicitudCreada: StateFlow<Boolean> = _solicitudCreada.asStateFlow()
+
+    fun cargarPropiedad() {
         viewModelScope.launch {
             _isLoading.value = true
-            _errorMsg.value = null
+            _error.value = null
 
-            try {
-                val prop = propiedadDao.getById(propiedadId)
-
-                if (prop != null) {
-                    _propiedad.value = prop
-
-                    // Cargar nombre de comuna
-                    val comuna = catalogDao.getComunaById(prop.comuna_id)
-                    _nombreComuna.value = comuna?.nombre
-
-                    // Cargar nombre de tipo
-                    val tipo = catalogDao.getTipoById(prop.tipo_id)
-                    _nombreTipo.value = tipo?.nombre
-                } else {
-                    _errorMsg.value = "Propiedad no encontrada"
-                }
-            } catch (e: Exception) {
-                _errorMsg.value = "Error al cargar propiedad: ${e.message}"
-            } finally {
-                _isLoading.value = false
+            when (val result = propertyRepository.obtenerPropiedadPorId(propiedadId, includeDetails = true)) {
+                is ApiResult.Success -> _propiedad.value = result.data
+                is ApiResult.Error -> _error.value = result.message
+                is ApiResult.Loading -> {}
             }
+            _isLoading.value = false
+        }
+    }
+
+    fun crearSolicitud() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            _solicitudCreada.value = false
+
+            userPrefs.userId.firstOrNull()?.let { userId ->
+                when (val result = applicationRepository.crearSolicitudRemota(userId, propiedadId)) {
+                    is ApiResult.Success -> _solicitudCreada.value = true
+                    is ApiResult.Error -> _error.value = result.message
+                    is ApiResult.Loading -> {}
+                }
+            } ?: run {
+                _error.value = "Usuario no autenticado"
+            }
+            _isLoading.value = false
         }
     }
 }

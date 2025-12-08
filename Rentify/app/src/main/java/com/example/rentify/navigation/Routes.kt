@@ -1,32 +1,21 @@
 package com.example.rentify.navigation
 
-sealed class Route(val path: String) {
-
-    // Publicas
-    data object Welcome : Route("welcome")
-    data object Home : Route("home")
-    data object Login : Route("login")
-    data object Register : Route("register")
-
-    // Generales
-    data object Propiedades : Route("propiedades")
-
-    data object PropiedadDetalle : Route("propiedad/{propiedadId}") {
-        fun createRoute(propiedadId: Long) = "propiedad/$propiedadId"
-    }
-
-    data object Perfil : Route("perfil")
-    data object Solicitudes : Route("solicitudes")
-    data object Contacto : Route("contacto")
-    data object MisDocumentos : Route("mis_documentos")
-
-    // Admin
-    data object AdminPanel : Route("admin_panel")
-    data object GestionUsuarios : Route("gestion_usuarios")
-    data object GestionPropiedades : Route("gestion_propiedades")
-    data object GestionDocumentos : Route("gestion_documentos")
-
-    // Propietario
-    data object AgregarPropiedad : Route("agregar_propiedad")
-    data object MisPropiedades : Route("mis_propiedades")
+object Routes {
+    const val WELCOME = "welcome"
+    const val LOGIN = "login"
+    const val REGISTER = "register"
+    const val HOME = "home"
+    const val PERFIL = "perfil"
+    const val CATALOGO_PROPIEDADES = "catalogo_propiedades"
+    const val PROPIEDAD_DETALLE = "propiedad_detalle"
+    const val SOLICITUDES = "solicitudes"
+    const val SOLICITUD_DETALLE = "solicitud_detalle"
+    const val MIS_PROPIEDADES = "mis_propiedades"
+    const val AGREGAR_PROPIEDAD = "agregar_propiedad"
+    const val MIS_DOCUMENTOS = "mis_documentos"
+    const val ADMIN_PANEL = "admin_panel"
+    const val GESTION_USUARIOS = "gestion_usuarios"
+    const val GESTION_PROPIEDADES = "gestion_propiedades"
+    const val GESTION_DOCUMENTOS = "gestion_documentos"
+    const val CONTACT = "contact"
 }
