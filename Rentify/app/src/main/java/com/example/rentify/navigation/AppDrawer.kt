@@ -5,11 +5,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.rentify.data.local.RentifyDatabase
+import com.example.rentify.data.local.storage.UserPreferences
+import kotlinx.coroutines.launch
 
 @Composable
 fun AppDrawer(
@@ -17,12 +18,17 @@ fun AppDrawer(
     onCloseDrawer: () -> Unit,
     context: android.content.Context
 ) {
-    val db = RentifyDatabase.getInstance(context)
-    val usuario = db.usuarioDao().obtenerUsuarioActual()
+    val userPreferences = remember { UserPreferences(context) }
+    val scope = rememberCoroutineScope()
 
-    val esArrendatario = usuario?.rolId == 1L
-    val esPropietario = usuario?.rolId == 2L
-    val esAdmin = usuario?.rolId == 3L
+    val userId by userPreferences.userId.collectAsState(initial = null)
+    val userRole by userPreferences.userRole.collectAsState(initial = null)
+    val userName by userPreferences.userName.collectAsState(initial = null)
+    val userEmail by userPreferences.userEmail.collectAsState(initial = null)
+
+    val esArrendatario = userRole?.uppercase() == "ARRENDATARIO"
+    val esPropietario = userRole?.uppercase() == "PROPIETARIO"
+    val esAdmin = userRole?.uppercase() == "ADMINISTRADOR"
 
     ModalDrawerSheet {
         Column(
@@ -38,14 +44,14 @@ fun AppDrawer(
 
             Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-            if (usuario != null) {
+            if (userId != null) {
                 Text(
-                    text = "${usuario.nombre} ${usuario.apellido}",
+                    text = userName ?: "Usuario",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
                 Text(
-                    text = usuario.email,
+                    text = userEmail ?: "",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 16.dp)
@@ -143,7 +149,7 @@ fun AppDrawer(
                 Divider(modifier = Modifier.padding(vertical = 8.dp))
 
                 Text(
-                    text = "Administración",
+                    text = "Administracion",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(vertical = 8.dp)
@@ -160,7 +166,7 @@ fun AppDrawer(
 
                 DrawerItem(
                     icon = Icons.Default.People,
-                    label = "Gestión Usuarios",
+                    label = "Gestion Usuarios",
                     onClick = {
                         navController.navigate(Routes.GESTION_USUARIOS)
                         onCloseDrawer()
@@ -169,7 +175,7 @@ fun AppDrawer(
 
                 DrawerItem(
                     icon = Icons.Default.Business,
-                    label = "Gestión Propiedades",
+                    label = "Gestion Propiedades",
                     onClick = {
                         navController.navigate(Routes.GESTION_PROPIEDADES)
                         onCloseDrawer()
@@ -178,7 +184,7 @@ fun AppDrawer(
 
                 DrawerItem(
                     icon = Icons.Default.Description,
-                    label = "Gestión Documentos",
+                    label = "Gestion Documentos",
                     onClick = {
                         navController.navigate(Routes.GESTION_DOCUMENTOS)
                         onCloseDrawer()
@@ -203,9 +209,11 @@ fun AppDrawer(
 
             DrawerItem(
                 icon = Icons.Default.ExitToApp,
-                label = "Cerrar Sesión",
+                label = "Cerrar Sesion",
                 onClick = {
-                    db.usuarioDao().cerrarSesion()
+                    scope.launch {
+                        userPreferences.clearUserSession()
+                    }
                     navController.navigate(Routes.WELCOME) {
                         popUpTo(0) { inclusive = true }
                     }

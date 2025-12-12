@@ -34,33 +34,26 @@ class MainActivity : ComponentActivity() {
 
                     // ==================== REPOSITORIOS ====================
 
-                    // Repositorio local de usuarios
                     val rentifyUserRepository = RentifyUserRepository(
                         usuarioDao = db.usuarioDao(),
                         catalogDao = db.catalogDao()
                     )
 
-                    // User Remote Repository (para autenticacion)
                     val userRemoteRepository = UserRemoteRepository()
 
-                    // Document Remote Repository
                     val documentRemoteRepository = DocumentRemoteRepository()
 
-                    // Application Remote Repository
                     val applicationRemoteRepository = ApplicationRemoteRepository(
                         solicitudDao = db.solicitudDao(),
                         catalogDao = db.catalogDao()
                     )
 
-                    // Property Remote Repository
                     val propertyRemoteRepository = PropertyRemoteRepository()
 
-                    // Review Remote Repository
                     val reviewRemoteRepository = ReviewRemoteRepository()
 
                     // ==================== VIEWMODELS ====================
 
-                    // Auth ViewModel
                     val authViewModel: RentifyAuthViewModel = viewModel(
                         factory = RentifyAuthViewModelFactory(
                             remoteRepository = userRemoteRepository,
@@ -69,34 +62,33 @@ class MainActivity : ComponentActivity() {
                         )
                     )
 
-                    // Propiedad ViewModel
                     val propiedadViewModel: PropiedadViewModel = viewModel(
                         factory = PropiedadViewModelFactory(
-                            db.propiedadDao(),
-                            db.catalogDao(),
-                            propertyRemoteRepository
+                            propiedadDao = db.propiedadDao(),
+                            catalogDao = db.catalogDao(),
+                            remoteRepository = propertyRemoteRepository
                         )
                     )
 
-                    // Propiedad Detalle ViewModel
                     val propiedadDetalleViewModel: PropiedadDetalleViewModel = viewModel(
                         factory = PropiedadDetalleViewModelFactory(
-                            db.propiedadDao(),
-                            db.catalogDao()
+                            propiedadDao = db.propiedadDao(),
+                            catalogDao = db.catalogDao(),
+                            propertyRepository = propertyRemoteRepository,
+                            applicationRepository = applicationRemoteRepository
                         )
                     )
 
-                    // Solicitudes ViewModel
                     val solicitudesViewModel: SolicitudesViewModel = viewModel(
                         factory = SolicitudesViewModelFactory(
-                            db.solicitudDao(),
-                            db.propiedadDao(),
-                            db.catalogDao(),
-                            applicationRemoteRepository
+                            solicitudDao = db.solicitudDao(),
+                            propiedadDao = db.propiedadDao(),
+                            catalogDao = db.catalogDao(),
+                            remoteRepository = applicationRemoteRepository,
+                            propertyRepository = propertyRemoteRepository
                         )
                     )
 
-                    // Perfil ViewModel - Usa DAOs locales
                     val perfilViewModel: PerfilUsuarioViewModel = viewModel(
                         factory = PerfilUsuarioViewModelFactory(
                             usuarioDao = db.usuarioDao(),
@@ -105,7 +97,6 @@ class MainActivity : ComponentActivity() {
                         )
                     )
 
-                    // Review ViewModel
                     val reviewViewModel: ReviewViewModel = viewModel(
                         factory = ReviewViewModelFactory(reviewRemoteRepository)
                     )
@@ -114,6 +105,7 @@ class MainActivity : ComponentActivity() {
 
                     AppNavGraph(
                         navController = navController,
+                        context = applicationContext,
                         authViewModel = authViewModel,
                         propiedadViewModel = propiedadViewModel,
                         propiedadDetalleViewModel = propiedadDetalleViewModel,

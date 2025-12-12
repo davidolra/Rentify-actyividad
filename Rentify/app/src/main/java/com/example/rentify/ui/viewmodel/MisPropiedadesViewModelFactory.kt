@@ -7,21 +7,21 @@ import com.example.rentify.data.local.dao.CatalogDao
 import com.example.rentify.data.repository.PropertyRemoteRepository
 
 /**
- * Factory para PropiedadDetalleViewModel
+ * Factory para MisPropiedadesViewModel
  */
-class PropiedadDetalleViewModelFactory(
+class MisPropiedadesViewModelFactory(
     private val propiedadDao: PropiedadDao,
     private val catalogDao: CatalogDao,
-    private val remoteRepository: PropertyRemoteRepository? = null
+    private val propertyRepository: PropertyRemoteRepository
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(PropiedadDetalleViewModel::class.java)) {
-            return PropiedadDetalleViewModel(
+        if (modelClass.isAssignableFrom(MisPropiedadesViewModel::class.java)) {
+            return MisPropiedadesViewModel(
                 propiedadDao,
                 catalogDao,
-                remoteRepository
+                propertyRepository
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

@@ -8,13 +8,13 @@ import com.example.rentify.data.local.dao.CatalogDao
 import com.example.rentify.data.repository.ApplicationRemoteRepository
 
 /**
- * ✅ FACTORY CORREGIDO: Incluye ApplicationRemoteRepository
+ * Factory para SolicitudesViewModel
  */
 class SolicitudesViewModelFactory(
     private val solicitudDao: SolicitudDao,
     private val propiedadDao: PropiedadDao,
     private val catalogDao: CatalogDao,
-    private val remoteRepository: ApplicationRemoteRepository  // ✅ AÑADIDO
+    private val remoteRepository: ApplicationRemoteRepository
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
@@ -24,7 +24,7 @@ class SolicitudesViewModelFactory(
                 solicitudDao,
                 propiedadDao,
                 catalogDao,
-                remoteRepository  // ✅ AÑADIDO
+                remoteRepository
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

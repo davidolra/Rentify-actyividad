@@ -6,6 +6,7 @@ object Routes {
     const val REGISTER = "register"
     const val HOME = "home"
     const val PERFIL = "perfil"
+    const val PERFIL_USUARIO = "perfil"
     const val CATALOGO_PROPIEDADES = "catalogo_propiedades"
     const val PROPIEDAD_DETALLE = "propiedad_detalle"
     const val SOLICITUDES = "solicitudes"

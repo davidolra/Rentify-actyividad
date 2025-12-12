@@ -6,67 +6,67 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.example.rentify.data.local.entities.*
 
-/**
- * DAO para tablas de catálogo (Región, Comuna, Estado, Tipo, Rol, etc.)
- */
 @Dao
 interface CatalogDao {
 
-    // ============ REGIÓN ============
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertRegion(region: RegionEntity): Long
+    // ============ TIPO ============
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTipo(tipo: TipoEntity): Long
 
-    @Query("SELECT * FROM region ORDER BY nombre ASC")
-    suspend fun getAllRegiones(): List<RegionEntity>
+    @Query("SELECT * FROM tipo WHERE id = :id")
+    suspend fun getTipoById(id: Long): TipoEntity?
 
-    @Query("SELECT * FROM region WHERE id = :id LIMIT 1")
-    suspend fun getRegionById(id: Long): RegionEntity?
+    @Query("SELECT * FROM tipo")
+    suspend fun getAllTipos(): List<TipoEntity>
+
+    @Query("SELECT * FROM tipo WHERE nombre = :nombre LIMIT 1")
+    suspend fun getTipoByNombre(nombre: String): TipoEntity?
 
     // ============ COMUNA ============
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertComuna(comuna: ComunaEntity): Long
 
-    @Query("SELECT * FROM comuna ORDER BY nombre ASC")
+    @Query("SELECT * FROM comuna WHERE id = :id")
+    suspend fun getComunaById(id: Long): ComunaEntity?
+
+    @Query("SELECT * FROM comuna")
     suspend fun getAllComunas(): List<ComunaEntity>
 
     @Query("SELECT * FROM comuna WHERE region_id = :regionId ORDER BY nombre ASC")
     suspend fun getComunasByRegion(regionId: Long): List<ComunaEntity>
 
-    @Query("SELECT * FROM comuna WHERE id = :id LIMIT 1")
-    suspend fun getComunaById(id: Long): ComunaEntity?
+    // ============ REGION ============
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRegion(region: RegionEntity): Long
+
+    @Query("SELECT * FROM region WHERE id = :id")
+    suspend fun getRegionById(id: Long): RegionEntity?
+
+    @Query("SELECT * FROM region")
+    suspend fun getAllRegiones(): List<RegionEntity>
 
     // ============ ESTADO ============
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEstado(estado: EstadoEntity): Long
 
-    @Query("SELECT * FROM estado ORDER BY id ASC")
-    suspend fun getAllEstados(): List<EstadoEntity>
-
-    @Query("SELECT * FROM estado WHERE id = :id LIMIT 1")
+    @Query("SELECT * FROM estado WHERE id = :id")
     suspend fun getEstadoById(id: Long): EstadoEntity?
+
+    @Query("SELECT * FROM estado")
+    suspend fun getAllEstados(): List<EstadoEntity>
 
     @Query("SELECT * FROM estado WHERE nombre = :nombre LIMIT 1")
     suspend fun getEstadoByNombre(nombre: String): EstadoEntity?
 
-    // ============ TIPO (de propiedad) ============
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertTipo(tipo: TipoEntity): Long
-
-    @Query("SELECT * FROM tipo ORDER BY nombre ASC")
-    suspend fun getAllTipos(): List<TipoEntity>
-
-    @Query("SELECT * FROM tipo WHERE id = :id LIMIT 1")
-    suspend fun getTipoById(id: Long): TipoEntity?
-
-    // ============ CATEGORÍA ============
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    // ============ CATEGORIA ============
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCategoria(categoria: CategoriaEntity): Long
 
-    @Query("SELECT * FROM categoria ORDER BY nombre ASC")
-    suspend fun getAllCategorias(): List<CategoriaEntity>
-
-    @Query("SELECT * FROM categoria WHERE id = :id LIMIT 1")
+    @Query("SELECT * FROM categoria WHERE id = :id")
     suspend fun getCategoriaById(id: Long): CategoriaEntity?
+
+    @Query("SELECT * FROM categoria")
+    suspend fun getAllCategorias(): List<CategoriaEntity>
 
     // ============ ROL ============
     @Insert(onConflict = OnConflictStrategy.IGNORE)

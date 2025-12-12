@@ -6,7 +6,7 @@ import com.google.gson.annotations.SerializedName
 
 /**
  * DTO para Propiedad (Property)
- * ✅ Compatible 100% con PropertyDTO.java del backend
+ * Compatible con PropertyDTO.java del backend
  */
 data class PropertyRemoteDTO(
     val id: Long? = null,
@@ -32,7 +32,7 @@ data class PropertyRemoteDTO(
 
     val direccion: String,
 
-    val fcreacion: String? = null,  // Formato: "yyyy-MM-dd"
+    val fcreacion: String? = null,
 
     @SerializedName("tipoId")
     val tipoId: Long,
@@ -40,11 +40,52 @@ data class PropertyRemoteDTO(
     @SerializedName("comunaId")
     val comunaId: Long,
 
+    @SerializedName("propietarioId")
+    val propietarioId: Long? = null,
+
     // Campos opcionales cuando includeDetails=true
     val tipo: TipoRemoteDTO? = null,
     val comuna: ComunaRemoteDTO? = null,
     val fotos: List<FotoRemoteDTO>? = null,
     val categorias: List<CategoriaRemoteDTO>? = null
+)
+
+/**
+ * DTO para crear propiedad
+ */
+data class PropertyCreateDTO(
+    val codigo: String,
+    val titulo: String,
+
+    @SerializedName("precioMensual")
+    val precioMensual: Double,
+
+    val divisa: String = "CLP",
+
+    val m2: Double,
+
+    @SerializedName("nHabit")
+    val nHabit: Int,
+
+    @SerializedName("nBanos")
+    val nBanos: Int,
+
+    @SerializedName("petFriendly")
+    val petFriendly: Boolean = false,
+
+    val direccion: String,
+
+    @SerializedName("tipoId")
+    val tipoId: Long,
+
+    @SerializedName("comunaId")
+    val comunaId: Long,
+
+    @SerializedName("propietarioId")
+    val propietarioId: Long? = null,
+
+    @SerializedName("categoriaIds")
+    val categoriaIds: List<Long>? = null
 )
 
 /**
@@ -82,7 +123,7 @@ data class ComunaRemoteDTO(
 )
 
 /**
- * DTO para Región
+ * DTO para Region
  */
 data class RegionRemoteDTO(
     val id: Long? = null,
@@ -90,7 +131,7 @@ data class RegionRemoteDTO(
 )
 
 /**
- * DTO para Categoría
+ * DTO para Categoria
  */
 data class CategoriaRemoteDTO(
     val id: Long? = null,

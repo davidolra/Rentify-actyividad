@@ -53,10 +53,10 @@ data class RegistroArriendoDTO(
  */
 data class UsuarioDTO(
     val id: Long? = null,
-    val pnombre: String,
-    val snombre: String,
-    val papellido: String,
-    val email: String,
+    val pnombre: String? = null,
+    val snombre: String? = null,
+    val papellido: String? = null,
+    val email: String? = null,
     val ntelefono: String? = null,
 
     @SerializedName("rolId")
@@ -71,6 +71,16 @@ data class UsuarioDTO(
     @SerializedName("duocVip")
     val duocVip: Boolean? = null
 ) {
+    // Helper para obtener nombre completo
+    val nombre: String
+        get() = listOfNotNull(pnombre, snombre, papellido)
+            .filter { it.isNotBlank() }
+            .joinToString(" ")
+            .ifEmpty { "Usuario" }
+
+    val telefono: String?
+        get() = ntelefono
+
     data class RolInfo(
         val id: Int,
         val nombre: String
@@ -111,6 +121,9 @@ data class PropiedadDTO(
 
     @SerializedName("comunaId")
     val comunaId: Int,
+
+    @SerializedName("propietarioId")
+    val propietarioId: Long? = null,
 
     val fcreacion: String? = null,
     val tipo: TipoInfo? = null,
