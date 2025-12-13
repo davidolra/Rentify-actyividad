@@ -103,6 +103,7 @@ data class RegistroArriendoDTO(
 
 // ==================== PROPERTY SERVICE DTOs ====================
 
+// --- DTO Básico (Usado en listas y solicitudes) ---
 data class PropiedadDTO(
     val id: Long? = null,
     val codigo: String? = null,
@@ -135,7 +136,41 @@ data class PropiedadDTO(
     val comuna: ComunaDTO? = null,
 
     @SerializedName("propietarioId")
-    val propietarioId: Long? = null
+    val propietarioId: Long? = null,
+
+    //compatibilidad con la visualización de fotos
+    val fotos: List<FotoRemoteDTO>? = null
+)
+
+
+data class PropertyRemoteDTO(
+    val id: Long? = null,
+    val codigo: String,
+    val titulo: String,
+    @SerializedName("precioMensual") val precioMensual: Double,
+    val divisa: String = "CLP",
+    val m2: Double,
+    @SerializedName("nHabit") val nHabit: Int,
+    @SerializedName("nBanos") val nBanos: Int,
+    @SerializedName("petFriendly") val petFriendly: Boolean = false,
+    val direccion: String,
+    @SerializedName("tipoId") val tipoId: Long,
+    @SerializedName("comunaId") val comunaId: Long,
+    @SerializedName("propietarioId") val propietarioId: Long? = null,
+
+    // Relaciones
+    val fotos: List<FotoRemoteDTO>? = null,
+    val tipo: TipoDTO? = null,
+    val comuna: ComunaDTO? = null
+)
+
+// --- DTO Foto ---
+data class FotoRemoteDTO(
+    val id: Long? = null,
+    val url: String,
+    val nombre: String? = null,
+    val sortOrder: Int? = null,
+    @SerializedName("propiedadId") val propiedadId: Long? = null
 )
 
 data class TipoDTO(
@@ -159,7 +194,7 @@ data class RolDTO(val id: Long, val nombre: String)
 // ==================== REVIEW SERVICE DTOs ====================
 
 /**
- * DTO para Resena
+ * DTO para Resena (Unificado)
  */
 data class ResenaDTO(
     val id: Long? = null,
@@ -176,8 +211,13 @@ data class ResenaDTO(
     @SerializedName("tipoResenaId")
     val tipoResenaId: Long,
 
+    // Usamos puntuacion
+    @SerializedName("puntaje")
     val puntuacion: Int,
+
     val comentario: String? = null,
+
+    val estado: String? = null,
 
     @SerializedName("fechaCreacion")
     val fechaCreacion: Date? = null,
@@ -199,15 +239,15 @@ data class CrearResenaDTO(
     @SerializedName("tipoResenaId")
     val tipoResenaId: Long,
 
+    // Usamos puntuacion para coincidir con ResenaDTO
+    @SerializedName("puntaje")
     val puntuacion: Int,
+
     val comentario: String? = null
 )
 
-/**
- * DTO para tipo de resena - id es Int para compatibilidad
- */
 data class TipoResenaDTO(
-    val id: Int,
+    val id: Long,
     val nombre: String
 )
 

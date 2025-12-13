@@ -6,7 +6,6 @@ import com.google.gson.annotations.SerializedName
 
 /**
  * DTO para registro/login de usuario
- * Coincide con UsuarioDTO.java del backend
  */
 data class UsuarioRemoteDTO(
     val id: Long? = null,
@@ -16,7 +15,7 @@ data class UsuarioRemoteDTO(
     val papellido: String,
 
     @SerializedName("fnacimiento")
-    val fnacimiento: String,  // Formato: "yyyy-MM-dd"
+    val fnacimiento: String,
 
     val email: String,
     val rut: String,
@@ -43,15 +42,12 @@ data class UsuarioRemoteDTO(
     @SerializedName("rolId")
     val rolId: Long? = null,
 
-    // Campos opcionales cuando includeDetails=true
     val rol: RolRemoteDTO? = null,
     val estado: EstadoRemoteDTO? = null
 )
 
 /**
  * DTO para actualizacion de usuario (admin)
- * Coincide con UsuarioUpdateDTO.java del backend
- * No requiere campos sensibles como clave, rut, fnacimiento
  */
 data class UsuarioUpdateRemoteDTO(
     val pnombre: String,
@@ -83,25 +79,11 @@ data class LoginResponseRemoteDTO(
     val usuario: UsuarioRemoteDTO
 )
 
-/**
- * DTO de Rol
- */
-data class RolRemoteDTO(
-    val id: Long,
-    val nombre: String
-)
-
-/**
- * DTO de Estado
- */
-data class EstadoRemoteDTO(
-    val id: Long,
-    val nombre: String
-)
+data class RolRemoteDTO(val id: Long, val nombre: String)
+data class EstadoRemoteDTO(val id: Long, val nombre: String)
 
 /**
  * Respuesta de error estructurada del backend User Service
- * Coincide con ErrorResponse.java del backend
  */
 data class UserServiceErrorResponse(
     val timestamp: String,
@@ -110,45 +92,10 @@ data class UserServiceErrorResponse(
     val message: String,
     val validationErrors: Map<String, String>? = null
 ) {
-    /**
-     * Obtiene un mensaje de error legible para mostrar al usuario
-     */
     fun getUserFriendlyMessage(): String {
-        // Si hay errores de validacion especificos, mostrarlos
         if (!validationErrors.isNullOrEmpty()) {
             return validationErrors.values.joinToString("\n")
         }
-
-        // Personalizar mensajes segun el codigo HTTP
-        return when (status) {
-            400 -> "Error de validacion: $message"
-            401 -> "Error de autenticacion: $message"
-            404 -> "Recurso no encontrado: $message"
-            409 -> "Conflicto: $message"
-            500 -> "Error del servidor. Por favor intente nuevamente."
-            503 -> "Servicio no disponible. Por favor intente mas tarde."
-            else -> message
-        }
-    }
-
-    /**
-     * Obtiene el primer error de validacion
-     */
-    fun getFirstValidationError(): String? {
-        return validationErrors?.values?.firstOrNull()
-    }
-
-    /**
-     * Verifica si es un error de validacion de campo especifico
-     */
-    fun hasFieldError(field: String): Boolean {
-        return validationErrors?.containsKey(field) == true
-    }
-
-    /**
-     * Obtiene el error de un campo especifico
-     */
-    fun getFieldError(field: String): String? {
-        return validationErrors?.get(field)
+        return message
     }
 }

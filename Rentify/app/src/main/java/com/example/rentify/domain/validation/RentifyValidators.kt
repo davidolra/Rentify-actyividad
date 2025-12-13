@@ -1,6 +1,5 @@
 package com.example.rentify.domain.validation
 
-import android.util.Patterns
 
 /**
  * Validadores específicos para Rentify
@@ -9,8 +8,8 @@ import android.util.Patterns
 // Valida email
 fun validateEmail(email: String): String? {
     if (email.isBlank()) return "El email es obligatorio"
-    val ok = Patterns.EMAIL_ADDRESS.matcher(email).matches()
-    return if (!ok) "Formato de email inválido" else null
+    val emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\$".toRegex()
+    return if (!emailRegex.matches(email)) "Formato de email inválido" else null
 }
 
 // Valida que el nombre contenga solo letras y espacios

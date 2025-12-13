@@ -19,15 +19,19 @@ import com.example.rentify.data.local.RentifyDatabase
 import com.example.rentify.data.local.storage.UserPreferences
 import com.example.rentify.data.repository.ApplicationRemoteRepository
 import com.example.rentify.data.repository.PropertyRemoteRepository
-import com.example.rentify.ui.viewmodel.SolicitudConDatos
 import com.example.rentify.ui.viewmodel.SolicitudesViewModel
 import com.example.rentify.ui.viewmodel.SolicitudesViewModelFactory
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
+// Definimos las constantes aquí para evitar errores de referencia
+private const val ROL_ADMIN = 1
+private const val ROL_PROPIETARIO = 2
+private const val ROL_ARRIENDATARIO = 3
+
 /**
- * Pantalla de detalle de solicitud
+ * Pantalla de detalle de solicitud (Corregida)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,6 +43,8 @@ fun SolicitudDetalleScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+
+    // Instancia de dependencias (Factory manual)
     val database = RentifyDatabase.getInstance(context)
     val applicationRepository = ApplicationRemoteRepository(
         solicitudDao = database.solicitudDao(),
@@ -56,24 +62,32 @@ fun SolicitudDetalleScreen(
 
     val viewModel: SolicitudesViewModel = viewModel(factory = viewModelFactory)
 
-    val solicitudSeleccionada by viewModel.solicitudSeleccionada.collectAsStateWithLifecycle()
+    // Estados
+    // CORRECCIÓN: Obtenemos la lista completa y buscamos la solicitud por ID
+    val listaSolicitudes by viewModel.solicitudes.collectAsStateWithLifecycle()
+    val solicitudSeleccionada = remember(listaSolicitudes, solicitudId) {
+        listaSolicitudes.find { it.solicitud.id == solicitudId }
+    }
+
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val errorMsg by viewModel.errorMsg.collectAsStateWithLifecycle()
     val successMsg by viewModel.successMsg.collectAsStateWithLifecycle()
 
     val userId by userPreferences.userId.collectAsStateWithLifecycle(initialValue = null)
     val userRole by userPreferences.userRole.collectAsStateWithLifecycle(initialValue = null)
-
     val currentUserId = userId
+
+    // Mapeo de roles
     val rolId = when (userRole?.uppercase()) {
-        "ADMINISTRADOR" -> SolicitudesViewModel.ROL_ADMIN
-        "PROPIETARIO" -> SolicitudesViewModel.ROL_PROPIETARIO
-        else -> SolicitudesViewModel.ROL_ARRIENDATARIO
+        "ADMINISTRADOR" -> ROL_ADMIN
+        "PROPIETARIO" -> ROL_PROPIETARIO
+        else -> ROL_ARRIENDATARIO
     }
 
     var showRechazarDialog by remember { mutableStateOf(false) }
     var motivoRechazo by remember { mutableStateOf("") }
 
+    // Efecto para cargar datos al entrar
     LaunchedEffect(solicitudId) {
         viewModel.seleccionarSolicitud(solicitudId)
     }
@@ -133,9 +147,7 @@ fun SolicitudDetalleScreen(
 
                 solicitudSeleccionada == null -> {
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
+                        modifier = Modifier.fillMaxSize().padding(32.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
@@ -146,24 +158,18 @@ fun SolicitudDetalleScreen(
                             tint = MaterialTheme.colorScheme.error
                         )
                         Spacer(Modifier.height(16.dp))
-                        Text(
-                            errorMsg ?: "Solicitud no encontrada",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
+                        Text(errorMsg ?: "Solicitud no encontrada")
                         Spacer(Modifier.height(16.dp))
-                        Button(onClick = onBack) {
-                            Text("Volver")
-                        }
+                        Button(onClick = onBack) { Text("Volver") }
                     }
                 }
 
                 else -> {
                     val solicitud = solicitudSeleccionada!!
                     val estado = solicitud.nombreEstado?.uppercase() ?: "PENDIENTE"
-                    val puedeGestionar = rolId in listOf(
-                        SolicitudesViewModel.ROL_ADMIN,
-                        SolicitudesViewModel.ROL_PROPIETARIO
-                    ) && estado == "PENDIENTE"
+
+                    // Lógica de permisos
+                    val puedeGestionar = (rolId == ROL_ADMIN || rolId == ROL_PROPIETARIO) && estado == "PENDIENTE"
 
                     Column(
                         modifier = Modifier
@@ -171,6 +177,7 @@ fun SolicitudDetalleScreen(
                             .verticalScroll(rememberScrollState())
                             .padding(16.dp)
                     ) {
+                        // --- ESTADO ---
                         val estadoColor = when (estado) {
                             "PENDIENTE" -> MaterialTheme.colorScheme.tertiary
                             "ACEPTADA", "APROBADA" -> MaterialTheme.colorScheme.primary
@@ -182,9 +189,7 @@ fun SolicitudDetalleScreen(
                             shape = MaterialTheme.shapes.medium
                         ) {
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
@@ -199,170 +204,72 @@ fun SolicitudDetalleScreen(
                                 )
                                 Spacer(Modifier.width(12.dp))
                                 Column {
-                                    Text(
-                                        "Estado",
-                                        style = MaterialTheme.typography.labelMedium
-                                    )
-                                    Text(
-                                        estado,
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = estadoColor
-                                    )
+                                    Text("Estado", style = MaterialTheme.typography.labelMedium)
+                                    Text(estado, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = estadoColor)
                                 }
                             }
                         }
 
                         Spacer(Modifier.height(24.dp))
 
-                        Text(
-                            "Propiedad",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                        // --- PROPIEDAD ---
+                        Text("Propiedad", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(8.dp))
 
                         Card(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    solicitud.tituloPropiedad ?: "Sin titulo",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                solicitud.codigoPropiedad?.let { codigo ->
-                                    Text(
-                                        "Codigo: $codigo",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                solicitud.direccionPropiedad?.let { direccion ->
+                                Text(solicitud.tituloPropiedad ?: "Sin título", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                solicitud.codigoPropiedad?.let { Text("Código: $it", style = MaterialTheme.typography.bodyMedium) }
+                                solicitud.direccionPropiedad?.let {
                                     Spacer(Modifier.height(4.dp))
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.LocationOn, null, Modifier.size(16.dp))
-                                        Spacer(Modifier.width(4.dp))
-                                        Text(direccion, style = MaterialTheme.typography.bodySmall)
-                                    }
+                                    Row { Icon(Icons.Default.LocationOn, null, Modifier.size(16.dp)); Text(it, style = MaterialTheme.typography.bodySmall) }
                                 }
-
                                 Spacer(Modifier.height(8.dp))
-                                solicitud.precioMensual?.let { precio ->
-                                    Text(
-                                        "${numberFormat.format(precio)}/mes",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
+                                solicitud.precioMensual?.let {
+                                    Text("${numberFormat.format(it)}/mes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                 }
-
                                 Spacer(Modifier.height(8.dp))
-
-                                TextButton(
-                                    onClick = { onVerPropiedad(solicitud.solicitud.propiedad_id) }
-                                ) {
-                                    Icon(Icons.Default.Home, null)
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Ver Propiedad")
+                                TextButton(onClick = { onVerPropiedad(solicitud.solicitud.propiedad_id) }) {
+                                    Icon(Icons.Default.Home, null); Spacer(Modifier.width(4.dp)); Text("Ver Propiedad")
                                 }
                             }
                         }
 
                         Spacer(Modifier.height(24.dp))
 
-                        if (rolId != SolicitudesViewModel.ROL_ARRIENDATARIO && solicitud.nombreSolicitante != null) {
-                            Text(
-                                "Solicitante",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
+                        // --- SOLICITANTE ---
+                        if (rolId != ROL_ARRIENDATARIO && solicitud.nombreSolicitante != null) {
+                            Text("Solicitante", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.height(8.dp))
-
                             Card(modifier = Modifier.fillMaxWidth()) {
                                 Column(modifier = Modifier.padding(16.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Person, null)
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(
-                                            solicitud.nombreSolicitante,
-                                            style = MaterialTheme.typography.titleMedium
-                                        )
+                                    Row { Icon(Icons.Default.Person, null); Spacer(Modifier.width(8.dp)); Text(solicitud.nombreSolicitante, style = MaterialTheme.typography.titleMedium) }
+                                    solicitud.emailSolicitante?.let {
+                                        Spacer(Modifier.height(8.dp)); Row { Icon(Icons.Default.Email, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text(it) }
                                     }
-
-                                    solicitud.emailSolicitante?.let { email ->
-                                        Spacer(Modifier.height(8.dp))
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Default.Email, null, Modifier.size(20.dp))
-                                            Spacer(Modifier.width(8.dp))
-                                            Text(email, style = MaterialTheme.typography.bodyMedium)
-                                        }
-                                    }
-
-                                    solicitud.telefonoSolicitante?.let { telefono ->
-                                        Spacer(Modifier.height(4.dp))
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Default.Phone, null, Modifier.size(20.dp))
-                                            Spacer(Modifier.width(8.dp))
-                                            Text(telefono, style = MaterialTheme.typography.bodyMedium)
-                                        }
+                                    solicitud.telefonoSolicitante?.let {
+                                        Spacer(Modifier.height(4.dp)); Row { Icon(Icons.Default.Phone, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text(it) }
                                     }
                                 }
                             }
-
                             Spacer(Modifier.height(24.dp))
                         }
 
-                        Text(
-                            "Informacion de Solicitud",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                        // --- INFO GENERAL ---
+                        Text("Información de Solicitud", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(8.dp))
-
                         Card(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.CalendarToday, null)
-                                    Spacer(Modifier.width(8.dp))
-                                    Column {
-                                        Text(
-                                            "Fecha de solicitud",
-                                            style = MaterialTheme.typography.labelMedium
-                                        )
-                                        Text(
-                                            dateFormat.format(Date(solicitud.solicitud.fsolicitud)),
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                    }
-                                }
-
+                                Row { Icon(Icons.Default.CalendarToday, null); Spacer(Modifier.width(8.dp)); Column { Text("Fecha"); Text(dateFormat.format(Date(solicitud.solicitud.fsolicitud))) } }
                                 Spacer(Modifier.height(8.dp))
-
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Tag, null)
-                                    Spacer(Modifier.width(8.dp))
-                                    Column {
-                                        Text(
-                                            "ID Solicitud",
-                                            style = MaterialTheme.typography.labelMedium
-                                        )
-                                        Text(
-                                            "#${solicitud.solicitud.id}",
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                    }
-                                }
+                                Row { Icon(Icons.Default.Tag, null); Spacer(Modifier.width(8.dp)); Column { Text("ID"); Text("#${solicitud.solicitud.id}") } }
                             }
                         }
 
+                        // --- BOTONES DE ACCIÓN ---
                         if (puedeGestionar) {
                             Spacer(Modifier.height(32.dp))
-
-                            Text(
-                                "Acciones",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Text("Acciones", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.height(8.dp))
 
                             Row(
@@ -371,9 +278,8 @@ fun SolicitudDetalleScreen(
                             ) {
                                 Button(
                                     onClick = {
-                                        currentUserId?.let { uid ->
-                                            viewModel.aprobarSolicitud(solicitudId, uid, rolId)
-                                        }
+                                        // CORRECCIÓN: Llamamos solo con el ID, el VM ya tiene la lógica
+                                        viewModel.aprobarSolicitud(solicitudId)
                                     },
                                     modifier = Modifier.weight(1f)
                                 ) {
@@ -385,9 +291,7 @@ fun SolicitudDetalleScreen(
                                 Button(
                                     onClick = { showRechazarDialog = true },
                                     modifier = Modifier.weight(1f),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.error
-                                    )
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                                 ) {
                                     Icon(Icons.Default.Close, null)
                                     Spacer(Modifier.width(8.dp))
@@ -395,22 +299,12 @@ fun SolicitudDetalleScreen(
                                 }
                             }
                         }
-
                         Spacer(Modifier.height(32.dp))
                     }
 
                     if (isLoading) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Surface(
-                                shape = MaterialTheme.shapes.medium,
-                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                                tonalElevation = 8.dp
-                            ) {
-                                CircularProgressIndicator(modifier = Modifier.padding(24.dp))
-                            }
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
                         }
                     }
                 }
@@ -420,51 +314,24 @@ fun SolicitudDetalleScreen(
 
     if (showRechazarDialog) {
         AlertDialog(
-            onDismissRequest = {
-                showRechazarDialog = false
-                motivoRechazo = ""
-            },
+            onDismissRequest = { showRechazarDialog = false },
             icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
             title = { Text("Rechazar Solicitud") },
-            text = {
-                Column {
-                    Text("Indique el motivo del rechazo:")
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = motivoRechazo,
-                        onValueChange = { motivoRechazo = it },
-                        label = { Text("Motivo *") },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 3
-                    )
-                }
-            },
+            text = { Text("¿Estás seguro de rechazar esta solicitud?") },
             confirmButton = {
                 Button(
                     onClick = {
-                        currentUserId?.let { uid ->
-                            viewModel.rechazarSolicitud(solicitudId, motivoRechazo, uid, rolId)
-                        }
+                        // CORRECCIÓN: Llamada simplificada
+                        viewModel.rechazarSolicitud(solicitudId)
                         showRechazarDialog = false
-                        motivoRechazo = ""
                     },
-                    enabled = motivoRechazo.isNotBlank(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
                     Text("Rechazar")
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = {
-                        showRechazarDialog = false
-                        motivoRechazo = ""
-                    }
-                ) {
-                    Text("Cancelar")
-                }
+                TextButton(onClick = { showRechazarDialog = false }) { Text("Cancelar") }
             }
         )
     }

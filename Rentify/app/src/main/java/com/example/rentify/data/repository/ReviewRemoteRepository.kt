@@ -23,7 +23,7 @@ class ReviewRemoteRepository {
         usuarioId: Long,
         propiedadId: Long?,
         usuarioResenadoId: Long?,
-        puntaje: Int,
+        puntuacion: Int,
         comentario: String?,
         tipoResenaId: Long
     ): ApiResult<ResenaDTO> {
@@ -31,7 +31,7 @@ class ReviewRemoteRepository {
             usuarioId = usuarioId,
             propiedadId = propiedadId,
             usuarioResenadoId = usuarioResenadoId,
-            puntaje = puntaje,
+            puntuacion = puntuacion,
             comentario = comentario,
             tipoResenaId = tipoResenaId
         )

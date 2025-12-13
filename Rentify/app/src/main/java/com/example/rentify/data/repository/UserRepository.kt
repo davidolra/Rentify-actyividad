@@ -30,11 +30,12 @@ class UserRepository(private val api: UserServiceApi) {
     }
 
     private fun UsuarioDTO.toUsuarioUpdateRemoteDTO(): UsuarioUpdateRemoteDTO {
+        // CORRECCIÓN AQUÍ: Agregamos '?: ""' para evitar enviar nulos
         return UsuarioUpdateRemoteDTO(
-            pnombre = this.pnombre,
-            snombre = this.snombre,
-            papellido = this.papellido,
-            email = this.email,
+            pnombre = this.pnombre ?: "",
+            snombre = this.snombre ?: "",
+            papellido = this.papellido ?: "",
+            email = this.email ?: "",
             ntelefono = this.ntelefono ?: "",
             rolId = this.rolId?.toLong(),
             estadoId = this.estadoId?.toLong() ?: this.estado?.id?.toLong()
