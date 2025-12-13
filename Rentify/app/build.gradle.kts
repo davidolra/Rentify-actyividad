@@ -39,7 +39,11 @@ android {
 
     buildFeatures {
         compose = true
-        buildConfig = true  // ✅ NUEVO: Habilitar BuildConfig
+        buildConfig = true
+    }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 }
 
@@ -89,4 +93,16 @@ dependencies {
 
     // Coroutines para llamadas asíncronas
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+
+
+    // ==================== TESTS ====================
+    // Mockito: Para simular el Repositorio (fingir respuestas del servidor)
+    testImplementation("org.mockito:mockito-core:5.3.1")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.0.0")
+
+    // Coroutines Test: Para probar funciones 'suspend' y flujos
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+
+    // (Opcional) Asegura que JUnit 4 esté presente si libs.junit falla
+    testImplementation("junit:junit:4.13.2")
 }
