@@ -174,7 +174,7 @@ fun AppNavGraph(
                     val propiedadViewModelFactory = PropiedadViewModelFactory(
                         propiedadDao = database.propiedadDao(),
                         catalogDao = database.catalogDao(),
-                        propertyRepository = propertyRepository
+                        remoteRepository = propertyRepository
                     )
 
                     CatalogoPropiedadesScreen(

@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.first
 
 /**
  * Data class para solicitud con datos enriquecidos
@@ -265,7 +266,8 @@ class SolicitudesViewModel(
     }
 
     private suspend fun cargarSolicitudesLocales() {
-        val solicitudesLocales = solicitudDao.getAll()
+        val solicitudesLocales = solicitudDao.getAll().first()
+
         _solicitudes.value = solicitudesLocales.map { entity ->
             SolicitudConDatos(
                 solicitud = entity,
