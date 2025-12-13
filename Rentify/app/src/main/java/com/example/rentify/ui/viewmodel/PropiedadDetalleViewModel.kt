@@ -10,6 +10,7 @@ import com.example.rentify.data.remote.ApiResult
 import com.example.rentify.data.remote.dto.FotoRemoteDTO
 import com.example.rentify.data.remote.dto.PropertyRemoteDTO
 import com.example.rentify.data.repository.PropertyRemoteRepository
+import com.example.rentify.data.repository.ApplicationRemoteRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,7 +22,8 @@ import kotlinx.coroutines.launch
 class PropiedadDetalleViewModel(
     private val propiedadDao: PropiedadDao,
     private val catalogDao: CatalogDao,
-    private val remoteRepository: PropertyRemoteRepository? = null
+    private val propertyRepository: PropertyRemoteRepository,
+    private val applicationRepository: ApplicationRemoteRepository
 ) : ViewModel() {
 
     companion object {
@@ -49,6 +51,15 @@ class PropiedadDetalleViewModel(
     private val _errorMsg = MutableStateFlow<String?>(null)
     val errorMsg: StateFlow<String?> = _errorMsg.asStateFlow()
 
+    private val _solicitudCreada = MutableStateFlow(false)
+    val solicitudCreada: StateFlow<Boolean> = _solicitudCreada.asStateFlow()
+
+    private val _solicitudError = MutableStateFlow<String?>(null)
+    val solicitudError: StateFlow<String?> = _solicitudError.asStateFlow()
+
+    private val _solicitudLoading = MutableStateFlow(false)
+    val solicitudLoading: StateFlow<Boolean> = _solicitudLoading.asStateFlow()
+
     /**
      * Cargar propiedad - intenta desde backend, fallback a local
      */
@@ -60,29 +71,25 @@ class PropiedadDetalleViewModel(
             try {
                 Log.d(TAG, "Cargando propiedad: id=$propiedadId")
 
-                if (remoteRepository != null) {
-                    when (val result = remoteRepository.obtenerPropiedadPorId(propiedadId, includeDetails = true)) {
-                        is ApiResult.Success -> {
-                            val dto = result.data
-                            Log.d(TAG, "Propiedad cargada desde backend: ${dto.titulo}")
+                when (val result = propertyRepository.obtenerPropiedadPorId(propiedadId, includeDetails = true)) {
+                    is ApiResult.Success -> {
+                        val dto = result.data
+                        Log.d(TAG, "Propiedad cargada desde backend: ${dto.titulo}")
 
-                            _propiedadRemota.value = dto
-                            _propiedad.value = mapRemoteToLocal(dto)
-                            _fotos.value = dto.fotos ?: emptyList()
-                            _nombreComuna.value = dto.comuna?.nombre
-                            _nombreTipo.value = dto.tipo?.nombre
-                            _isLoading.value = false
-                            return@launch
-                        }
-                        is ApiResult.Error -> {
-                            Log.w(TAG, "Error al cargar desde backend: ${result.message}")
-                        }
-                        is ApiResult.Loading -> {}
+                        _propiedadRemota.value = dto
+                        _propiedad.value = mapRemoteToLocal(dto)
+                        _fotos.value = dto.fotos ?: emptyList()
+                        _nombreComuna.value = dto.comuna?.nombre
+                        _nombreTipo.value = dto.tipo?.nombre
+                        _isLoading.value = false
+                        return@launch
                     }
+                    is ApiResult.Error -> {
+                        Log.w(TAG, "Error al cargar desde backend: ${result.message}")
+                        cargarPropiedadLocal(propiedadId)
+                    }
+                    is ApiResult.Loading -> {}
                 }
-
-                // Fallback a local
-                cargarPropiedadLocal(propiedadId)
 
             } catch (e: Exception) {
                 Log.e(TAG, "Excepcion: ${e.message}", e)
@@ -104,6 +111,43 @@ class PropiedadDetalleViewModel(
         } else {
             _errorMsg.value = "Propiedad no encontrada"
         }
+    }
+
+    /**
+     * Crear solicitud de arriendo
+     */
+    fun crearSolicitud(usuarioId: Long, propiedadId: Long) {
+        viewModelScope.launch {
+            _solicitudLoading.value = true
+            _solicitudError.value = null
+            _solicitudCreada.value = false
+
+            try {
+                Log.d(TAG, "Creando solicitud: usuario=$usuarioId, propiedad=$propiedadId")
+
+                when (val result = applicationRepository.crearSolicitudRemota(usuarioId, propiedadId)) {
+                    is ApiResult.Success -> {
+                        Log.d(TAG, "Solicitud creada: ${result.data.id}")
+                        _solicitudCreada.value = true
+                    }
+                    is ApiResult.Error -> {
+                        Log.e(TAG, "Error: ${result.message}")
+                        _solicitudError.value = result.message
+                    }
+                    is ApiResult.Loading -> {}
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Excepcion: ${e.message}", e)
+                _solicitudError.value = "Error de conexion: ${e.message}"
+            } finally {
+                _solicitudLoading.value = false
+            }
+        }
+    }
+
+    fun limpiarEstadoSolicitud() {
+        _solicitudCreada.value = false
+        _solicitudError.value = null
     }
 
     fun clearError() {

@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.example.rentify.data.repository.ReviewRemoteRepository
 
 /**
- * Factory para crear ReviewViewModel con dependencias
+ * Factory para ReviewViewModel
  */
 class ReviewViewModelFactory(
     private val reviewRepository: ReviewRemoteRepository

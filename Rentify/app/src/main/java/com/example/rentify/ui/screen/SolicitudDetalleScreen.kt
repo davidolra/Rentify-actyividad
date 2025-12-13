@@ -18,6 +18,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.rentify.data.local.RentifyDatabase
 import com.example.rentify.data.local.storage.UserPreferences
 import com.example.rentify.data.repository.ApplicationRemoteRepository
+import com.example.rentify.data.repository.PropertyRemoteRepository
 import com.example.rentify.ui.viewmodel.SolicitudConDatos
 import com.example.rentify.ui.viewmodel.SolicitudesViewModel
 import com.example.rentify.ui.viewmodel.SolicitudesViewModelFactory
@@ -43,23 +44,23 @@ fun SolicitudDetalleScreen(
         solicitudDao = database.solicitudDao(),
         catalogDao = database.catalogDao()
     )
+    val propertyRepository = PropertyRemoteRepository()
 
     val viewModelFactory = SolicitudesViewModelFactory(
         solicitudDao = database.solicitudDao(),
         propiedadDao = database.propiedadDao(),
         catalogDao = database.catalogDao(),
-        remoteRepository = applicationRepository
+        remoteRepository = applicationRepository,
+        propertyRepository = propertyRepository
     )
 
     val viewModel: SolicitudesViewModel = viewModel(factory = viewModelFactory)
 
-    // Estados
     val solicitudSeleccionada by viewModel.solicitudSeleccionada.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val errorMsg by viewModel.errorMsg.collectAsStateWithLifecycle()
     val successMsg by viewModel.successMsg.collectAsStateWithLifecycle()
 
-    // Datos del usuario
     val userId by userPreferences.userId.collectAsStateWithLifecycle(initialValue = null)
     val userRole by userPreferences.userRole.collectAsStateWithLifecycle(initialValue = null)
 
@@ -70,16 +71,13 @@ fun SolicitudDetalleScreen(
         else -> SolicitudesViewModel.ROL_ARRIENDATARIO
     }
 
-    // Dialog para rechazar
     var showRechazarDialog by remember { mutableStateOf(false) }
     var motivoRechazo by remember { mutableStateOf("") }
 
-    // Cargar solicitud al iniciar
     LaunchedEffect(solicitudId) {
         viewModel.seleccionarSolicitud(solicitudId)
     }
 
-    // Mostrar mensajes
     LaunchedEffect(errorMsg) {
         errorMsg?.let {
             Toast.makeText(context, it, Toast.LENGTH_LONG).show()
@@ -173,7 +171,6 @@ fun SolicitudDetalleScreen(
                             .verticalScroll(rememberScrollState())
                             .padding(16.dp)
                     ) {
-                        // Estado
                         val estadoColor = when (estado) {
                             "PENDIENTE" -> MaterialTheme.colorScheme.tertiary
                             "ACEPTADA", "APROBADA" -> MaterialTheme.colorScheme.primary
@@ -218,7 +215,6 @@ fun SolicitudDetalleScreen(
 
                         Spacer(Modifier.height(24.dp))
 
-                        // Propiedad
                         Text(
                             "Propiedad",
                             style = MaterialTheme.typography.titleMedium,
@@ -274,7 +270,6 @@ fun SolicitudDetalleScreen(
 
                         Spacer(Modifier.height(24.dp))
 
-                        // Solicitante (para propietario/admin)
                         if (rolId != SolicitudesViewModel.ROL_ARRIENDATARIO && solicitud.nombreSolicitante != null) {
                             Text(
                                 "Solicitante",
@@ -317,7 +312,6 @@ fun SolicitudDetalleScreen(
                             Spacer(Modifier.height(24.dp))
                         }
 
-                        // Fecha
                         Text(
                             "Informacion de Solicitud",
                             style = MaterialTheme.typography.titleMedium,
@@ -361,7 +355,6 @@ fun SolicitudDetalleScreen(
                             }
                         }
 
-                        // Acciones (para propietario/admin si pendiente)
                         if (puedeGestionar) {
                             Spacer(Modifier.height(32.dp))
 
@@ -406,7 +399,6 @@ fun SolicitudDetalleScreen(
                         Spacer(Modifier.height(32.dp))
                     }
 
-                    // Loading overlay
                     if (isLoading) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
@@ -426,7 +418,6 @@ fun SolicitudDetalleScreen(
         }
     }
 
-    // Dialog de rechazo
     if (showRechazarDialog) {
         AlertDialog(
             onDismissRequest = {

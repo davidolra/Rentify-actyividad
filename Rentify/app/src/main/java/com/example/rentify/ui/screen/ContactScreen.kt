@@ -1,4 +1,4 @@
-package com.example.rentify.ui.screens
+package com.example.rentify.ui.screen
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState

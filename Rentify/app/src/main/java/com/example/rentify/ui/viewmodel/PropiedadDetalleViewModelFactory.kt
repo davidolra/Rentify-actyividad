@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.example.rentify.data.local.dao.PropiedadDao
 import com.example.rentify.data.local.dao.CatalogDao
 import com.example.rentify.data.repository.PropertyRemoteRepository
+import com.example.rentify.data.repository.ApplicationRemoteRepository
 
 /**
  * Factory para PropiedadDetalleViewModel
@@ -12,7 +13,8 @@ import com.example.rentify.data.repository.PropertyRemoteRepository
 class PropiedadDetalleViewModelFactory(
     private val propiedadDao: PropiedadDao,
     private val catalogDao: CatalogDao,
-    private val remoteRepository: PropertyRemoteRepository? = null
+    private val propertyRepository: PropertyRemoteRepository,
+    private val applicationRepository: ApplicationRemoteRepository
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
@@ -21,7 +23,8 @@ class PropiedadDetalleViewModelFactory(
             return PropiedadDetalleViewModel(
                 propiedadDao,
                 catalogDao,
-                remoteRepository
+                propertyRepository,
+                applicationRepository
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

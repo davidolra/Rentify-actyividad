@@ -18,8 +18,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * Pantalla/Sección de reseñas para mostrar en detalle de propiedad
- * ✅ Integrado con Review Service
+ * Seccion de resenas para mostrar en detalle de propiedad
  */
 @Composable
 fun PropiedadResenasSection(
@@ -36,7 +35,6 @@ fun PropiedadResenasSection(
 
     var mostrarDialogoCrearResena by remember { mutableStateOf(false) }
 
-    // Cargar reseñas al inicio
     LaunchedEffect(propiedadId) {
         reviewViewModel.cargarResenasPorPropiedad(propiedadId)
     }
@@ -46,7 +44,7 @@ fun PropiedadResenasSection(
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        // ==================== HEADER CON PROMEDIO ====================
+        // Header con promedio
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -54,7 +52,7 @@ fun PropiedadResenasSection(
         ) {
             Column {
                 Text(
-                    text = "Reseñas",
+                    text = "Resenas",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -63,7 +61,7 @@ fun PropiedadResenasSection(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.Default.Star,
-                            contentDescription = "Calificación",
+                            contentDescription = "Calificacion",
                             tint = Color(0xFFFFD700),
                             modifier = Modifier.size(24.dp)
                         )
@@ -75,21 +73,20 @@ fun PropiedadResenasSection(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "(${resenas.size} reseñas)",
+                            text = "(${resenas.size} resenas)",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color.Gray
                         )
                     }
                 } else {
                     Text(
-                        text = "Sin reseñas aún",
+                        text = "Sin resenas aun",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray
                     )
                 }
             }
 
-            // Botón para crear reseña
             if (usuarioActualId != null) {
                 Button(
                     onClick = { mostrarDialogoCrearResena = true },
@@ -97,35 +94,26 @@ fun PropiedadResenasSection(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Agregar reseña"
-                    )
+                    Icon(Icons.Default.Add, contentDescription = "Agregar resena")
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Reseñar")
+                    Text("Resenar")
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ==================== MENSAJES ====================
+        // Mensajes
         errorMessage?.let { error ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFFFEBEE)
-                )
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
             ) {
                 Row(
                     modifier = Modifier.padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = "Error",
-                        tint = Color.Red
-                    )
+                    Icon(Icons.Default.Warning, "Error", tint = Color.Red)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(text = error, color = Color.Red)
                 }
@@ -136,19 +124,13 @@ fun PropiedadResenasSection(
         successMessage?.let { success ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFE8F5E9)
-                )
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))
             ) {
                 Row(
                     modifier = Modifier.padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Éxito",
-                        tint = Color(0xFF4CAF50)
-                    )
+                    Icon(Icons.Default.Check, "Exito", tint = Color(0xFF4CAF50))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(text = success, color = Color(0xFF4CAF50))
                 }
@@ -156,7 +138,7 @@ fun PropiedadResenasSection(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        // ==================== LISTA DE RESEÑAS ====================
+        // Lista de resenas
         if (isLoading) {
             Box(
                 modifier = Modifier
@@ -188,13 +170,13 @@ fun PropiedadResenasSection(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Esta propiedad aún no tiene reseñas",
+                            text = "Esta propiedad aun no tiene resenas",
                             color = Color.Gray
                         )
                         if (usuarioActualId != null) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "¡Sé el primero en reseñarla!",
+                                text = "Se el primero en resenarla!",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color.Gray
                             )
@@ -214,7 +196,7 @@ fun PropiedadResenasSection(
         }
     }
 
-    // ==================== DIÁLOGO CREAR RESEÑA ====================
+    // Dialogo crear resena
     if (mostrarDialogoCrearResena && usuarioActualId != null) {
         CrearResenaDialog(
             propiedadId = propiedadId,
@@ -229,7 +211,7 @@ fun PropiedadResenasSection(
 }
 
 /**
- * Card individual de reseña
+ * Card individual de resena
  */
 @Composable
 fun ResenaCard(
@@ -254,13 +236,13 @@ fun ResenaCard(
                 Column {
                     Text(
                         text = resena.usuario?.let {
-                            "${it.pnombre} ${it.papellido}"
+                            "${it.pnombre ?: ""} ${it.papellido ?: ""}".trim().ifEmpty { "Usuario" }
                         } ?: "Usuario",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
 
-                    resena.fechaResena?.let { fecha ->
+                    resena.fechaCreacion?.let { fecha ->
                         val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
                         Text(
                             text = formatter.format(fecha),
@@ -270,17 +252,17 @@ fun ResenaCard(
                     }
                 }
 
-                // Puntaje con estrellas
+                // Puntuacion con estrellas
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.Star,
-                        contentDescription = "Calificación",
+                        contentDescription = "Calificacion",
                         tint = Color(0xFFFFD700),
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "${resena.puntaje}/10",
+                        text = "${resena.puntuacion}/10",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFFFD700)
@@ -297,36 +279,12 @@ fun ResenaCard(
                     color = Color.DarkGray
                 )
             }
-
-            // Badge de estado si no está activa
-            if (resena.estado != "ACTIVA") {
-                Spacer(modifier = Modifier.height(8.dp))
-                Surface(
-                    color = when (resena.estado) {
-                        "BANEADA" -> Color.Red.copy(alpha = 0.1f)
-                        "OCULTA" -> Color.Gray.copy(alpha = 0.1f)
-                        else -> Color.LightGray
-                    },
-                    shape = MaterialTheme.shapes.small
-                ) {
-                    Text(
-                        text = resena.estado ?: "DESCONOCIDO",
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = when (resena.estado) {
-                            "BANEADA" -> Color.Red
-                            "OCULTA" -> Color.Gray
-                            else -> Color.Black
-                        }
-                    )
-                }
-            }
         }
     }
 }
 
 /**
- * Diálogo para crear nueva reseña
+ * Dialogo para crear nueva resena
  */
 @Composable
 fun CrearResenaDialog(
@@ -335,30 +293,27 @@ fun CrearResenaDialog(
     reviewViewModel: ReviewViewModel,
     onDismiss: () -> Unit
 ) {
-    var puntaje by remember { mutableStateOf(5) }
+    var puntuacion by remember { mutableStateOf(5) }
     var comentario by remember { mutableStateOf("") }
     var errorComentario by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text("Crear Reseña")
-        },
+        title = { Text("Crear Resena") },
         text = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
             ) {
-                // Selector de puntaje
                 Text(
-                    text = "Calificación: $puntaje/10",
+                    text = "Calificacion: $puntuacion/10",
                     style = MaterialTheme.typography.titleMedium
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Slider(
-                    value = puntaje.toFloat(),
-                    onValueChange = { puntaje = it.toInt() },
+                    value = puntuacion.toFloat(),
+                    onValueChange = { puntuacion = it.toInt() },
                     valueRange = 1f..10f,
                     steps = 8,
                     modifier = Modifier.fillMaxWidth()
@@ -366,7 +321,6 @@ fun CrearResenaDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Campo de comentario
                 OutlinedTextField(
                     value = comentario,
                     onValueChange = {
@@ -387,20 +341,18 @@ fun CrearResenaDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    // Validar comentario
                     val (esValido, mensajeError) = reviewViewModel.validarComentario(comentario)
                     if (!esValido) {
                         errorComentario = mensajeError
                         return@Button
                     }
 
-                    // Crear reseña
                     reviewViewModel.crearResenaPropiedad(
                         usuarioId = usuarioId,
                         propiedadId = propiedadId,
-                        puntaje = puntaje,
+                        puntuacion = puntuacion,
                         comentario = comentario.ifBlank { null },
-                        tipoResenaId = 1L // RESENA_PROPIEDAD
+                        tipoResenaId = 1L
                     )
 
                     onDismiss()

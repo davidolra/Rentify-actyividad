@@ -61,7 +61,7 @@ fun UserManagementScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(users, key = { it.id!! }) { user ->
+                    items(users, key = { it.id ?: 0L }) { user ->
                         UserItem(
                             user = user,
                             onEditClick = {
@@ -93,7 +93,7 @@ fun UserManagementScreen(
 
     // Dialogo para confirmar eliminacion
     if (showDeleteDialog && selectedUser != null) {
-        val userName = "${selectedUser!!.pnombre} ${selectedUser!!.papellido}"
+        val userName = "${selectedUser!!.pnombre ?: ""} ${selectedUser!!.papellido ?: ""}"
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text("Confirmar Eliminacion") },
@@ -124,7 +124,8 @@ private fun UserItem(
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
-    val fullName = "${user.pnombre} ${user.papellido}"
+    val fullName = "${user.pnombre ?: ""} ${user.papellido ?: ""}".trim().ifEmpty { "Sin nombre" }
+    val emailDisplay = user.email ?: "Sin email"
     val rolNombre = user.rol?.nombre ?: when(user.rolId) {
         1 -> "ADMIN"
         2 -> "PROPIETARIO"
@@ -147,7 +148,7 @@ private fun UserItem(
         ) {
             Column(modifier = Modifier.weight(1.0f)) {
                 Text(fullName, fontWeight = FontWeight.Bold)
-                Text(user.email, style = MaterialTheme.typography.bodyMedium)
+                Text(emailDisplay, style = MaterialTheme.typography.bodyMedium)
                 Text("Rol: $rolNombre", style = MaterialTheme.typography.bodySmall)
                 Text("Estado: $estadoNombre", style = MaterialTheme.typography.bodySmall)
             }
@@ -168,10 +169,10 @@ private fun EditUserDialog(
     onDismiss: () -> Unit,
     onConfirm: (UsuarioDTO) -> Unit
 ) {
-    var pnombre by remember { mutableStateOf(user.pnombre) }
-    var snombre by remember { mutableStateOf(user.snombre) }
-    var papellido by remember { mutableStateOf(user.papellido) }
-    var email by remember { mutableStateOf(user.email) }
+    var pnombre by remember { mutableStateOf(user.pnombre ?: "") }
+    var snombre by remember { mutableStateOf(user.snombre ?: "") }
+    var papellido by remember { mutableStateOf(user.papellido ?: "") }
+    var email by remember { mutableStateOf(user.email ?: "") }
     var ntelefono by remember { mutableStateOf(user.ntelefono ?: "") }
     var selectedRolId by remember { mutableStateOf(user.rolId ?: user.rol?.id ?: 3) }
     var selectedEstadoId by remember { mutableStateOf(user.estadoId ?: user.estado?.id ?: 1) }
@@ -305,7 +306,7 @@ private fun EditUserDialog(
                     snombre = snombre,
                     papellido = papellido,
                     email = email,
-                    ntelefono = ntelefono,
+                    ntelefono = ntelefono.ifEmpty { null },
                     rolId = selectedRolId,
                     estadoId = selectedEstadoId
                 )
