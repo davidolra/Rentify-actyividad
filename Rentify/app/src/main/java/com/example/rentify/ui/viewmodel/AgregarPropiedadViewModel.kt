@@ -6,9 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.example.rentify.data.remote.ApiResult
 import com.example.rentify.data.remote.dto.*
 import com.example.rentify.data.repository.PropertyRemoteRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -66,6 +68,7 @@ class AgregarPropiedadViewModel(
     val fotoSubiendo: StateFlow<Boolean> = _fotoSubiendo.asStateFlow()
 
     init {
+        // La App inicia la carga de catálogos inmediatamente
         cargarCatalogos()
     }
 
@@ -80,81 +83,88 @@ class AgregarPropiedadViewModel(
             try {
                 Log.d(TAG, "Cargando catalogos...")
 
-                // Cargar tipos
-                when (val result = propertyRepository.listarTipos()) {
-                    is ApiResult.Success -> {
-                        _tipos.value = result.data
-                        Log.d(TAG, "Tipos cargados: ${result.data.size}")
-                    }
-                    is ApiResult.Error -> {
-                        Log.e(TAG, "Error al cargar tipos: ${result.message}")
-                    }
-                    else -> {}
-                }
+                // Lista para guardar todas las tareas de carga
+                val jobs = mutableListOf<Job>()
 
-                // Cargar regiones
-                when (val result = propertyRepository.listarRegiones()) {
-                    is ApiResult.Success -> {
-                        _regiones.value = result.data
-                        Log.d(TAG, "Regiones cargadas: ${result.data.size}")
+                // Tarea 1: Cargar tipos
+                jobs.add(launch {
+                    when (val result = propertyRepository.listarTipos()) {
+                        is ApiResult.Success -> {
+                            _tipos.value = result.data
+                            Log.d(TAG, "Tipos cargados: ${result.data.size}")
+                        }
+                        is ApiResult.Error -> Log.e(TAG, "Error al cargar tipos: ${result.message}")
+                        else -> {}
                     }
-                    is ApiResult.Error -> {
-                        Log.e(TAG, "Error al cargar regiones: ${result.message}")
-                    }
-                    else -> {}
-                }
+                })
 
-                // Cargar todas las comunas
-                when (val result = propertyRepository.listarComunas()) {
-                    is ApiResult.Success -> {
-                        _comunas.value = result.data
-                        Log.d(TAG, "Comunas cargadas: ${result.data.size}")
+                // Tarea 2: Cargar regiones
+                jobs.add(launch {
+                    when (val result = propertyRepository.listarRegiones()) {
+                        is ApiResult.Success -> {
+                            _regiones.value = result.data
+                            Log.d(TAG, "Regiones cargadas: ${result.data.size}")
+                        }
+                        is ApiResult.Error -> Log.e(TAG, "Error al cargar regiones: ${result.message}")
+                        else -> {}
                     }
-                    is ApiResult.Error -> {
-                        Log.e(TAG, "Error al cargar comunas: ${result.message}")
-                    }
-                    else -> {}
-                }
+                })
 
-                // Cargar categorias
-                when (val result = propertyRepository.listarCategorias()) {
-                    is ApiResult.Success -> {
-                        _categorias.value = result.data
-                        Log.d(TAG, "Categorias cargadas: ${result.data.size}")
+                // Tarea 3: Cargar todas las comunas (ESTA DEBE ESTAR COMPLETA ANTES DE FILTRAR)
+                jobs.add(launch {
+                    when (val result = propertyRepository.listarComunas()) {
+                        is ApiResult.Success -> {
+                            _comunas.value = result.data
+                            Log.d(TAG, "Comunas cargadas: ${result.data.size}")
+                        }
+                        is ApiResult.Error -> Log.e(TAG, "Error al cargar comunas: ${result.message}")
+                        else -> {}
                     }
-                    is ApiResult.Error -> {
-                        Log.e(TAG, "Error al cargar categorias: ${result.message}")
+                })
+
+                // Tarea 4: Cargar categorias
+                jobs.add(launch {
+                    when (val result = propertyRepository.listarCategorias()) {
+                        is ApiResult.Success -> {
+                            _categorias.value = result.data
+                            Log.d(TAG, "Categorias cargadas: ${result.data.size}")
+                        }
+                        is ApiResult.Error -> Log.e(TAG, "Error al cargar categorias: ${result.message}")
+                        else -> {}
                     }
-                    else -> {}
-                }
+                })
+
+                // ESPERAR CLAVE: Asegura que todas las corrutinas (incluyendo comunas) terminen de llenar el caché
+                jobs.joinAll()
 
             } catch (e: Exception) {
                 Log.e(TAG, "Excepcion al cargar catalogos: ${e.message}", e)
                 _errorMsg.value = "Error al cargar datos: ${e.message}"
             } finally {
+                // Solo se establece en false cuando todas las cargas han finalizado
                 _isLoading.value = false
+                Log.d(TAG, "Carga de catálogos finalizada.")
             }
         }
     }
 
     /**
-     * Filtrar comunas por region seleccionada
-     */
-    /**
      * Filtrar comunas por region seleccionada (USANDO SOLO EL CACHÉ LOCAL)
      */
     fun cargarComunasPorRegion(regionId: Long) {
         viewModelScope.launch {
+            // NOTA: Gracias al joinAll() en cargarCatalogos(), _comunas.value debe estar completo aquí.
             Log.d(TAG, "Filtrando comunas LOCALMENTE por region: $regionId")
 
-            // CORRECCIÓN: Usar la lista _comunas ya cargada en el init.
             _comunasFiltradas.value = _comunas.value.filter { it.regionId == regionId }
 
             Log.d(TAG, "Comunas filtradas: ${_comunasFiltradas.value.size}")
 
             if (_comunasFiltradas.value.isEmpty()) {
-                // Mensaje de ayuda si la lista inicial de comunas nunca se cargó.
                 _errorMsg.value = "No se encontraron comunas para esta región. Verifique que la carga inicial de catálogos fue exitosa."
+            } else {
+                // Limpiar error si la carga fue exitosa
+                _errorMsg.value = null
             }
         }
     }
