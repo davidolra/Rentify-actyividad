@@ -13,6 +13,9 @@ interface CatalogDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTipo(tipo: TipoEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllTipos(tipos: List<TipoEntity>)
+
     @Query("SELECT * FROM tipo WHERE id = :id")
     suspend fun getTipoById(id: Long): TipoEntity?
 
@@ -25,6 +28,9 @@ interface CatalogDao {
     // ============ COMUNA ============
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertComuna(comuna: ComunaEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllComunas(comunas: List<ComunaEntity>)
 
     @Query("SELECT * FROM comuna WHERE id = :id")
     suspend fun getComunaById(id: Long): ComunaEntity?
@@ -39,6 +45,9 @@ interface CatalogDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRegion(region: RegionEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllRegiones(regiones: List<RegionEntity>)
+
     @Query("SELECT * FROM region WHERE id = :id")
     suspend fun getRegionById(id: Long): RegionEntity?
 
@@ -48,6 +57,9 @@ interface CatalogDao {
     // ============ ESTADO ============
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEstado(estado: EstadoEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllEstados(estados: List<EstadoEntity>)
 
     @Query("SELECT * FROM estado WHERE id = :id")
     suspend fun getEstadoById(id: Long): EstadoEntity?
@@ -62,6 +74,8 @@ interface CatalogDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCategoria(categoria: CategoriaEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllCategorias(categorias: List<CategoriaEntity>)
     @Query("SELECT * FROM categoria WHERE id = :id")
     suspend fun getCategoriaById(id: Long): CategoriaEntity?
 

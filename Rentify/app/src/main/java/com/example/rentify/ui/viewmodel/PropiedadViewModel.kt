@@ -5,8 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.rentify.data.local.dao.CatalogDao
 import com.example.rentify.data.local.dao.PropiedadDao
-import com.example.rentify.data.local.entities.PropiedadEntity
+import com.example.rentify.data.local.entities.* // Importamos todas las entidades locales
 import com.example.rentify.data.remote.ApiResult
+import com.example.rentify.data.remote.dto.* // Importamos todos los DTOs remotos
 import com.example.rentify.data.repository.PropertyRemoteRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
@@ -52,6 +53,13 @@ class PropiedadViewModel(
     private val _ubicacionUsuario = MutableStateFlow<Pair<Double, Double>?>(null)
     val ubicacionUsuario: StateFlow<Pair<Double, Double>?> = _ubicacionUsuario.asStateFlow()
 
+    init {
+
+        viewModelScope.launch {
+            sincronizarCatalogos()
+        }
+    }
+
     fun setPermisoUbicacion(concedido: Boolean) {
         _permisoUbicacion.value = concedido
     }
@@ -74,36 +82,12 @@ class PropiedadViewModel(
             _errorMsg.value = null
 
             try {
+                // Ya que los catálogos están sincronizados, podemos cargar propiedades.
                 when (val result = remoteRepository.listarTodasPropiedades(includeDetails = true)) {
                     is ApiResult.Success -> {
                         Log.d(TAG, "Propiedades cargadas: ${result.data.size}")
 
-                        // Guardar en BD local
-                        withContext(Dispatchers.IO) {
-                            result.data.forEach { dto ->
-                                val entity = PropiedadEntity(
-                                    id = dto.id ?: 0,
-                                    codigo = dto.codigo ?: "",
-                                    titulo = dto.titulo ?: "",
-                                    precio_mensual = dto.precioMensual?.toInt() ?: 0,
-                                    divisa = dto.divisa ?: "CLP",
-                                    m2 = dto.m2 ?: 0.0,
-                                    n_habit = dto.nHabit ?: 0,
-                                    n_banos = dto.nBanos ?: 0,
-                                    pet_friendly = dto.petFriendly ?: false,
-                                    direccion = dto.direccion ?: "",
-                                    descripcion = null,
-                                    fcreacion = System.currentTimeMillis(),
-                                    estado_id = 1L,
-                                    tipo_id = dto.tipoId ?: 1L,
-                                    comuna_id = dto.comunaId ?: 1L,
-                                    propietario_id = dto.propietarioId ?: 1L
-                                )
-                                propiedadDao.insert(entity)
-                            }
-                        }
-
-                        cargarPropiedadesLocales()
+                        guardarYActualizarLocal(result.data)
                     }
                     is ApiResult.Error -> {
                         Log.e(TAG, "Error: ${result.message}")
@@ -121,6 +105,96 @@ class PropiedadViewModel(
             }
         }
     }
+
+    /**
+     * Función que mapea DTOs a entidades y usa INSERT OR REPLACE.
+     */
+    private suspend fun guardarYActualizarLocal(dtos: List<PropertyRemoteDTO>) {
+        withContext(Dispatchers.IO) {
+            val entities = dtos.map { dto ->
+                PropiedadEntity(
+                    id = dto.id ?: 0,
+                    codigo = dto.codigo ?: "",
+                    titulo = dto.titulo ?: "",
+                    precio_mensual = dto.precioMensual?.toInt() ?: 0,
+                    divisa = dto.divisa ?: "CLP",
+                    m2 = dto.m2 ?: 0.0,
+                    n_habit = dto.nHabit ?: 0,
+                    n_banos = dto.nBanos ?: 0,
+                    pet_friendly = dto.petFriendly ?: false,
+                    direccion = dto.direccion ?: "",
+                    descripcion = null,
+                    fcreacion = System.currentTimeMillis(),
+                    estado_id = 1L,
+                    tipo_id = dto.tipoId ?: 1L,
+                    comuna_id = dto.comunaId ?: 1L,
+                    propietario_id = dto.propietarioId ?: 1L
+                )
+            }
+
+            // Usamos insertAll que tiene OnConflictStrategy.REPLACE (corregido en el DAO)
+            propiedadDao.insertAll(entities)
+
+            cargarPropiedadesLocales()
+        }
+    }
+
+    /**
+     * SINCRONIZACIÓN CLAVE: Asegurar que los catálogos existan localmente ANTES de las Propiedades.
+     */
+    private suspend fun sincronizarCatalogos() {
+        Log.d(TAG, "Iniciando sincronización de catálogos.")
+        withContext(Dispatchers.IO) {
+
+            // Sincronizar Tipos
+            when (val result = remoteRepository.listarTipos()) {
+                is ApiResult.Success -> catalogDao.insertAllTipos(result.data.map { mapTipoRemoteToLocal(it) })
+                is ApiResult.Error -> Log.e(TAG, "Error al sincronizar Tipos: ${result.message}")
+                else -> {}
+            }
+
+            // Sincronizar Regiones
+            when (val result = remoteRepository.listarRegiones()) {
+                is ApiResult.Success -> catalogDao.insertAllRegiones(result.data.map { mapRegionRemoteToLocal(it) })
+                is ApiResult.Error -> Log.e(TAG, "Error al sincronizar Regiones: ${result.message}")
+                else -> {}
+            }
+
+            // Sincronizar Comunas
+            when (val result = remoteRepository.listarComunas()) {
+                is ApiResult.Success -> catalogDao.insertAllComunas(result.data.map { mapComunaRemoteToLocal(it) })
+                is ApiResult.Error -> Log.e(TAG, "Error al sincronizar Comunas: ${result.message}")
+                else -> {}
+            }
+
+            // Sincronizar Categorias
+            when (val result = remoteRepository.listarCategorias()) {
+                is ApiResult.Success -> catalogDao.insertAllCategorias(result.data.map { mapCategoriaRemoteToLocal(it) })
+                is ApiResult.Error -> Log.e(TAG, "Error al sincronizar Categorias: ${result.message}")
+                else -> {}
+            }
+        }
+        Log.d(TAG, "Sincronización de catálogos finalizada.")
+    }
+
+    private fun mapTipoRemoteToLocal(dto: TipoRemoteDTO): TipoEntity {
+        return TipoEntity(id = dto.id ?: 0, nombre = dto.nombre ?: "")
+    }
+
+    private fun mapRegionRemoteToLocal(dto: RegionRemoteDTO): RegionEntity {
+        return RegionEntity(id = dto.id ?: 0, nombre = dto.nombre ?: "")
+    }
+
+    private fun mapComunaRemoteToLocal(dto: ComunaRemoteDTO): ComunaEntity {
+        return ComunaEntity(id = dto.id ?: 0, nombre = dto.nombre ?: "", region_id = dto.regionId ?: 0)
+    }
+
+    private fun mapCategoriaRemoteToLocal(dto: CategoriaRemoteDTO): CategoriaEntity {
+        // CORREGIDO: Solo mapea ID y Nombre, lo que coincide con CategoriaEntity.kt
+        return CategoriaEntity(id = dto.id ?: 0, nombre = dto.nombre ?: "")
+    }
+
+    // =========================================================================
 
     private suspend fun cargarPropiedadesLocales() {
         withContext(Dispatchers.IO) {

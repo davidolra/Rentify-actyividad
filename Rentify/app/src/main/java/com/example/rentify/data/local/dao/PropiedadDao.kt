@@ -3,27 +3,30 @@ package com.example.rentify.data.local.dao
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
-import androidx.room.OnConflictStrategy
+import androidx.room.OnConflictStrategy // Importante
 import androidx.room.Query
 import androidx.room.Update
 import com.example.rentify.data.local.entities.PropiedadEntity
 
 /**
  * DAO para operaciones CRUD de propiedades
- * ✅ ACTUALIZADO: Con soporte para propietarios
  */
 @Dao
 interface PropiedadDao {
 
-    // Insertar una nueva propiedad
-    @Insert(onConflict = OnConflictStrategy.ABORT)
+    // 1. Insertar una sola propiedad
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(propiedad: PropiedadEntity): Long
+
+    // 2. Insertar una lista de propiedades (usado para sincronización)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(propiedades: List<PropiedadEntity>)
 
     // Actualizar una propiedad existente
     @Update
     suspend fun update(propiedad: PropiedadEntity)
 
-    // ✅ NUEVO: Eliminar propiedad
+    // Eliminar propiedad
     @Delete
     suspend fun delete(propiedad: PropiedadEntity)
 
@@ -35,11 +38,11 @@ interface PropiedadDao {
     @Query("SELECT * FROM propiedad WHERE codigo = :codigo LIMIT 1")
     suspend fun getByCodigo(codigo: String): PropiedadEntity?
 
-    // ✅ NUEVO: Buscar propiedades de un propietario específico
+    // Buscar propiedades de un propietario específico
     @Query("SELECT * FROM propiedad WHERE propietario_id = :propietarioId ORDER BY fcreacion DESC")
     suspend fun getPropiedadesByPropietario(propietarioId: Long): List<PropiedadEntity>
 
-    // ✅ NUEVO: Buscar propiedades activas de un propietario
+    // Buscar propiedades activas de un propietario
     @Query("SELECT * FROM propiedad WHERE propietario_id = :propietarioId AND estado_id = :estadoActivo ORDER BY fcreacion DESC")
     suspend fun getPropiedadesActivasByPropietario(propietarioId: Long, estadoActivo: Long = 1): List<PropiedadEntity>
 
@@ -67,7 +70,7 @@ interface PropiedadDao {
     @Query("SELECT COUNT(*) FROM propiedad WHERE estado_id = :estadoActivo")
     suspend fun countActivas(estadoActivo: Long = 1): Int
 
-    // ✅ NUEVO: Contar propiedades de un propietario
+    // Contar propiedades de un propietario
     @Query("SELECT COUNT(*) FROM propiedad WHERE propietario_id = :propietarioId")
     suspend fun countByPropietario(propietarioId: Long): Int
 }
