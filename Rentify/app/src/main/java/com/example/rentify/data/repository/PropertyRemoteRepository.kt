@@ -9,6 +9,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
+import android.webkit.MimeTypeMap
 
 /**
  * Repositorio para comunicacion con Property Service (Puerto 8082)
@@ -207,7 +208,13 @@ class PropertyRemoteRepository {
     suspend fun subirFoto(propiedadId: Long, file: File): ApiResult<FotoRemoteDTO> {
         Log.d(TAG, "Subiendo foto: propiedad=$propiedadId, archivo=${file.name}")
 
-        val requestBody = file.asRequestBody("image/*".toMediaTypeOrNull())
+        val extension = MimeTypeMap.getFileExtensionFromUrl(file.path)
+        val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: "image/jpeg"
+
+        // Usar el tipo MIME real (ej: image/jpeg, image/png)
+        val requestBody = file.asRequestBody(mimeType.toMediaTypeOrNull())
+
+
         val multipartBody = MultipartBody.Part.createFormData("file", file.name, requestBody)
 
         return when (val result = safeApiCall { api.subirFoto(propiedadId, multipartBody) }) {

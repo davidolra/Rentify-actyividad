@@ -1,6 +1,8 @@
 package com.example.rentify.ui.screen
 
+import android.Manifest // <-- AGREGADO
 import android.content.Context
+import android.content.pm.PackageManager // <-- AGREGADO
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -24,6 +26,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat // <-- AGREGADO
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -80,6 +83,8 @@ fun PerfilUsuarioScreen(
     var profilePhotoUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     var pendingCaptureUri by remember { mutableStateOf<Uri?>(null) }
 
+    // ====================================================================
+    // 1. LANZADOR DE CÁMARA (para tomar la foto) - Código existente
     val takePictureLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
@@ -88,8 +93,25 @@ fun PerfilUsuarioScreen(
             Toast.makeText(context, "Foto de perfil actualizada", Toast.LENGTH_SHORT).show()
         } else {
             pendingCaptureUri = null
+            Toast.makeText(context, "Captura cancelada", Toast.LENGTH_SHORT).show()
         }
     }
+
+    // 2. LANZADOR DE PERMISOS (para solicitar permiso de cámara) <-- AGREGADO
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // Si el permiso es otorgado, lanza la cámara
+            val file = createTempImageFile(context)
+            val uri = getImageUriForFile(context, file)
+            pendingCaptureUri = uri
+            takePictureLauncher.launch(uri)
+        } else {
+            Toast.makeText(context, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show()
+        }
+    }
+    // ====================================================================
 
     // Inicializar campos cuando se carga el usuario
     LaunchedEffect(usuario) {
@@ -160,10 +182,23 @@ fun PerfilUsuarioScreen(
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.primaryContainer)
                                 .clickable {
-                                    val file = createTempImageFile(context)
-                                    val uri = getImageUriForFile(context, file)
-                                    pendingCaptureUri = uri
-                                    takePictureLauncher.launch(uri)
+                                    // ====================================================================
+                                    // 3. LÓGICA DE SOLICITUD DE PERMISO <-- AGREGADO
+                                    val permissionCheck = ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.CAMERA
+                                    )
+                                    if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
+                                        // Permiso otorgado: lanzar la cámara directamente
+                                        val file = createTempImageFile(context)
+                                        val uri = getImageUriForFile(context, file)
+                                        pendingCaptureUri = uri
+                                        takePictureLauncher.launch(uri)
+                                    } else {
+                                        // Pedir permiso al usuario
+                                        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                                    }
+                                    // ====================================================================
                                 },
                             contentAlignment = Alignment.Center
                         ) {

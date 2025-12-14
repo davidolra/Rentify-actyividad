@@ -1,5 +1,8 @@
 package com.example.rentify.ui.screen
 
+import android.Manifest // <-- AGREGADO
+import android.content.Context
+import android.content.pm.PackageManager // <-- AGREGADO
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -23,6 +26,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat // <-- AGREGADO
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -93,14 +97,35 @@ fun AgregarPropiedadScreen(
     // Para captura de foto
     var pendingCaptureUri by remember { mutableStateOf<Uri?>(null) }
 
-    // Launcher para tomar foto
+    // ====================================================================
+    // LANZADORES DE CÁMARA Y PERMISOS (Corregido)
+
+    // 1. Launcher para tomar foto
     val takePictureLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { success ->
         if (success && pendingCaptureUri != null) {
             fotosLocales = fotosLocales + pendingCaptureUri!!
         }
+        pendingCaptureUri = null // Limpiar la URI pendiente después del intento
     }
+
+    // 2. Launcher para solicitar permiso de cámara <-- AGREGADO
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // Si el permiso es otorgado, procede a lanzar la cámara
+            val file = createTempImageFile(context)
+            val uri = getImageUriForFile(context, file)
+            pendingCaptureUri = uri
+            takePictureLauncher.launch(uri)
+        } else {
+            Toast.makeText(context, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show()
+        }
+    }
+    // ====================================================================
+
 
     // Launcher para seleccionar imagen de galeria
     val pickImageLauncher = rememberLauncherForActivityResult(
@@ -115,6 +140,7 @@ fun AgregarPropiedadScreen(
     LaunchedEffect(regionSeleccionada) {
         regionSeleccionada?.let {
             comunaSeleccionada = null
+            // Llama a la versión corregida del ViewModel (solo filtro local)
             viewModel.cargarComunasPorRegion(it)
         }
     }
@@ -139,6 +165,7 @@ fun AgregarPropiedadScreen(
         propiedadCreada?.let { propiedad ->
             if (fotosLocales.isNotEmpty() && propiedad.id != null) {
                 fotosLocales.forEach { uri ->
+                    // Aquí se llama a la función uriToFile y luego a subirFoto
                     val file = uriToFile(context, uri)
                     file?.let {
                         viewModel.subirFoto(propiedad.id, it)
@@ -213,10 +240,23 @@ fun AgregarPropiedadScreen(
                                     .size(100.dp)
                                     .clip(MaterialTheme.shapes.medium)
                                     .clickable {
-                                        val file = createTempImageFile(context)
-                                        val uri = getImageUriForFile(context, file)
-                                        pendingCaptureUri = uri
-                                        takePictureLauncher.launch(uri)
+                                        // ====================================================================
+                                        // LÓGICA DE SOLICITUD DE PERMISO
+                                        val permissionCheck = ContextCompat.checkSelfPermission(
+                                            context,
+                                            Manifest.permission.CAMERA
+                                        )
+                                        if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
+                                            // Permiso otorgado: lanzar la cámara directamente
+                                            val file = createTempImageFile(context)
+                                            val uri = getImageUriForFile(context, file)
+                                            pendingCaptureUri = uri
+                                            takePictureLauncher.launch(uri)
+                                        } else {
+                                            // Pedir permiso al usuario
+                                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                                        }
+                                        // ====================================================================
                                     },
                                 color = MaterialTheme.colorScheme.primaryContainer
                             ) {
@@ -586,13 +626,18 @@ fun AgregarPropiedadScreen(
  */
 private fun createTempImageFile(context: android.content.Context): File {
     val timeStamp = System.currentTimeMillis()
-    val storageDir = context.cacheDir
+
+    // CREA Y ASEGURA EL DIRECTORIO 'images' DENTRO DE LA CACHÉ
+    val storageDir = File(context.cacheDir, "images").apply {
+        if (!exists()) {
+            mkdirs() // Asegura que la carpeta images exista
+        }
+    }
+
+    // CREA EL ARCHIVO DENTRO DE ESA CARPETA
     return File.createTempFile("IMG_${timeStamp}_", ".jpg", storageDir)
 }
 
-/**
- * Obtener URI para FileProvider
- */
 private fun getImageUriForFile(context: android.content.Context, file: File): Uri {
     return FileProvider.getUriForFile(
         context,

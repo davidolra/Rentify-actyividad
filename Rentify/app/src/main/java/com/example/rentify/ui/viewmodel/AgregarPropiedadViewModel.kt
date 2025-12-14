@@ -140,21 +140,21 @@ class AgregarPropiedadViewModel(
     /**
      * Filtrar comunas por region seleccionada
      */
+    /**
+     * Filtrar comunas por region seleccionada (USANDO SOLO EL CACHÉ LOCAL)
+     */
     fun cargarComunasPorRegion(regionId: Long) {
         viewModelScope.launch {
-            Log.d(TAG, "Filtrando comunas por region: $regionId")
+            Log.d(TAG, "Filtrando comunas LOCALMENTE por region: $regionId")
 
-            when (val result = propertyRepository.obtenerComunasPorRegion(regionId)) {
-                is ApiResult.Success -> {
-                    _comunasFiltradas.value = result.data
-                    Log.d(TAG, "Comunas filtradas: ${result.data.size}")
-                }
-                is ApiResult.Error -> {
-                    Log.e(TAG, "Error al filtrar comunas: ${result.message}")
-                    // Fallback: filtrar localmente
-                    _comunasFiltradas.value = _comunas.value.filter { it.regionId == regionId }
-                }
-                else -> {}
+            // CORRECCIÓN: Usar la lista _comunas ya cargada en el init.
+            _comunasFiltradas.value = _comunas.value.filter { it.regionId == regionId }
+
+            Log.d(TAG, "Comunas filtradas: ${_comunasFiltradas.value.size}")
+
+            if (_comunasFiltradas.value.isEmpty()) {
+                // Mensaje de ayuda si la lista inicial de comunas nunca se cargó.
+                _errorMsg.value = "No se encontraron comunas para esta región. Verifique que la carga inicial de catálogos fue exitosa."
             }
         }
     }

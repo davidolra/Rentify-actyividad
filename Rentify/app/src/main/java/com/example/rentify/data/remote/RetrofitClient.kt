@@ -29,14 +29,15 @@ object RetrofitClient {
 
     // ==================== CONFIGURACION DE URLs ====================
     private const val PC_IP = "192.168.100.7"
+    private const val Fer_IP = "192.168.1.12"
     private const val emu_IP = "10.0.2.2"
 
-    private const val BASE_URL_USER_SERVICE = "http://$PC_IP:8081/"
-    private const val BASE_URL_PROPERTY_SERVICE = "http://$PC_IP:8082/"
-    private const val BASE_URL_DOCUMENT_SERVICE = "http://$PC_IP:8083/"
-    private const val BASE_URL_APPLICATION_SERVICE = "http://$PC_IP:8084/"
-    private const val BASE_URL_CONTACT_SERVICE = "http://$PC_IP:8085/"
-    private const val BASE_URL_REVIEW_SERVICE = "http://$PC_IP:8086/"
+    private const val BASE_URL_USER_SERVICE = "http://$Fer_IP:8081/"
+    private const val BASE_URL_PROPERTY_SERVICE = "http://$Fer_IP:8082/"
+    private const val BASE_URL_DOCUMENT_SERVICE = "http://$Fer_IP:8083/"
+    private const val BASE_URL_APPLICATION_SERVICE = "http://$Fer_IP:8084/"
+    private const val BASE_URL_CONTACT_SERVICE = "http://$Fer_IP:8085/"
+    private const val BASE_URL_REVIEW_SERVICE = "http://$Fer_IP:8086/"
 
     // ==================== CONFIGURACION DE OKHTTP ====================
 
