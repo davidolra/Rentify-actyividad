@@ -2,10 +2,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Permisos existentes -->
+    <!-- Permisos de red -->
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Permisos de ubicacion -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- NUEVO: Permiso de camara -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Declarar que la app usa camara (opcional pero no requerido) -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
     <application
         android:allowBackup="true"
@@ -16,7 +25,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Rentify"
-        android:usesCleartextTraffic="true">  <!-- ✅ AGREGAR ESTA LÍNEA -->
+        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config">
 
         <activity
             android:name=".MainActivity"
@@ -29,9 +39,9 @@
             </intent-filter>
         </activity>
 
-        <!-- FileProvider -->
+        <!-- FileProvider para compartir archivos (fotos) -->
         <provider
-            android:authorities="com.example.rentify.fileprovider"
+            android:authorities="${applicationId}.fileprovider"
             android:name="androidx.core.content.FileProvider"
             android:exported="false"
             android:grantUriPermissions="true">

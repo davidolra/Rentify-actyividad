@@ -1,6 +1,8 @@
 package com.example.rentify.navigation
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -20,6 +22,7 @@ fun AppDrawer(
 ) {
     val userPreferences = remember { UserPreferences(context) }
     val scope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
 
     val userId by userPreferences.userId.collectAsState(initial = null)
     val userRole by userPreferences.userRole.collectAsState(initial = null)
@@ -34,6 +37,7 @@ fun AppDrawer(
         Column(
             modifier = Modifier
                 .fillMaxHeight()
+                .verticalScroll(scrollState)
                 .padding(16.dp)
         ) {
             Text(
@@ -203,7 +207,7 @@ fun AppDrawer(
                 }
             )
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Divider(modifier = Modifier.padding(vertical = 8.dp))
 
@@ -220,6 +224,9 @@ fun AppDrawer(
                     onCloseDrawer()
                 }
             )
+
+            // Espacio extra al final para asegurar scroll completo
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
