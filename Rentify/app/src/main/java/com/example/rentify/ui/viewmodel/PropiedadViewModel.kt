@@ -5,10 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.rentify.data.local.dao.CatalogDao
 import com.example.rentify.data.local.dao.PropiedadDao
-import com.example.rentify.data.local.entities.* // Importamos todas las entidades locales
-import com.example.rentify.data.remote.ApiResult
-import com.example.rentify.data.remote.dto.* // Importamos todos los DTOs remotos
-import com.example.rentify.data.repository.PropertyRemoteRepository
+import com.example.rentify.data.local.entities.* import com.example.rentify.data.remote.ApiResult
+import com.example.rentify.data.remote.dto.* import com.example.rentify.data.repository.PropertyRemoteRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -54,7 +52,6 @@ class PropiedadViewModel(
     val ubicacionUsuario: StateFlow<Pair<Double, Double>?> = _ubicacionUsuario.asStateFlow()
 
     init {
-
         viewModelScope.launch {
             sincronizarCatalogos()
         }
@@ -82,11 +79,9 @@ class PropiedadViewModel(
             _errorMsg.value = null
 
             try {
-                // Ya que los catálogos están sincronizados, podemos cargar propiedades.
                 when (val result = remoteRepository.listarTodasPropiedades(includeDetails = true)) {
                     is ApiResult.Success -> {
                         Log.d(TAG, "Propiedades cargadas: ${result.data.size}")
-
                         guardarYActualizarLocal(result.data)
                     }
                     is ApiResult.Error -> {
@@ -100,6 +95,60 @@ class PropiedadViewModel(
                 Log.e(TAG, "Excepcion: ${e.message}", e)
                 _errorMsg.value = e.message
                 cargarPropiedadesLocales()
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * Elimina una propiedad del backend, actualiza la BD local y recarga la lista.
+
+     */
+    fun eliminarPropiedad(propiedadId: Long) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _errorMsg.value = null
+
+            try {
+                when (val result = remoteRepository.eliminarPropiedad(propiedadId)) {
+                    is ApiResult.Success -> {
+                        Log.d(TAG, "Propiedad $propiedadId eliminada remotamente. Eliminando de BD local.")
+
+                        // CORRECCIÓN CLAVE: Pasar valores por defecto a todos los campos requeridos
+                        val entityToDelete = PropiedadEntity(
+                            id = propiedadId,
+                            codigo = "",
+                            titulo = "",
+                            precio_mensual = 0,
+                            divisa = "",
+                            m2 = 0.0,
+                            n_habit = 0,
+                            n_banos = 0,
+                            pet_friendly = false,
+                            direccion = "",
+                            fcreacion = 0L,
+                            estado_id = 0L,
+                            tipo_id = 0L,
+                            comuna_id = 0L,
+                            propietario_id = 0L,
+                            descripcion = null // Si 'descripcion' acepta null
+                        )
+
+                        // 1. Eliminar de la BD local
+                        propiedadDao.delete(entityToDelete)
+
+                        // 2. Forzar la recarga de la lista (refresca la vista del administrador)
+                        cargarPropiedadesCercanas()
+                    }
+                    is ApiResult.Error -> {
+                        _errorMsg.value = "Error al eliminar: ${result.message}"
+                    }
+                    else -> {}
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Excepcion al eliminar propiedad: ${e.message}")
+                _errorMsg.value = "Error de conexión al eliminar: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -132,7 +181,6 @@ class PropiedadViewModel(
                 )
             }
 
-            // Usamos insertAll que tiene OnConflictStrategy.REPLACE (corregido en el DAO)
             propiedadDao.insertAll(entities)
 
             cargarPropiedadesLocales()
@@ -190,7 +238,6 @@ class PropiedadViewModel(
     }
 
     private fun mapCategoriaRemoteToLocal(dto: CategoriaRemoteDTO): CategoriaEntity {
-        // CORREGIDO: Solo mapea ID y Nombre, lo que coincide con CategoriaEntity.kt
         return CategoriaEntity(id = dto.id ?: 0, nombre = dto.nombre ?: "")
     }
 

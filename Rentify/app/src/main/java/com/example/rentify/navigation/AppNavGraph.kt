@@ -282,8 +282,17 @@ fun AppNavGraph(
 
                 // GESTION PROPIEDADES
                 composable(Routes.GESTION_PROPIEDADES) {
+                    val propiedadViewModelFactory = PropiedadViewModelFactory(
+                        propiedadDao = database.propiedadDao(),
+                        catalogDao = database.catalogDao(),
+                        remoteRepository = propertyRepository
+                    )
+
                     GestionPropiedadesScreen(
-                        onBack = { navController.popBackStack() }
+                        onBack = { navController.popBackStack() },
+                        onVerDetalle = { propiedadId -> goPropiedadDetalle(propiedadId) },
+                        // PASAMOS EL FACTORY
+                        viewModelFactory = propiedadViewModelFactory
                     )
                 }
 

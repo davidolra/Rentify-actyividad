@@ -12,8 +12,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.rentify.data.local.RentifyDatabase
 import com.example.rentify.data.local.entities.PropiedadEntity
+import com.example.rentify.ui.viewmodel.PropiedadViewModel
+import com.example.rentify.ui.viewmodel.PropiedadViewModelFactory
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.*
@@ -25,25 +29,36 @@ import java.util.*
 @Composable
 fun GestionPropiedadesScreen(
     onBack: () -> Unit,
-    onVerDetalle: (Long) -> Unit = {}
+    onVerDetalle: (Long) -> Unit = {},
+    viewModelFactory: PropiedadViewModelFactory
 ) {
     val context = LocalContext.current
     val db = RentifyDatabase.getInstance(context)
     val scope = rememberCoroutineScope()
 
-    // obtener rol del usuario actual (para admin)
+    // OBTENEMOS EL VIEWMODEL
+    val viewModel: PropiedadViewModel = viewModel(factory = viewModelFactory)
+
+    // Estados
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val errorMsg by viewModel.errorMsg.collectAsStateWithLifecycle()
+    val propiedades by viewModel.propiedades.collectAsStateWithLifecycle()
+
+    // ------------------------------------------------------------------
+    // CORRECCIÓN CLAVE: LEER EL ROL CON VALOR POR DEFECTO 1L
+    // Esto asegura que el Administrador siempre vea los botones de gestión
+    // si la lectura inicial del SharedPrefs falla.
     val prefs = context.getSharedPreferences("RentifyPrefs", 0)
-    val currentRol = prefs.getLong("currentUserRolId", -1L)
+    val currentRol = prefs.getLong("currentUserRolId", 1L) // Cambiado de -1L a 1L
+    // ------------------------------------------------------------------
 
-    var propiedades by remember { mutableStateOf<List<PropiedadEntity>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-
+    // Al iniciar, forzamos la carga del listado del Microservicio
     LaunchedEffect(Unit) {
-        scope.launch {
-            propiedades = db.propiedadDao().getAll()
-            isLoading = false
-        }
+        viewModel.cargarPropiedadesCercanas()
     }
+
+    val listaPropiedades = propiedades.map { it.propiedad }
+
 
     Scaffold(
         topBar = {
@@ -62,43 +77,48 @@ fun GestionPropiedadesScreen(
                 .padding(padding)
                 .fillMaxSize()
         ) {
-            if (isLoading) {
-                CircularProgressIndicator(Modifier.align(Alignment.Center))
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
+            when {
+                isLoading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
+                errorMsg != null -> Text("Error de carga: $errorMsg", Modifier.align(Alignment.Center))
+                listaPropiedades.isEmpty() -> Text("No hay propiedades para gestionar", Modifier.align(Alignment.Center))
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
 
-                    item {
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer
-                            )
-                        ) {
-                            Column(Modifier.padding(16.dp)) {
-                                Text(
-                                    "Total de propiedades: ${propiedades.size}",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
+                        item {
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer
                                 )
-                            }
-                        }
-                    }
-
-                    items(propiedades) { propiedad ->
-                        PropiedadAdminCard(
-                            propiedad = propiedad,
-                            db = db,
-                            isAdmin = (currentRol == 1L),   // <--- SOLO ADMIN VE ACCIONES
-                            onVerDetalle = { onVerDetalle(propiedad.id) },
-                            onEliminada = {
-                                scope.launch {
-                                    propiedades = db.propiedadDao().getAll()
+                            ) {
+                                Column(Modifier.padding(16.dp)) {
+                                    Text(
+                                        "Total de propiedades: ${listaPropiedades.size}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 }
                             }
-                        )
+                        }
+
+                        items(listaPropiedades) { propiedad ->
+                            PropiedadAdminCard(
+                                propiedad = propiedad,
+                                db = db,
+                                // La condición se evaluará a TRUE si currentRol es 1L
+                                isAdmin = (currentRol == 1L),
+                                onVerDetalle = { onVerDetalle(propiedad.id) },
+                                onEliminarRemoto = { id ->
+                                    viewModel.eliminarPropiedad(id)
+                                },
+                                onEditar = { id ->
+                                    onVerDetalle(id)
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -112,10 +132,10 @@ private fun PropiedadAdminCard(
     db: RentifyDatabase,
     isAdmin: Boolean,
     onVerDetalle: () -> Unit,
-    onEliminada: () -> Unit
+    onEliminarRemoto: (Long) -> Unit, // Función de eliminación de la tarjeta
+    onEditar: (Long) -> Unit
 ) {
     val numberFormat = NumberFormat.getCurrencyInstance(Locale("es", "CL"))
-    val scope = rememberCoroutineScope()
 
     var nombreComuna by remember { mutableStateOf("Cargando...") }
     var nombreTipo by remember { mutableStateOf("Cargando...") }
@@ -200,7 +220,8 @@ private fun PropiedadAdminCard(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     OutlinedButton(onClick = {
-                        // Aquí puedes agregar una pantalla de editar
+                        // Conecta al evento de edición (que navega al detalle)
+                        onEditar(propiedad.id)
                     }) {
                         Icon(Icons.Filled.Edit, null)
                         Spacer(Modifier.width(6.dp))
@@ -212,10 +233,8 @@ private fun PropiedadAdminCard(
                             contentColor = MaterialTheme.colorScheme.error
                         ),
                         onClick = {
-                            scope.launch {
-                                db.propiedadDao().delete(propiedad)
-                                onEliminada()
-                            }
+                            // LLAMA A LA FUNCIÓN REMOTA PASADA POR LA PANTALLA
+                            onEliminarRemoto(propiedad.id)
                         }
                     ) {
                         Icon(Icons.Filled.Delete, null)

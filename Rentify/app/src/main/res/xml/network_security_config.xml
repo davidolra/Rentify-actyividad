@@ -1,7 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!-- Permitir trafico HTTP en texto claro para desarrollo -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Dominios especificos permitidos para desarrollo -->
     <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">192.168.1.12</domain>  <domain includeSubdomains="true">192.168.1.0/24</domain> <domain includeSubdomains="true">10.0.2.2</domain>
+        <!-- IP de David (PC_IP) -->
+        <domain includeSubdomains="true">192.168.100.7</domain>
+
+        <!-- IP de Fer -->
+        <domain includeSubdomains="true">192.168.1.12</domain>
+
+        <!-- Emulador Android -->
+        <domain includeSubdomains="true">10.0.2.2</domain>
+
+        <!-- Localhost -->
         <domain includeSubdomains="true">localhost</domain>
         <domain includeSubdomains="true">127.0.0.1</domain>
     </domain-config>
