@@ -116,9 +116,9 @@ flowchart TD
   R --> L
 
   H --> C[catalogo_propiedades]
-  C --> D[propiedad_detalle/{propiedadId}]
+  C --> D["propiedad_detalle/{propiedadId}"]
   D --> S[solicitudes]
-  S --> SD[solicitud_detalle/{solicitudId}]
+  S --> SD["solicitud_detalle/{solicitudId}"]
 
   H --> P[perfil]
   P --> MD[mis_documentos]
